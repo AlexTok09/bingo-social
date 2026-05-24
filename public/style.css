@@ -423,14 +423,15 @@ input[type="text"]::placeholder {
 
 .cell .label {
   font-size: 0.55rem;
-  font-weight: 400;
+  font-weight: 700;
   line-height: 1.15;
-  color: var(--text-muted);
+  color: var(--accent);
   max-width: 100%;
   overflow: hidden;
   font-family: var(--font);
   text-transform: uppercase;
   letter-spacing: 0.02em;
+  text-shadow: 0 0 6px var(--accent-glow);
 }
 
 .cell:active {
@@ -448,8 +449,9 @@ input[type="text"]::placeholder {
 }
 
 .cell.checked .label {
-  color: var(--checked);
+  color: #fff;
   font-weight: 700;
+  text-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
 }
 
 .cell.checked::after {
