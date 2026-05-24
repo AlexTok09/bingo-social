@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Bingo Social</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+</head>
+<body>
+
+  <!-- HOME SCREEN -->
+  <div id="screen-home" class="screen active">
+    <div class="home-container">
+      <div class="logo">
+        <h1 class="title">BINGO</h1>
+        <span class="title-sub">SOCIAL</span>
+      </div>
+      <p class="subtitle">Le jeu d'observation au bar</p>
+
+      <input type="text" id="player-name" placeholder="Ton prénom" maxlength="15" autocomplete="off" spellcheck="false">
+
+      <button id="btn-create" class="btn btn-primary">Créer une partie</button>
+
+      <div class="divider"><span>ou rejoindre</span></div>
+
+      <div class="join-row">
+        <input type="text" id="room-code" placeholder="CODE" maxlength="4" autocomplete="off" spellcheck="false">
+        <button id="btn-join" class="btn btn-secondary">Go</button>
+      </div>
+
+      <div id="error-msg" class="error"></div>
+
+      <button id="btn-edit-cats" class="btn btn-link">Modifier les catégories</button>
+    </div>
+  </div>
+
+  <!-- EDITOR SCREEN -->
+  <div id="screen-editor" class="screen">
+    <div class="editor-container">
+      <div class="editor-top-bar">
+        <button id="btn-editor-back" class="btn-close">&larr;</button>
+        <h2>Catégories</h2>
+        <button id="btn-editor-reset" class="btn-icon btn-reset">Reset</button>
+      </div>
+
+      <div class="editor-sections">
+        <div class="editor-section" data-tier="ordinaire">
+          <div class="section-header ordinaire">
+            <h3>Ordinaire <span class="section-pct">60%</span></h3>
+            <span class="cat-count" id="count-ordinaire"></span>
+          </div>
+          <div class="editor-list" id="editor-list-ordinaire"></div>
+          <button class="btn btn-add" data-tier="ordinaire">+ Ajouter</button>
+        </div>
+
+        <div class="editor-section" data-tier="semi">
+          <div class="section-header semi">
+            <h3>Semi-Ordinaire <span class="section-pct">30%</span></h3>
+            <span class="cat-count" id="count-semi"></span>
+          </div>
+          <div class="editor-list" id="editor-list-semi"></div>
+          <button class="btn btn-add" data-tier="semi">+ Ajouter</button>
+        </div>
+
+        <div class="editor-section" data-tier="rare">
+          <div class="section-header rare">
+            <h3>Rare <span class="section-pct">10%</span></h3>
+            <span class="cat-count" id="count-rare"></span>
+          </div>
+          <div class="editor-list" id="editor-list-rare"></div>
+          <button class="btn btn-add" data-tier="rare">+ Ajouter</button>
+        </div>
+      </div>
+
+      <div class="editor-footer">
+        <button id="btn-save-cats" class="btn btn-primary">Sauvegarder</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="screen-game" class="screen">
+    <div class="game-header">
+      <div class="room-info">
+        <span class="room-code-display" id="display-code" title="Copier le code"></span>
+        <button id="btn-share" class="btn-icon">Partager</button>
+      </div>
+      <button id="btn-players" class="btn-icon">Joueurs <span id="player-count">0</span></button>
+    </div>
+
+    <div class="game-content">
+      <div class="grid-section" id="section-ordinaire">
+        <div class="section-header ordinaire">
+          <h3>Ordinaire <span class="section-pct">60%</span></h3>
+          <span class="progress" id="progress-ordinaire">0/12</span>
+        </div>
+        <div class="grid grid-4" id="grid-ordinaire"></div>
+      </div>
+
+      <div class="grid-section" id="section-semi">
+        <div class="section-header semi">
+          <h3>Semi-Ordinaire <span class="section-pct">30%</span></h3>
+          <span class="progress" id="progress-semi">0/6</span>
+        </div>
+        <div class="grid grid-3" id="grid-semi"></div>
+      </div>
+
+      <div class="grid-section" id="section-rare">
+        <div class="section-header rare">
+          <h3>Rare <span class="section-pct">10%</span></h3>
+          <span class="progress" id="progress-rare">0/2</span>
+        </div>
+        <div class="grid grid-2" id="grid-rare"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLAYERS PANEL -->
+  <div id="panel-backdrop" class="panel-backdrop"></div>
+  <div id="players-panel" class="panel">
+    <div class="panel-header">
+      <h3>Joueurs</h3>
+      <button id="btn-close-panel" class="btn-close">&times;</button>
+    </div>
+    <div id="players-list"></div>
+    <button id="btn-new-game" class="btn btn-primary btn-new-game" style="display:none">Nouvelle partie</button>
+  </div>
+
+  <!-- WIN OVERLAY -->
+  <div id="win-overlay" class="overlay">
+    <div class="win-content">
+      <div class="win-emoji" id="win-emoji"></div>
+      <h2 id="win-title"></h2>
+      <p id="win-detail"></p>
+      <button id="btn-new-game-2" class="btn btn-primary">Nouvelle partie</button>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
