@@ -93,9 +93,9 @@ body::after {
 
 .ascii-title {
   font-family: var(--font);
-  font-size: clamp(3.6rem, 18vw, 6.5rem);
+  font-size: clamp(2.6rem, 12vw, 5.5rem);
   line-height: 0.82;
-  white-space: pre-wrap;
+  white-space: nowrap;
   text-align: left;
   color: var(--acid);
   text-shadow: 4px 4px 0 var(--pink), 8px 8px 0 var(--ink);

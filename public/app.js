@@ -97,7 +97,7 @@ let bgMusic = null;
 function startBgMusic() {
   if (bgMusic) return;
   bgMusic = new Audio('/socioloGenerique.wav');
-  bgMusic.loop = true;
+  bgMusic.loop = false;
   bgMusic.volume = 0.3;
   bgMusic.play().catch(() => {});
 }
