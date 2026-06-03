@@ -755,6 +755,32 @@ input[type="text"]::placeholder {
   bottom: 22px;
 }
 
+.activity-notice {
+  position: fixed;
+  right: 12px;
+  bottom: 66px;
+  z-index: 290;
+  max-width: min(76vw, 320px);
+  padding: 8px 11px;
+  border: 2px solid rgba(22, 18, 15, 0.55);
+  border-radius: 6px;
+  background: rgba(255, 249, 221, 0.9);
+  color: rgba(22, 18, 15, 0.88);
+  font: 800 0.72rem/1.1 var(--font);
+  letter-spacing: 0;
+  text-transform: uppercase;
+  box-shadow: 3px 3px 0 rgba(22, 18, 15, 0.18);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  pointer-events: none;
+}
+
+.activity-notice.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .bonus-flash {
   position: fixed;
   inset: 0;

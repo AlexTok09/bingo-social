@@ -68,6 +68,7 @@ const bonusChoiceOverlay = $('#bonus-choice-overlay');
 const bonusChoiceDrawing = $('#bonus-choice-drawing');
 const bonusChoiceDetail = $('#bonus-choice-detail');
 const btnBonusReroll = $('#btn-bonus-reroll');
+const activityNotice = $('#activity-notice');
 
 let pendingBonusCategory = null;
 let rerollRemaining = 0;
@@ -90,6 +91,15 @@ function showToast(msg) {
 function showError(msg) {
   errorMsg.textContent = msg;
   setTimeout(() => { if (errorMsg.textContent === msg) errorMsg.textContent = ''; }, 4000);
+}
+
+let activityNoticeTimeout;
+function showActivityNotice(msg) {
+  if (!activityNotice) return;
+  activityNotice.textContent = msg;
+  activityNotice.classList.add('show');
+  window.clearTimeout(activityNoticeTimeout);
+  activityNoticeTimeout = window.setTimeout(() => activityNotice.classList.remove('show'), 2200);
 }
 
 let bgMusic = null;
@@ -536,6 +546,13 @@ if (socket) {
     showToast('Case cochée gratis !');
     renderGrid();
     animateFreeCheckCell(document.querySelector(`#grid-${category} [data-idx="${index}"]`));
+  });
+
+  socket.on('cell-activity', ({ name, category, index, label, checked }) => {
+    if (name === playerName) return;
+    const action = checked ? 'a coché' : 'a décoché';
+    const itemLabel = (label || `case ${index + 1}`).replace(/\s*\(ultra\)/gi, '');
+    showActivityNotice(`${name} ${action} ${TIER_NAMES[category]} · ${itemLabel}`);
   });
 
   socket.on('reroll-update', ({ grid, checked, occurrences, bonuses, remaining }) => {

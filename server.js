@@ -385,6 +385,14 @@ io.on('connection', (socket) => {
       io.to(socket.roomCode).emit('game-won', room.winner);
     }
 
+    io.to(socket.roomCode).emit('cell-activity', {
+      name: player.name,
+      category,
+      index,
+      label: player.grid[category][index]?.label || '',
+      checked: idx === -1,
+    });
+
     io.to(socket.roomCode).emit('players-update', getPlayersInfo(room));
   });
 
@@ -502,6 +510,13 @@ io.on('connection', (socket) => {
       checked: player.checked,
       occurrences: player.occurrences,
       bonuses: player.bonuses,
+    });
+    io.to(socket.roomCode).emit('cell-activity', {
+      name: player.name,
+      category,
+      index,
+      label: player.grid[category][index]?.label || '',
+      checked: true,
     });
 
     if (player.checked[category].length === player.grid[category].length) {
