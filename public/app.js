@@ -624,7 +624,7 @@ function renderGrid() {
 
       const labelSpan = document.createElement('span');
       labelSpan.className = 'label';
-      labelSpan.textContent = item.label;
+      labelSpan.textContent = item.label.replace(/\s*\(ultra\)/gi, '');
 
       cell.appendChild(emojiSpan);
       cell.appendChild(labelSpan);
