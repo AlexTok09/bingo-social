@@ -174,6 +174,50 @@ function playMultipickSound() {
   playSfx('/multipick.mp3');
 }
 
+const CONFETTI_EMOJIS = [
+  '👴','🧥','🎩','🐩','🛒','👒','⚓','🎓','☮️','😤','📸','👶','📦','🧢','😎',
+  '🔥','😾','😁','😢','📱','👔','🤪','🛵','🚕','🤝','👨‍🦲','🧔','🚲','👗','💋',
+  '🛴','🏃','🧶','🍔','😂','👢','🏝️','🪣','🎸','🪖','🎧','🔊','🦯','🧒','🤓',
+  '💇','🍺','🌿','🏋️','🤳','💃','⏰','📖','💏','🗣️','🛹','🎭','🥾','🚨','💀',
+  '🧣','💔','🚬','🙏','🌈','😭','🎪','🚓','🥊','💦','💥','🦶','🤘','🪑','📲',
+  '🤣','💒','📄','🎈','🐦','🦹','🫣','🦅','🫦','💩','👯','🪈','🦸','⚡','🎉',
+];
+
+function launchEmojiConfetti() {
+  const count = 50;
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed;inset:0;z-index:500;pointer-events:none;overflow:hidden';
+  document.body.appendChild(container);
+
+  for (let i = 0; i < count; i++) {
+    const particle = document.createElement('span');
+    particle.textContent = CONFETTI_EMOJIS[Math.floor(Math.random() * CONFETTI_EMOJIS.length)];
+    const x = 40 + Math.random() * 20;
+    const y = 40 + Math.random() * 20;
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 60 + Math.random() * 100;
+    const tx = Math.cos(angle) * dist;
+    const ty = Math.sin(angle) * dist - 40;
+    const rot = (Math.random() - 0.5) * 720;
+    const scale = 0.6 + Math.random() * 0.8;
+    const dur = 1.2 + Math.random() * 0.8;
+    const delay = Math.random() * 0.3;
+
+    particle.style.cssText = `
+      position:absolute;
+      left:${x}%;top:${y}%;
+      font-size:${scale * 1.8}rem;
+      opacity:1;
+      pointer-events:none;
+      animation:emojiExplode ${dur}s ${delay}s ease-out forwards;
+      --tx:${tx}vw;--ty:${ty}vh;--rot:${rot}deg;
+    `;
+    container.appendChild(particle);
+  }
+
+  setTimeout(() => container.remove(), 2500);
+}
+
 function showBonusFlash(message) {
   bonusFlash.textContent = message;
   bonusFlash.classList.remove('show');
@@ -185,6 +229,7 @@ function showBonusFlash(message) {
 function showBonusChoice(category) {
   bonusCategory = category;
   playBonusSound();
+  launchEmojiConfetti();
   showBonusFlash('Bonus !');
   bonusChoiceDrawing.textContent = '🎰';
   bonusChoiceDetail.textContent = `Catégorie : ${TIER_NAMES[category]}`;
