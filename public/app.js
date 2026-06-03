@@ -67,10 +67,10 @@ const bonusFlash = $('#bonus-flash');
 const bonusChoiceOverlay = $('#bonus-choice-overlay');
 const bonusChoiceDrawing = $('#bonus-choice-drawing');
 const bonusChoiceDetail = $('#bonus-choice-detail');
-const btnBonusFree = $('#btn-bonus-free');
 const btnBonusReroll = $('#btn-bonus-reroll');
 
 let pendingBonusCategory = null;
+let rerollRemaining = 0;
 
 function showScreen(screen) {
   $$('.screen').forEach(s => s.classList.remove('active'));
@@ -125,13 +125,14 @@ function playTone({ frequency, duration, type = 'square', volume = 0.08, slideTo
 
 function playTapSound(category, wasChecked) {
   if (category === 'legendaire' && !wasChecked) {
-    playTone({ frequency: 220, slideTo: 880, duration: 0.18, type: 'sawtooth', volume: 0.09 });
-    playTone({ frequency: 1320, duration: 0.08, type: 'square', volume: 0.06, delay: 0.1 });
+    playTone({ frequency: 523, duration: 0.07, type: 'triangle', volume: 0.055 });
+    playTone({ frequency: 784, duration: 0.07, type: 'triangle', volume: 0.05, delay: 0.06 });
+    playTone({ frequency: 1046, duration: 0.11, type: 'square', volume: 0.045, delay: 0.12 });
     return;
   }
 
   if (wasChecked) {
-    playTone({ frequency: 390, slideTo: 520, duration: 0.06, type: 'triangle', volume: 0.045 });
+    playTone({ frequency: 660, slideTo: 330, duration: 0.08, type: 'triangle', volume: 0.035 });
     return;
   }
 
@@ -141,26 +142,32 @@ function playTapSound(category, wasChecked) {
     rare: 820,
   }[category] || 560;
 
-  playTone({ frequency: pitch, slideTo: pitch * 1.45, duration: 0.075, type: 'square', volume: 0.07 });
-  playTone({ frequency: pitch / 2, duration: 0.045, type: 'triangle', volume: 0.045, delay: 0.035 });
+  playTone({ frequency: pitch, duration: 0.045, type: 'triangle', volume: 0.052 });
+  playTone({ frequency: pitch * 1.5, duration: 0.045, type: 'triangle', volume: 0.042, delay: 0.045 });
 }
 
 function playWinSound(category) {
   if (category === 'legendaire') {
-    [260, 390, 585, 880].forEach((frequency, step) => {
-      playTone({ frequency, duration: 0.11, type: 'sawtooth', volume: 0.07, delay: step * 0.08 });
+    [523, 659, 784, 1046, 1318].forEach((frequency, step) => {
+      playTone({ frequency, duration: 0.09, type: 'square', volume: 0.055, delay: step * 0.07 });
     });
     return;
   }
 
-  [440, 660, 990].forEach((frequency, step) => {
-    playTone({ frequency, duration: 0.09, type: 'square', volume: 0.055, delay: step * 0.07 });
+  [392, 523, 659, 784].forEach((frequency, step) => {
+    playTone({ frequency, duration: 0.065, type: 'triangle', volume: 0.05, delay: step * 0.055 });
   });
 }
 
 function playBonusSound() {
-  [330, 660, 990, 1320].forEach((frequency, step) => {
-    playTone({ frequency, duration: 0.08, type: 'square', volume: 0.06, delay: step * 0.055 });
+  [880, 988, 1174, 1318, 1568].forEach((frequency, step) => {
+    playTone({ frequency, duration: 0.055, type: 'square', volume: 0.052, delay: step * 0.045 });
+  });
+}
+
+function playRerollSound() {
+  [740, 660, 740, 880].forEach((frequency, step) => {
+    playTone({ frequency, duration: 0.045, type: 'square', volume: 0.045, delay: step * 0.035 });
   });
 }
 
@@ -172,12 +179,13 @@ function showBonusFlash(message) {
   showBonusFlash.timeout = window.setTimeout(() => bonusFlash.classList.remove('show'), 1500);
 }
 
-function showBonusChoice(category) {
-  pendingBonusCategory = category;
+function showRerollBonus(remaining) {
+  rerollRemaining = remaining;
+  pendingBonusCategory = 'reroll';
   playBonusSound();
-  showBonusFlash(`Bonus ${TIER_NAMES[category]} !`);
-  bonusChoiceDrawing.innerHTML = categoryDrawing({ id: category, label: TIER_NAMES[category] || category }, category);
-  bonusChoiceDetail.textContent = `Choisis ton bonus ${TIER_NAMES[category]}.`;
+  showBonusFlash('Reroll x3 !');
+  bonusChoiceDrawing.textContent = '🎰';
+  bonusChoiceDetail.textContent = 'Choisis 3 cases non cochées à relancer.';
   bonusChoiceOverlay.classList.add('active');
 }
 
@@ -256,6 +264,7 @@ if (socket) {
     myChecked = emptyChecked();
     myOccurrences = emptyOccurrences();
     myBonuses = emptyBonuses();
+    rerollRemaining = 0;
     enterGame();
   });
 
@@ -265,6 +274,7 @@ if (socket) {
     myChecked = emptyChecked();
     myOccurrences = emptyOccurrences();
     myBonuses = emptyBonuses();
+    rerollRemaining = 0;
     enterGame();
   });
 
@@ -287,27 +297,19 @@ if (socket) {
     renderGrid();
   });
 
-  socket.on('bonus-choice', ({ category, bonuses }) => {
-    myBonuses = { ...emptyBonuses(), ...(bonuses || myBonuses) };
-    showBonusChoice(category);
+  socket.on('reroll-bonus-start', ({ remaining }) => {
+    showRerollBonus(remaining);
     renderGrid();
   });
 
-  socket.on('bonus-ready', ({ category, bonuses }) => {
-    myBonuses = { ...emptyBonuses(), ...(bonuses || myBonuses) };
-    showToast(`Case gratuite ${TIER_NAMES[category]}`);
-    renderGrid();
-  });
-
-  socket.on('bonus-earned', ({ category, bonuses }) => {
-    myBonuses = { ...emptyBonuses(), ...(bonuses || myBonuses) };
-    showBonusChoice(category);
-    renderGrid();
-  });
-
-  socket.on('bonus-used', ({ category, bonuses }) => {
-    myBonuses = { ...emptyBonuses(), ...(bonuses || myBonuses) };
-    showToast(`Bonus ${TIER_NAMES[category]} utilisé`);
+  socket.on('reroll-update', ({ grid, checked, occurrences, bonuses, remaining }) => {
+    myGrid = grid;
+    myChecked = { ...emptyChecked(), ...(checked || {}) };
+    myOccurrences = { ...emptyOccurrences(), ...(occurrences || {}) };
+    myBonuses = { ...emptyBonuses(), ...(bonuses || {}) };
+    rerollRemaining = remaining || 0;
+    playRerollSound();
+    showToast(rerollRemaining > 0 ? `Encore ${rerollRemaining} reroll` : 'Reroll terminé');
     renderGrid();
   });
 
@@ -337,6 +339,7 @@ if (socket) {
   socket.on('game-won', ({ name, category }) => {
     playWinSound(category);
     winDrawing.innerHTML = categoryDrawing({ id: category, label: TIER_NAMES[category] || category }, category);
+    winDrawing.textContent = categoryEmoji({ id: category, label: TIER_NAMES[category] || category });
     if (name === playerName) {
       winTitle.textContent = 'Tu as gagné !';
     } else {
@@ -354,6 +357,7 @@ if (socket) {
     myChecked = emptyChecked();
     myOccurrences = emptyOccurrences();
     myBonuses = emptyBonuses();
+    rerollRemaining = 0;
     winOverlay.classList.remove('active');
     btnNewGame.style.display = 'none';
     renderGrid();
@@ -402,6 +406,40 @@ function drawingType(item) {
   if (key.includes('accident')) return 'crash';
   if (key.includes('impossible') || key.includes('instant') || key.includes('legendaire')) return 'legend';
   return 'weird';
+}
+
+function categoryEmoji(item) {
+  const type = drawingType(item);
+  const emojis = {
+    old: '👴',
+    clothes: '🧥',
+    dog: '🐕',
+    rough: '🍷',
+    tourist: '📸',
+    book: '📚',
+    star: '✨',
+    face: '😠',
+    legs: '🦵',
+    wheels: '🚲',
+    guitar: '🎸',
+    smoke: '💨',
+    drink: '🍺',
+    sport: '🏃',
+    dance: '💃',
+    meter: '🅿️',
+    twins: '👯',
+    speech: '🗣️',
+    mask: '🎭',
+    police: '🚓',
+    fight: '🥊',
+    bird: '🐦',
+    splash: '💦',
+    body: '🫣',
+    crash: '💥',
+    legend: '🔮',
+    weird: '🎲',
+  };
+  return emojis[type] || emojis.weird;
 }
 
 function drawingPalette(category) {
@@ -475,19 +513,19 @@ function renderGrid() {
         cell.classList.add('checked');
       }
 
-      if (!checked.includes(index) && bonuses > 0) {
-        cell.classList.add('bonus-target');
+      if (!checked.includes(index) && rerollRemaining > 0) {
+        cell.classList.add('reroll-target');
       }
 
-      const drawingWrap = document.createElement('span');
-      drawingWrap.className = 'drawing-wrap';
-      drawingWrap.innerHTML = categoryDrawing(item, category);
+      const emojiSpan = document.createElement('span');
+      emojiSpan.className = 'emoji';
+      emojiSpan.textContent = categoryEmoji(item);
 
       const labelSpan = document.createElement('span');
       labelSpan.className = 'label';
       labelSpan.textContent = item.label;
 
-      cell.appendChild(drawingWrap);
+      cell.appendChild(emojiSpan);
       cell.appendChild(labelSpan);
 
       const count = occurrences[index] || (checked.includes(index) ? 1 : 0);
@@ -527,6 +565,14 @@ function renderGrid() {
           window.setTimeout(() => { didLongPress = false; }, 0);
           return;
         }
+        if (rerollRemaining > 0) {
+          if (checked.includes(index)) {
+            showToast('Choisis une case non cochée');
+            return;
+          }
+          emitSocket('reroll-cell', { category, index });
+          return;
+        }
         const wasChecked = checked.includes(index);
         playTapSound(category, wasChecked);
         emitSocket('toggle-cell', { category, index });
@@ -541,7 +587,7 @@ function renderGrid() {
     progress.textContent = `${checked.length}/${items.length}`;
     const bonus = $(`#bonus-${category}`);
     if (bonus) {
-      bonus.textContent = bonuses > 0 ? `bonus x${bonuses}` : '';
+      bonus.textContent = rerollRemaining > 0 ? `reroll x${rerollRemaining}` : (bonuses > 0 ? `bonus x${bonuses}` : '');
     }
 
     if (checked.length === items.length) {
@@ -644,16 +690,11 @@ btnShare.addEventListener('click', () => {
 btnNewGame.addEventListener('click', () => emitSocket('new-game'));
 btnNewGame2.addEventListener('click', () => emitSocket('new-game'));
 
-btnBonusFree.addEventListener('click', () => {
-  if (!pendingBonusCategory) return;
-  closeBonusChoice();
-  emitSocket('choose-bonus', { choice: 'free-check' });
-});
-
 btnBonusReroll.addEventListener('click', () => {
   if (!pendingBonusCategory) return;
   closeBonusChoice();
-  emitSocket('choose-bonus', { choice: 'reroll' });
+  showToast(`Choisis ${rerollRemaining} cases`);
+  renderGrid();
 });
 
 // --- CATEGORY EDITOR ---

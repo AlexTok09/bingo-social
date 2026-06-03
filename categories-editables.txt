@@ -12,9 +12,6 @@ Mr ou Mme méchant
 Gros touriste
 Poussette
 Vélo cargo
-Porte un instrument
-Panama
-Bob
 Casquette
 Style de ouf
 Caillra
@@ -46,6 +43,9 @@ Dock martins
 
 
 Semi-ordinaire:
+Panama
+Bob
+Porte un instrument
 Militaire
 Kit main libre
 Son a donf

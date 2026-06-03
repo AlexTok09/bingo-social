@@ -203,35 +203,23 @@ function pickGridItems(items, count) {
   return selected;
 }
 
-function rerollUncheckedCells(player) {
-  for (const tier of Object.keys(GRID_CONFIG)) {
-    const checked = new Set(player.checked[tier] || []);
-    const checkedIds = new Set(
-      player.grid[tier]
-        .filter((_, index) => checked.has(index))
-        .map(item => item.id)
-    );
-    const usedIds = new Set(checkedIds);
-    let hasUltra = player.grid[tier].some((item, index) => checked.has(index) && ultraKey(item));
-    const candidates = shuffleArray(CATEGORIES[tier]).filter(item => !checkedIds.has(item.id));
+function rerollOneCell(player, tier, index) {
+  const checked = new Set(player.checked[tier] || []);
+  if (checked.has(index) || !player.grid[tier]?.[index]) return false;
 
-    player.grid[tier] = player.grid[tier].map((item, index) => {
-      if (checked.has(index)) return item;
+  const current = player.grid[tier][index];
+  const usedIds = new Set(player.grid[tier].map(item => item.id));
+  usedIds.delete(current.id);
+  const hasUltraElsewhere = player.grid[tier].some((item, itemIndex) => itemIndex !== index && ultraKey(item));
+  const replacement = shuffleArray(CATEGORIES[tier]).find(candidate => {
+    const isUltra = Boolean(ultraKey(candidate));
+    return !usedIds.has(candidate.id) && (!isUltra || !hasUltraElsewhere);
+  });
 
-      const replacementIndex = candidates.findIndex(candidate => {
-        const isUltra = Boolean(ultraKey(candidate));
-        return !usedIds.has(candidate.id) && (!isUltra || !hasUltra);
-      });
-
-      if (replacementIndex === -1) return item;
-
-      const [replacement] = candidates.splice(replacementIndex, 1);
-      usedIds.add(replacement.id);
-      if (ultraKey(replacement)) hasUltra = true;
-      delete player.occurrences[tier][index];
-      return replacement;
-    });
-  }
+  if (!replacement) return false;
+  player.grid[tier][index] = replacement;
+  delete player.occurrences[tier][index];
+  return true;
 }
 
 function getProgress(player) {
@@ -381,10 +369,6 @@ io.on('connection', (socket) => {
     if (idx === -1) {
       checkedList.push(index);
       player.occurrences[category][index] = 1;
-      if (player.bonuses[category] > 0) {
-        player.bonuses[category] -= 1;
-        socket.emit('bonus-used', { category, index, bonuses: player.bonuses });
-      }
     } else {
       checkedList.splice(idx, 1);
       delete player.occurrences[category][index];
@@ -423,8 +407,8 @@ io.on('connection', (socket) => {
 
     if (nextCount >= 3) {
       player.occurrences[category][index] = 1;
-      player.pendingBonus = { category, index };
-      socket.emit('bonus-choice', { category, index, bonuses: player.bonuses });
+      player.pendingBonus = { type: 'reroll-picks', remaining: 3, picked: [] };
+      socket.emit('reroll-bonus-start', { remaining: 3 });
     } else {
       player.occurrences[category][index] = nextCount;
       socket.emit('occurrence-update', {
@@ -443,40 +427,35 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('choose-bonus', ({ choice }) => {
+  socket.on('reroll-cell', ({ category, index }) => {
     if (!socket.roomCode) return;
     const room = rooms.get(socket.roomCode);
     if (!room || room.winner) return;
     const player = room.players.find(p => p.id === socket.id);
-    if (!player || !player.pendingBonus) return;
+    if (!player || player.pendingBonus?.type !== 'reroll-picks') return;
+    if (!player.grid[category] || !Number.isInteger(index)) return;
+    const pickKey = `${category}:${index}`;
+    if (player.pendingBonus.picked.includes(pickKey)) return;
 
-    const { category } = player.pendingBonus;
     player.occurrences ||= emptyOccurrences();
     player.bonuses ||= emptyBonuses();
 
-    if (choice === 'free-check') {
-      player.bonuses[category] += 1;
+    if (!rerollOneCell(player, category, index)) return;
+    player.pendingBonus.picked.push(pickKey);
+    player.pendingBonus.remaining -= 1;
+    const remaining = player.pendingBonus.remaining;
+    if (remaining <= 0) {
       player.pendingBonus = emptyPendingBonus();
-      socket.emit('bonus-ready', { category, bonuses: player.bonuses });
-      socket.emit('grid-update', {
-        checked: player.checked,
-        occurrences: player.occurrences,
-        bonuses: player.bonuses,
-      });
-      return;
     }
 
-    if (choice === 'reroll') {
-      rerollUncheckedCells(player);
-      player.pendingBonus = emptyPendingBonus();
-      socket.emit('grid-rerolled', {
-        grid: player.grid,
-        checked: player.checked,
-        occurrences: player.occurrences,
-        bonuses: player.bonuses,
-      });
-      io.to(socket.roomCode).emit('players-update', getPlayersInfo(room));
-    }
+    socket.emit('reroll-update', {
+      grid: player.grid,
+      checked: player.checked,
+      occurrences: player.occurrences,
+      bonuses: player.bonuses,
+      remaining,
+    });
+    io.to(socket.roomCode).emit('players-update', getPlayersInfo(room));
   });
 
   socket.on('new-game', () => {

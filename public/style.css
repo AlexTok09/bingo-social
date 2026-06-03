@@ -413,6 +413,13 @@ input[type="text"]::placeholder {
   overflow: visible;
 }
 
+.cell .emoji {
+  display: block;
+  font-size: 2rem;
+  line-height: 1;
+  filter: saturate(1.25) contrast(1.08);
+}
+
 .cell .label {
   max-width: 100%;
   color: var(--ink);
@@ -435,6 +442,10 @@ input[type="text"]::placeholder {
   flex-basis: 78px;
 }
 
+.legendaire-cell .emoji {
+  font-size: 3rem;
+}
+
 .legendaire-cell .label {
   color: #fff;
   font-size: 1rem;
@@ -446,7 +457,7 @@ input[type="text"]::placeholder {
   filter: saturate(1.2);
 }
 
-.cell.bonus-target {
+.cell.reroll-target {
   outline: 4px dashed var(--purple);
   outline-offset: -7px;
   animation: bonusPulse 0.9s ease-in-out infinite;
@@ -655,6 +666,10 @@ input[type="text"]::placeholder {
   width: 118px;
   height: 118px;
   margin: 0 auto;
+  display: grid;
+  place-items: center;
+  font-size: 5rem;
+  line-height: 1;
 }
 
 .win-drawing .drawing-wrap,
