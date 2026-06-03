@@ -136,14 +136,30 @@ function playTone({ frequency, duration, type = 'square', volume = 0.08, slideTo
 }
 
 const SFX_VOLUME = 0.8;
-const tapSounds = {
-  ordinaire: '/ordinaire.mp3',
-  semi: '/semi-ordinaire.mp3',
-  rare: '/rare.mp3',
-  legendaire: '/legendaire.mp3',
-};
+const sfxCache = {};
+const SFX_FILES = [
+  '/ordinaire.mp3', '/semi-ordinaire.mp3', '/rare.mp3', '/legendaire.mp3',
+  '/bonus.mp3', '/multipick.mp3', '/bingo.wav', '/socioloGenerique.wav',
+];
+
+function preloadSounds() {
+  SFX_FILES.forEach(src => {
+    const a = new Audio(src);
+    a.preload = 'auto';
+    a.volume = SFX_VOLUME;
+    sfxCache[src] = a;
+  });
+}
+preloadSounds();
 
 function playSfx(src) {
+  const cached = sfxCache[src];
+  if (cached) {
+    const clone = cached.cloneNode();
+    clone.volume = SFX_VOLUME;
+    clone.play().catch(() => {});
+    return;
+  }
   const sfx = new Audio(src);
   sfx.volume = SFX_VOLUME;
   sfx.play().catch(() => {});
@@ -151,25 +167,82 @@ function playSfx(src) {
 
 function playTapSound(category, wasChecked) {
   if (wasChecked) return;
-  playSfx(tapSounds[category] || tapSounds.ordinaire);
+  const files = { ordinaire: '/ordinaire.mp3', semi: '/semi-ordinaire.mp3', rare: '/rare.mp3', legendaire: '/legendaire.mp3' };
+  playSfx(files[category] || files.ordinaire);
 }
 
 function playWinSound() {
   playSfx('/bingo.wav');
 }
 
+function playWinCasinoSound(category) {
+  playWinSound();
+  if (category === 'ordinaire') {
+    [800, 1000, 1200, 800, 1000, 1200, 1400].forEach((f, i) => {
+      playTone({ frequency: f, duration: 0.06, type: 'square', volume: 0.07, delay: i * 0.08 });
+    });
+  } else if (category === 'semi') {
+    [660, 880, 1100, 880, 1100, 1320, 1100, 1320, 1540].forEach((f, i) => {
+      playTone({ frequency: f, duration: 0.07, type: 'square', volume: 0.07, delay: i * 0.07 });
+    });
+    [330, 440, 550, 440, 550, 660].forEach((f, i) => {
+      playTone({ frequency: f, duration: 0.1, type: 'sawtooth', volume: 0.03, delay: i * 0.12 });
+    });
+  } else if (category === 'rare') {
+    for (let w = 0; w < 3; w++) {
+      [523, 659, 784, 1046, 1318].forEach((f, i) => {
+        playTone({ frequency: f, duration: 0.05, type: 'square', volume: 0.06, delay: w * 0.4 + i * 0.05 });
+      });
+    }
+    [220, 330, 440, 550, 660, 880, 1100, 1320].forEach((f, i) => {
+      playTone({ frequency: f, duration: 0.08, type: 'sawtooth', volume: 0.04, delay: i * 0.06 });
+    });
+  } else if (category === 'legendaire') {
+    for (let w = 0; w < 5; w++) {
+      [523, 659, 784, 1046, 1318, 1568, 1760, 2093].forEach((f, i) => {
+        playTone({ frequency: f, duration: 0.06, type: 'square', volume: 0.06, delay: w * 0.5 + i * 0.04 });
+      });
+    }
+    for (let c = 0; c < 20; c++) {
+      const f = 2000 + Math.random() * 4000;
+      playTone({ frequency: f, duration: 0.02, type: 'square', volume: 0.04, delay: Math.random() * 3 });
+    }
+    [110, 220, 330, 440, 550, 660, 880, 1100, 1320, 1760].forEach((f, i) => {
+      playTone({ frequency: f, duration: 0.15, type: 'sawtooth', volume: 0.035, delay: 0.2 + i * 0.08 });
+    });
+    playTone({ frequency: 80, slideTo: 2500, duration: 2.5, type: 'sawtooth', volume: 0.03, delay: 0.5 });
+  }
+}
+
 function winAnimOrdinaire() {
   launchEmojiConfetti();
+  setTimeout(() => launchEmojiConfetti(), 500);
+  const content = document.querySelector('.win-content');
+  if (content) {
+    content.style.animation = 'slam 0.28s ease, winShake 0.2s ease 4';
+    setTimeout(() => content.style.animation = 'slam 0.28s ease', 1200);
+  }
+  const overlay = document.querySelector('#win-overlay');
+  if (overlay) {
+    overlay.style.animation = 'winPulse 0.4s ease 3';
+    setTimeout(() => overlay.style.animation = '', 1400);
+  }
 }
 
 function winAnimSemi() {
-  launchEmojiConfetti();
-  setTimeout(() => launchEmojiConfetti(), 400);
+  for (let i = 0; i < 3; i++) setTimeout(() => launchEmojiConfetti(), i * 350);
+  const content = document.querySelector('.win-content');
+  if (content) {
+    content.style.animation = 'slam 0.28s ease, winShake 0.12s ease 10, winGlow 0.3s ease infinite alternate';
+    setTimeout(() => content.style.animation = 'slam 0.28s ease', 2500);
+  }
   const overlay = document.querySelector('#win-overlay');
   if (overlay) {
-    overlay.style.animation = 'winPulse 0.5s ease 3';
-    setTimeout(() => overlay.style.animation = '', 1600);
+    overlay.style.animation = 'winPulse 0.3s ease 6';
+    setTimeout(() => overlay.style.animation = '', 2000);
   }
+  document.body.style.animation = 'screenShake 0.15s linear 6';
+  setTimeout(() => document.body.style.animation = '', 1000);
 }
 
 function winAnimRare() {
@@ -512,7 +585,7 @@ if (socket) {
   });
 
   socket.on('game-won', ({ name, category }) => {
-    playWinSound();
+    playWinCasinoSound(category);
     winOverlay.className = 'overlay active win-tier-' + category;
     winDrawing.textContent = categoryEmoji({ id: category, label: TIER_NAMES[category] || category });
     if (name === playerName) {
