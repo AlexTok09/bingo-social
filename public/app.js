@@ -29,6 +29,7 @@ const inputName = $('#player-name');
 const inputCode = $('#room-code');
 const btnCreate = $('#btn-create');
 const btnJoin = $('#btn-join');
+const btnEditCats = $('#btn-edit-cats');
 const errorMsg = $('#error-msg');
 const displayCode = $('#display-code');
 const playerCount = $('#player-count');
@@ -181,6 +182,10 @@ if (socket) {
     btnNewGame.style.display = 'none';
     renderGrid();
     showToast('Nouvelle partie !');
+  });
+
+  socket.on('categories-updated', () => {
+    showToast('Catégories mises à jour');
   });
 }
 
@@ -418,7 +423,6 @@ btnNewGame2.addEventListener('click', () => emitSocket('new-game'));
 // --- CATEGORY EDITOR ---
 
 const screenEditor = $('#screen-editor');
-const btnEditCats = $('#btn-edit-cats');
 const btnEditorBack = $('#btn-editor-back');
 const btnEditorReset = $('#btn-editor-reset');
 const btnSaveCats = $('#btn-save-cats');
@@ -426,7 +430,7 @@ const btnSaveCats = $('#btn-save-cats');
 let editCategories = null;
 
 btnEditCats.addEventListener('click', () => {
-  emitSocket('get-categories');
+  window.location.href = '/admin';
 });
 
 if (socket) {

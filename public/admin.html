@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Binglou Admin</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="admin-body">
+  <main class="admin-shell">
+    <header class="admin-header">
+      <div>
+        <h1>Catégories</h1>
+        <p>Tableau admin protégé</p>
+      </div>
+      <a class="admin-back" href="/">Jeu</a>
+    </header>
+
+    <section id="login-panel" class="admin-login">
+      <label for="admin-password">Mot de passe</label>
+      <div class="admin-login-row">
+        <input id="admin-password" type="password" autocomplete="current-password" placeholder="Mot de passe admin">
+        <button id="btn-login" class="btn btn-primary">Entrer</button>
+      </div>
+      <p id="admin-login-error" class="admin-error"></p>
+    </section>
+
+    <section id="admin-panel" class="admin-panel" hidden>
+      <div class="admin-actions">
+        <label class="admin-toggle">
+          <input id="apply-active" type="checkbox" checked>
+          <span>Appliquer immédiatement aux parties en cours</span>
+        </label>
+        <div class="admin-buttons">
+          <button id="btn-add-row" class="btn btn-secondary">Ajouter une ligne</button>
+          <button id="btn-reset-admin" class="btn btn-secondary">Reset</button>
+          <button id="btn-save-admin" class="btn btn-primary">Sauvegarder</button>
+        </div>
+      </div>
+
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Niveau</th>
+              <th>Catégorie</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="admin-category-rows"></tbody>
+        </table>
+      </div>
+
+      <p id="admin-status" class="admin-status"></p>
+    </section>
+  </main>
+
+  <script src="admin.js"></script>
+</body>
+</html>

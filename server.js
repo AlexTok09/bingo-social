@@ -8,9 +8,11 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(express.static('public'));
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (process.env.NODE_ENV === 'production' ? '' : 'binglou-admin');
 
-const CATEGORIES_FILE = path.join(__dirname, 'categories.json');
+app.use(express.json({ limit: '200kb' }));
+
+const CATEGORIES_FILE = process.env.CATEGORIES_FILE || path.join(__dirname, 'categories.json');
 
 const DEFAULT_CATEGORIES = {
   ordinaire: [
@@ -85,6 +87,7 @@ function loadCategories() {
 }
 
 function saveCategories(categories) {
+  fs.mkdirSync(path.dirname(CATEGORIES_FILE), { recursive: true });
   fs.writeFileSync(CATEGORIES_FILE, JSON.stringify(normalizeCategories(categories), null, 2), 'utf-8');
 }
 
@@ -105,6 +108,39 @@ const GRID_CONFIG = {
 };
 
 const rooms = new Map();
+
+function isAdminRequest(req) {
+  return Boolean(ADMIN_PASSWORD) && req.get('x-admin-password') === ADMIN_PASSWORD;
+}
+
+function publicCategories() {
+  return JSON.parse(JSON.stringify(CATEGORIES));
+}
+
+function applyCategories(categories, options = {}) {
+  CATEGORIES = normalizeCategories(categories);
+  saveCategories(CATEGORIES);
+  io.emit('categories-updated', publicCategories());
+
+  if (!options.resetRooms) return;
+
+  for (const room of rooms.values()) {
+    room.winner = null;
+    room.players.forEach(p => {
+      p.grid = generateGrid();
+      p.checked = { ordinaire: [], semi: [], rare: [], legendaire: [] };
+    });
+
+    room.players.forEach(p => {
+      const s = io.sockets.sockets.get(p.id);
+      if (s) {
+        s.emit('new-game-started', { grid: p.grid });
+      }
+    });
+
+    io.to(room.code).emit('players-update', getPlayersInfo(room));
+  }
+}
 
 function generateRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -151,24 +187,60 @@ function getPlayersInfo(room) {
   }));
 }
 
+app.get('/api/admin/categories', (req, res) => {
+  if (!isAdminRequest(req)) {
+    res.status(401).json({ error: 'Mot de passe invalide.' });
+    return;
+  }
+  res.json(publicCategories());
+});
+
+app.put('/api/admin/categories', (req, res) => {
+  if (!isAdminRequest(req)) {
+    res.status(401).json({ error: 'Mot de passe invalide.' });
+    return;
+  }
+
+  const categories = req.body?.categories;
+  const resetRooms = req.body?.resetRooms !== false;
+  if (!categories || !categories.ordinaire || !categories.semi || !categories.rare || !categories.legendaire) {
+    res.status(400).json({ error: 'Catégories invalides.' });
+    return;
+  }
+
+  applyCategories(categories, { resetRooms });
+  res.json({ ok: true, categories: publicCategories(), resetRooms });
+});
+
+app.post('/api/admin/reset-categories', (req, res) => {
+  if (!isAdminRequest(req)) {
+    res.status(401).json({ error: 'Mot de passe invalide.' });
+    return;
+  }
+
+  const resetRooms = req.body?.resetRooms !== false;
+  applyCategories(DEFAULT_CATEGORIES, { resetRooms });
+  res.json({ ok: true, categories: publicCategories(), resetRooms });
+});
+
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+app.use(express.static('public'));
+
 io.on('connection', (socket) => {
 
   socket.on('get-categories', () => {
-    socket.emit('categories-data', CATEGORIES);
+    socket.emit('categories-data', publicCategories());
   });
 
   socket.on('save-categories', (categories) => {
-    if (!categories || !categories.ordinaire || !categories.semi || !categories.rare || !categories.legendaire) return;
-    CATEGORIES = normalizeCategories(categories);
-    saveCategories(CATEGORIES);
-    socket.emit('categories-saved');
+    socket.emit('error-msg', 'Edition déplacée dans /admin.');
   });
 
   socket.on('reset-categories', () => {
-    CATEGORIES = normalizeCategories(JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)));
-    saveCategories(CATEGORIES);
-    socket.emit('categories-data', CATEGORIES);
-    socket.emit('categories-saved');
+    socket.emit('error-msg', 'Edition déplacée dans /admin.');
   });
 
   socket.on('create-room', (playerName) => {
