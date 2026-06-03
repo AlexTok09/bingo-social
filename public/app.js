@@ -93,6 +93,15 @@ function showError(msg) {
   setTimeout(() => { if (errorMsg.textContent === msg) errorMsg.textContent = ''; }, 4000);
 }
 
+let bgMusic = null;
+function startBgMusic() {
+  if (bgMusic) return;
+  bgMusic = new Audio('/socioloGenerique.wav');
+  bgMusic.loop = true;
+  bgMusic.volume = 0.3;
+  bgMusic.play().catch(() => {});
+}
+
 let audioContext = null;
 function getAudioContext() {
   const AudioCtor = window.AudioContext || window.webkitAudioContext;
@@ -216,6 +225,7 @@ btnCreate.addEventListener('click', () => {
   const name = inputName.value.trim();
   if (!name) { showError('Entre ton prénom !'); return; }
   playerName = name;
+  startBgMusic();
   emitSocket('create-room', name);
 });
 
@@ -225,6 +235,7 @@ btnJoin.addEventListener('click', () => {
   if (!name) { showError('Entre ton prénom !'); return; }
   if (!code || code.length < 4) { showError('Code à 4 caractères !'); return; }
   playerName = name;
+  startBgMusic();
   emitSocket('join-room', { code, playerName: name });
 });
 

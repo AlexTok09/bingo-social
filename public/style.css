@@ -887,6 +887,10 @@ input[type="text"]::placeholder {
 }
 
 @media (max-width: 370px) {
+  .ascii-title {
+    font-size: clamp(2.4rem, 14vw, 3.6rem);
+  }
+
   .game-header {
     align-items: stretch;
     flex-direction: column;
@@ -897,21 +901,73 @@ input[type="text"]::placeholder {
   }
 
   .grid {
+    gap: 5px;
+  }
+
+  .grid-4 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+  .cell {
+    min-height: 62px;
+    padding: 6px 4px;
+  }
+
+  .cell .emoji {
+    font-size: 1.6rem;
+  }
+
+  .drawing-wrap {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+
+  .cell .label {
+    font-size: 0.52rem;
+  }
+
+  .section-header h3 {
+    font-size: 0.85rem;
+  }
+
+  .btn {
+    padding: 10px 12px;
+    font-size: 0.9rem;
+  }
+
+  .win-content h2 {
+    font-size: 1.8rem;
+  }
+
+  .bonus-choice-content h2 {
+    font-size: 1.6rem;
+  }
+}
+
+@media (min-width: 371px) and (max-width: 480px) {
+  .grid {
     gap: 6px;
   }
 
   .cell {
-    min-height: 68px;
+    min-height: 72px;
   }
 
-  .drawing-wrap {
-    width: 40px;
-    height: 40px;
-    flex-basis: 40px;
+  .cell .emoji {
+    font-size: 1.8rem;
   }
 
   .cell .label {
-    font-size: 0.54rem;
+    font-size: 0.58rem;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 699px) {
+  .game-content {
+    padding: 14px 14px 48px;
+  }
+
+  .cell {
+    min-height: 80px;
   }
 }
 
@@ -922,6 +978,37 @@ input[type="text"]::placeholder {
 
   .game-content {
     padding-top: 20px;
+  }
+
+  .cell {
+    min-height: 88px;
+  }
+
+  .cell .emoji {
+    font-size: 2.2rem;
+  }
+
+  .cell .label {
+    font-size: 0.72rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .game-content {
+    max-width: 680px;
+  }
+
+  .cell {
+    min-height: 96px;
+    border-radius: 9px;
+  }
+
+  .cell .emoji {
+    font-size: 2.5rem;
+  }
+
+  .cell .label {
+    font-size: 0.78rem;
   }
 }
 
