@@ -391,6 +391,18 @@ function closeBonusChoice() {
   bonusChoiceOverlay.classList.remove('active');
 }
 
+function animateFreeCheckCell(cell) {
+  if (!cell) return;
+  cell.classList.remove('freecheck-hit');
+  window.requestAnimationFrame(() => {
+    cell.classList.add('freecheck-hit');
+  });
+  window.clearTimeout(animateFreeCheckCell.timeout);
+  animateFreeCheckCell.timeout = window.setTimeout(() => {
+    cell.classList.remove('freecheck-hit');
+  }, 420);
+}
+
 function emitSocket(eventName, payload) {
   if (!socket) {
     showError('Multijoueur indisponible : il faut lancer le serveur Node/Socket.IO.');
@@ -515,7 +527,7 @@ if (socket) {
     renderGrid();
   });
 
-  socket.on('free-check-done', ({ category, checked, occurrences, bonuses }) => {
+  socket.on('free-check-done', ({ category, index, checked, occurrences, bonuses }) => {
     freeCheckCategory = null;
     myChecked = { ...emptyChecked(), ...(checked || {}) };
     myOccurrences = { ...emptyOccurrences(), ...(occurrences || {}) };
@@ -523,6 +535,7 @@ if (socket) {
     playFreeCheckSound();
     showToast('Case cochée gratis !');
     renderGrid();
+    animateFreeCheckCell(document.querySelector(`#grid-${category} [data-idx="${index}"]`));
   });
 
   socket.on('reroll-update', ({ grid, checked, occurrences, bonuses, remaining }) => {
@@ -846,10 +859,8 @@ function buildGrid() {
         });
       });
 
-      cell.addEventListener('click', (event) => {
+      cell.addEventListener('pointerup', () => {
         if (didLongPress) {
-          event.preventDefault();
-          event.stopPropagation();
           window.setTimeout(() => { didLongPress = false; }, 0);
           return;
         }
@@ -863,6 +874,7 @@ function buildGrid() {
             showToast('Choisis une case non cochée');
             return;
           }
+          animateFreeCheckCell(cell);
           emitSocket('free-check-cell', { category, index });
           return;
         }

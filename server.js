@@ -482,6 +482,7 @@ io.on('connection', (socket) => {
     if (!room || room.winner) return;
     const player = room.players.find(p => p.id === socket.id);
     if (!player || player.pendingBonus?.type !== 'free-check') return;
+    index = Number(index);
     if (category !== player.pendingBonus.category) return;
     if (!player.grid[category] || !Number.isInteger(index)) return;
     if (player.checked[category].includes(index)) return;
@@ -493,6 +494,11 @@ io.on('connection', (socket) => {
     socket.emit('free-check-done', {
       category,
       index,
+      checked: player.checked,
+      occurrences: player.occurrences,
+      bonuses: player.bonuses,
+    });
+    socket.emit('grid-update', {
       checked: player.checked,
       occurrences: player.occurrences,
       bonuses: player.bonuses,

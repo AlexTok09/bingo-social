@@ -388,6 +388,7 @@ input[type="text"]::placeholder {
   transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
   -webkit-user-select: none;
   user-select: none;
+  touch-action: manipulation;
 }
 
 .cell:nth-child(odd) { transform: rotate(-0.8deg); }
@@ -957,6 +958,26 @@ input[type="text"]::placeholder {
   50% {
     transform: scale(1.08) rotate(-2deg);
     box-shadow: 1px 1px 0 var(--shadow), 0 0 0 5px var(--purple);
+  }
+}
+
+.cell.freecheck-hit {
+  animation: freeCheckPop 0.42s ease;
+  box-shadow: 0 0 0 4px rgba(21, 166, 255, 0.9), 4px 4px 0 var(--shadow);
+}
+
+@keyframes freeCheckPop {
+  0% {
+    transform: scale(1) rotate(0deg);
+    filter: saturate(1.1) brightness(1);
+  }
+  45% {
+    transform: scale(1.12) rotate(-2deg);
+    filter: saturate(1.35) brightness(1.1);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    filter: saturate(1.15) brightness(1);
   }
 }
 
