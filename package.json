@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Bingo Social - Le jeu d'observation au bar",
   "main": "server.js",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node server.js"
   },

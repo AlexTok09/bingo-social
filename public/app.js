@@ -1,13 +1,33 @@
-const socket = io();
+const socket = typeof io === 'function' ? io() : null;
+const TIERS = ['ordinaire', 'semi', 'rare', 'legendaire'];
+const TIER_NAMES = {
+  ordinaire: 'Ordinaire',
+  semi: 'Semi-Ordinaire',
+  rare: 'Rare',
+  legendaire: 'Légendaire',
+};
+const TIER_EMOJIS = {
+  ordinaire: '🏆',
+  semi: '💎',
+  rare: '🌟',
+  legendaire: '🔮',
+};
 
 let myGrid = null;
-let myChecked = { ordinaire: [], semi: [], rare: [] };
+let myChecked = emptyChecked();
 let roomCode = null;
 let playerName = null;
 let myId = null;
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
+
+function emptyChecked() {
+  return TIERS.reduce((acc, tier) => {
+    acc[tier] = [];
+    return acc;
+  }, {});
+}
 
 const screenHome = $('#screen-home');
 const screenGame = $('#screen-game');
@@ -50,13 +70,30 @@ function showError(msg) {
   setTimeout(() => { if (errorMsg.textContent === msg) errorMsg.textContent = ''; }, 4000);
 }
 
+function emitSocket(eventName, payload) {
+  if (!socket) {
+    showError('Multijoueur indisponible : il faut lancer le serveur Node/Socket.IO.');
+    return false;
+  }
+  socket.emit(eventName, payload);
+  return true;
+}
+
+if (!socket) {
+  showError('GitHub Pages seul ne peut pas lancer les parties multijoueurs.');
+  [btnCreate, btnJoin, btnEditCats].forEach(btn => {
+    btn.disabled = true;
+    btn.title = 'Serveur temps réel requis';
+  });
+}
+
 // --- HOME ACTIONS ---
 
 btnCreate.addEventListener('click', () => {
   const name = inputName.value.trim();
   if (!name) { showError('Entre ton prénom !'); return; }
   playerName = name;
-  socket.emit('create-room', name);
+  emitSocket('create-room', name);
 });
 
 btnJoin.addEventListener('click', () => {
@@ -65,7 +102,7 @@ btnJoin.addEventListener('click', () => {
   if (!name) { showError('Entre ton prénom !'); return; }
   if (!code || code.length < 4) { showError('Code à 4 caractères !'); return; }
   playerName = name;
-  socket.emit('join-room', { code, playerName: name });
+  emitSocket('join-room', { code, playerName: name });
 });
 
 inputName.addEventListener('keydown', (e) => {
@@ -84,69 +121,74 @@ inputCode.addEventListener('keydown', (e) => {
 
 // --- SOCKET EVENTS ---
 
-socket.on('connect', () => {
-  myId = socket.id;
-});
+if (socket) {
+  socket.on('connect', () => {
+    myId = socket.id;
+  });
 
-socket.on('room-created', ({ code, grid }) => {
-  roomCode = code;
-  myGrid = grid;
-  myChecked = { ordinaire: [], semi: [], rare: [] };
-  enterGame();
-});
+  socket.on('connect_error', () => {
+    showError('Connexion temps réel impossible : serveur Socket.IO requis.');
+  });
 
-socket.on('room-joined', ({ code, grid }) => {
-  roomCode = code;
-  myGrid = grid;
-  myChecked = { ordinaire: [], semi: [], rare: [] };
-  enterGame();
-});
+  socket.on('room-created', ({ code, grid }) => {
+    roomCode = code;
+    myGrid = grid;
+    myChecked = emptyChecked();
+    enterGame();
+  });
 
-socket.on('error-msg', (msg) => {
-  showError(msg);
-});
+  socket.on('room-joined', ({ code, grid }) => {
+    roomCode = code;
+    myGrid = grid;
+    myChecked = emptyChecked();
+    enterGame();
+  });
 
-socket.on('grid-update', (checked) => {
-  myChecked = checked;
-  renderGrid();
-});
+  socket.on('error-msg', (msg) => {
+    showError(msg);
+  });
 
-socket.on('players-update', (players) => {
-  playerCount.textContent = players.length;
-  renderPlayersList(players);
-});
+  socket.on('grid-update', (checked) => {
+    myChecked = { ...emptyChecked(), ...checked };
+    renderGrid();
+  });
 
-socket.on('player-joined', (name) => {
-  if (name !== playerName) showToast(`${name} a rejoint !`);
-});
+  socket.on('players-update', (players) => {
+    playerCount.textContent = players.length;
+    renderPlayersList(players);
+  });
 
-socket.on('player-left', (name) => {
-  showToast(`${name} parti`);
-});
+  socket.on('player-joined', (name) => {
+    if (name !== playerName) showToast(`${name} a rejoint !`);
+  });
 
-socket.on('game-won', ({ name, category }) => {
-  const catNames = { ordinaire: 'Ordinaire', semi: 'Semi-Ordinaire', rare: 'Rare' };
-  const catEmojis = { ordinaire: '🏆', semi: '💎', rare: '🌟' };
+  socket.on('player-left', (name) => {
+    showToast(`${name} parti`);
+  });
 
-  winEmoji.textContent = catEmojis[category];
-  if (name === playerName) {
-    winTitle.textContent = 'Tu as gagné !';
-  } else {
-    winTitle.textContent = `${name} a gagné !`;
-  }
-  winDetail.textContent = `Grille "${catNames[category]}" complétée`;
-  winOverlay.classList.add('active');
-  btnNewGame.style.display = 'block';
-});
+  socket.on('game-won', ({ name, category }) => {
+    winEmoji.textContent = TIER_EMOJIS[category] || '🏁';
+    if (name === playerName) {
+      winTitle.textContent = 'Tu as gagné !';
+    } else {
+      winTitle.textContent = `${name} a gagné !`;
+    }
+    winDetail.textContent = category === 'legendaire'
+      ? 'Case légendaire cochée : victoire instantanée'
+      : `Grille "${TIER_NAMES[category] || category}" complétée`;
+    winOverlay.classList.add('active');
+    btnNewGame.style.display = 'block';
+  });
 
-socket.on('new-game-started', ({ grid }) => {
-  myGrid = grid;
-  myChecked = { ordinaire: [], semi: [], rare: [] };
-  winOverlay.classList.remove('active');
-  btnNewGame.style.display = 'none';
-  renderGrid();
-  showToast('Nouvelle partie !');
-});
+  socket.on('new-game-started', ({ grid }) => {
+    myGrid = grid;
+    myChecked = emptyChecked();
+    winOverlay.classList.remove('active');
+    btnNewGame.style.display = 'none';
+    renderGrid();
+    showToast('Nouvelle partie !');
+  });
+}
 
 // --- GAME ---
 
@@ -157,11 +199,12 @@ function enterGame() {
 }
 
 function renderGrid() {
-  ['ordinaire', 'semi', 'rare'].forEach(category => {
+  TIERS.forEach(category => {
     const container = $(`#grid-${category}`);
     const section = $(`#section-${category}`);
-    const items = myGrid[category];
+    const items = myGrid[category] || [];
     const checked = myChecked[category] || [];
+    if (!container || !section) return;
 
     container.innerHTML = '';
 
@@ -185,7 +228,7 @@ function renderGrid() {
       cell.appendChild(labelSpan);
 
       cell.addEventListener('click', () => {
-        socket.emit('toggle-cell', { category, index });
+        emitSocket('toggle-cell', { category, index });
         cell.classList.add('just-checked');
         setTimeout(() => cell.classList.remove('just-checked'), 250);
       });
@@ -220,8 +263,9 @@ function renderPlayersList(players) {
     const barsDiv = document.createElement('div');
     barsDiv.className = 'player-progress-bars';
 
-    ['ordinaire', 'semi', 'rare'].forEach(cat => {
+    TIERS.forEach(cat => {
       const prog = p.progress[cat];
+      if (!prog) return;
       const pct = prog.total > 0 ? (prog.checked / prog.total) * 100 : 0;
       const isFull = prog.checked === prog.total;
 
@@ -292,8 +336,8 @@ btnShare.addEventListener('click', () => {
 
 // --- NEW GAME ---
 
-btnNewGame.addEventListener('click', () => socket.emit('new-game'));
-btnNewGame2.addEventListener('click', () => socket.emit('new-game'));
+btnNewGame.addEventListener('click', () => emitSocket('new-game'));
+btnNewGame2.addEventListener('click', () => emitSocket('new-game'));
 
 // --- CATEGORY EDITOR ---
 
@@ -306,14 +350,16 @@ const btnSaveCats = $('#btn-save-cats');
 let editCategories = null;
 
 btnEditCats.addEventListener('click', () => {
-  socket.emit('get-categories');
+  emitSocket('get-categories');
 });
 
-socket.on('categories-data', (categories) => {
-  editCategories = JSON.parse(JSON.stringify(categories));
-  renderEditor();
-  showScreen(screenEditor);
-});
+if (socket) {
+  socket.on('categories-data', (categories) => {
+    editCategories = { ...TIERS.reduce((acc, tier) => ({ ...acc, [tier]: [] }), {}), ...JSON.parse(JSON.stringify(categories)) };
+    renderEditor();
+    showScreen(screenEditor);
+  });
+}
 
 btnEditorBack.addEventListener('click', () => {
   showScreen(screenHome);
@@ -321,25 +367,28 @@ btnEditorBack.addEventListener('click', () => {
 
 btnEditorReset.addEventListener('click', () => {
   if (confirm('Remettre toutes les catégories par défaut ?')) {
-    socket.emit('reset-categories');
+    emitSocket('reset-categories');
   }
 });
 
 btnSaveCats.addEventListener('click', () => {
   collectEditorData();
-  socket.emit('save-categories', editCategories);
+  emitSocket('save-categories', editCategories);
 });
 
-socket.on('categories-saved', () => {
-  showToast('Catégories sauvegardées !');
-  showScreen(screenHome);
-});
+if (socket) {
+  socket.on('categories-saved', () => {
+    showToast('Catégories sauvegardées !');
+    showScreen(screenHome);
+  });
+}
 
 function renderEditor() {
-  ['ordinaire', 'semi', 'rare'].forEach(tier => {
+  TIERS.forEach(tier => {
     const list = $(`#editor-list-${tier}`);
     const count = $(`#count-${tier}`);
-    const items = editCategories[tier];
+    const items = editCategories[tier] || [];
+    if (!list || !count) return;
 
     count.textContent = `${items.length}`;
     list.innerHTML = '';
@@ -408,7 +457,7 @@ function collectEditorData() {
       editCategories[tier][index].label = labelInput.value;
     }
   });
-  ['ordinaire', 'semi', 'rare'].forEach(tier => {
+  TIERS.forEach(tier => {
     editCategories[tier] = editCategories[tier].filter(c => c.label.trim() !== '');
   });
 }

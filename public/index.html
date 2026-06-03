@@ -13,28 +13,25 @@
   <div id="screen-home" class="screen active">
     <div class="home-container">
       <pre class="ascii-title">
- _____ _____ _____ _____ __    _____ _____
-| __  |     |   | |   __|  |  |     |  |  |
-| __ -|-   -| | | |  |  |  |__|  |  |  |  |
-|_____|_____|_|___|_____|_____|_____|_____|
+ B I N G L O U
 </pre>
-      <pre class="ascii-sub">le bingo glouglou</pre>
-      <p class="subtitle">&gt; observer, boire, boire pour observer, boire en observant... boire_</p>
+      <pre class="ascii-sub">cartons sales et couleurs qui crient</pre>
+      <p class="subtitle">Observe la rue, coche le chaos, hurle bingo.</p>
 
       <input type="text" id="player-name" placeholder="Ton prénom" maxlength="15" autocomplete="off" spellcheck="false">
 
-      <button id="btn-create" class="btn btn-primary">[ CREER UNE PARTIE ]</button>
+      <button id="btn-create" class="btn btn-primary">Créer une partie</button>
 
       <div class="divider"><span>- ou rejoindre -</span></div>
 
       <div class="join-row">
         <input type="text" id="room-code" placeholder="CODE" maxlength="4" autocomplete="off" spellcheck="false">
-        <button id="btn-join" class="btn btn-secondary">[ GO ]</button>
+        <button id="btn-join" class="btn btn-secondary">GO</button>
       </div>
 
       <div id="error-msg" class="error"></div>
 
-      <button id="btn-edit-cats" class="btn btn-link">&gt; modifier_categories.sh</button>
+      <button id="btn-edit-cats" class="btn btn-link">Modifier les catégories</button>
     </div>
   </div>
 
@@ -44,7 +41,7 @@
       <div class="editor-top-bar">
         <button id="btn-editor-back" class="btn-close">&larr;</button>
         <h2>Catégories</h2>
-        <button id="btn-editor-reset" class="btn-icon btn-reset">[ RESET ]</button>
+        <button id="btn-editor-reset" class="btn-icon btn-reset">Reset</button>
       </div>
 
       <div class="editor-sections">
@@ -54,7 +51,7 @@
             <span class="cat-count" id="count-ordinaire"></span>
           </div>
           <div class="editor-list" id="editor-list-ordinaire"></div>
-          <button class="btn btn-add" data-tier="ordinaire">[ + AJOUTER ]</button>
+          <button class="btn btn-add" data-tier="ordinaire">Ajouter</button>
         </div>
 
         <div class="editor-section" data-tier="semi">
@@ -63,7 +60,7 @@
             <span class="cat-count" id="count-semi"></span>
           </div>
           <div class="editor-list" id="editor-list-semi"></div>
-          <button class="btn btn-add" data-tier="semi">[ + AJOUTER ]</button>
+          <button class="btn btn-add" data-tier="semi">Ajouter</button>
         </div>
 
         <div class="editor-section" data-tier="rare">
@@ -72,12 +69,21 @@
             <span class="cat-count" id="count-rare"></span>
           </div>
           <div class="editor-list" id="editor-list-rare"></div>
-          <button class="btn btn-add" data-tier="rare">[ + AJOUTER ]</button>
+          <button class="btn btn-add" data-tier="rare">Ajouter</button>
+        </div>
+
+        <div class="editor-section" data-tier="legendaire">
+          <div class="section-header legendaire">
+            <h3>Légendaire <span class="section-pct">KO</span></h3>
+            <span class="cat-count" id="count-legendaire"></span>
+          </div>
+          <div class="editor-list" id="editor-list-legendaire"></div>
+          <button class="btn btn-add" data-tier="legendaire">Ajouter</button>
         </div>
       </div>
 
       <div class="editor-footer">
-        <button id="btn-save-cats" class="btn btn-primary">[ SAUVEGARDER ]</button>
+        <button id="btn-save-cats" class="btn btn-primary">Sauvegarder</button>
       </div>
     </div>
   </div>
@@ -116,6 +122,14 @@
         </div>
         <div class="grid grid-2" id="grid-rare"></div>
       </div>
+
+      <div class="grid-section" id="section-legendaire">
+        <div class="section-header legendaire">
+          <h3>Légendaire <span class="section-pct">victoire instantanée</span></h3>
+          <span class="progress" id="progress-legendaire">0/1</span>
+        </div>
+        <div class="grid grid-1" id="grid-legendaire"></div>
+      </div>
     </div>
   </div>
 
@@ -127,7 +141,7 @@
       <button id="btn-close-panel" class="btn-close">&times;</button>
     </div>
     <div id="players-list"></div>
-    <button id="btn-new-game" class="btn btn-primary btn-new-game" style="display:none">[ NOUVELLE PARTIE ]</button>
+    <button id="btn-new-game" class="btn btn-primary btn-new-game" style="display:none">Nouvelle partie</button>
   </div>
 
   <!-- WIN OVERLAY -->
@@ -136,7 +150,7 @@
       <div class="win-emoji" id="win-emoji"></div>
       <h2 id="win-title"></h2>
       <p id="win-detail"></p>
-      <button id="btn-new-game-2" class="btn btn-primary">[ NOUVELLE PARTIE ]</button>
+      <button id="btn-new-game-2" class="btn btn-primary">Nouvelle partie</button>
     </div>
   </div>
 

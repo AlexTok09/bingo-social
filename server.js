@@ -67,17 +67,21 @@ const DEFAULT_CATEGORIES = {
     { id: 'trace', label: 'Tape une trace', emoji: '\u{1F443}' },
     { id: 'nudite', label: 'Nudité', emoji: '\u{1FAE3}' },
     { id: 'accident', label: 'Accident de la circulation', emoji: '\u{1F4A5}' },
+  ],
+  legendaire: [
+    { id: 'instant-win', label: 'La scène impossible', emoji: '\u{1F52E}' },
   ]
 };
 
 function loadCategories() {
+  const defaults = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
   try {
     if (fs.existsSync(CATEGORIES_FILE)) {
       const data = fs.readFileSync(CATEGORIES_FILE, 'utf-8');
-      return JSON.parse(data);
+      return { ...defaults, ...JSON.parse(data) };
     }
   } catch (e) {}
-  return JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+  return defaults;
 }
 
 function saveCategories(categories) {
@@ -89,7 +93,8 @@ let CATEGORIES = loadCategories();
 const GRID_CONFIG = {
   ordinaire: 12,
   semi: 6,
-  rare: 2
+  rare: 2,
+  legendaire: 1
 };
 
 const rooms = new Map();
@@ -118,6 +123,7 @@ function generateGrid() {
     ordinaire: shuffleArray(CATEGORIES.ordinaire).slice(0, GRID_CONFIG.ordinaire),
     semi: shuffleArray(CATEGORIES.semi).slice(0, GRID_CONFIG.semi),
     rare: shuffleArray(CATEGORIES.rare).slice(0, GRID_CONFIG.rare),
+    legendaire: shuffleArray(CATEGORIES.legendaire).slice(0, GRID_CONFIG.legendaire),
   };
 }
 
@@ -126,6 +132,7 @@ function getProgress(player) {
     ordinaire: { checked: player.checked.ordinaire.length, total: player.grid.ordinaire.length },
     semi: { checked: player.checked.semi.length, total: player.grid.semi.length },
     rare: { checked: player.checked.rare.length, total: player.grid.rare.length },
+    legendaire: { checked: player.checked.legendaire.length, total: player.grid.legendaire.length },
   };
 }
 
@@ -144,7 +151,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('save-categories', (categories) => {
-    if (!categories || !categories.ordinaire || !categories.semi || !categories.rare) return;
+    if (!categories || !categories.ordinaire || !categories.semi || !categories.rare || !categories.legendaire) return;
     CATEGORIES = categories;
     saveCategories(CATEGORIES);
     socket.emit('categories-saved');
@@ -164,7 +171,7 @@ io.on('connection', (socket) => {
       id: socket.id,
       name: playerName,
       grid,
-      checked: { ordinaire: [], semi: [], rare: [] },
+      checked: { ordinaire: [], semi: [], rare: [], legendaire: [] },
     };
     rooms.set(code, {
       code,
@@ -198,7 +205,7 @@ io.on('connection', (socket) => {
       id: socket.id,
       name: playerName,
       grid,
-      checked: { ordinaire: [], semi: [], rare: [] },
+      checked: { ordinaire: [], semi: [], rare: [], legendaire: [] },
     };
     room.players.push(player);
     socket.join(roomCode);
@@ -216,6 +223,7 @@ io.on('connection', (socket) => {
     if (!player) return;
 
     const checkedList = player.checked[category];
+    if (!checkedList || !player.grid[category]) return;
     const idx = checkedList.indexOf(index);
     if (idx === -1) {
       checkedList.push(index);
@@ -241,7 +249,7 @@ io.on('connection', (socket) => {
     room.winner = null;
     room.players.forEach(p => {
       p.grid = generateGrid();
-      p.checked = { ordinaire: [], rare: [], exceptionnel: [] };
+      p.checked = { ordinaire: [], semi: [], rare: [], legendaire: [] };
     });
 
     room.players.forEach(p => {
