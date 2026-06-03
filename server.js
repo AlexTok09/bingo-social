@@ -51,6 +51,10 @@ function emptyBonuses() {
   return { ordinaire: 0, semi: 0, rare: 0, legendaire: 0 };
 }
 
+function emptyPendingBonus() {
+  return null;
+}
+
 function parseEditableCategories(text) {
   const categories = emptyCategories();
   let currentTier = null;
@@ -137,6 +141,7 @@ function applyCategories(categories, options = {}) {
       p.checked = emptyChecked();
       p.occurrences = emptyOccurrences();
       p.bonuses = emptyBonuses();
+      p.pendingBonus = emptyPendingBonus();
     });
 
     room.players.forEach(p => {
@@ -196,6 +201,37 @@ function pickGridItems(items, count) {
   }
 
   return selected;
+}
+
+function rerollUncheckedCells(player) {
+  for (const tier of Object.keys(GRID_CONFIG)) {
+    const checked = new Set(player.checked[tier] || []);
+    const checkedIds = new Set(
+      player.grid[tier]
+        .filter((_, index) => checked.has(index))
+        .map(item => item.id)
+    );
+    const usedIds = new Set(checkedIds);
+    let hasUltra = player.grid[tier].some((item, index) => checked.has(index) && ultraKey(item));
+    const candidates = shuffleArray(CATEGORIES[tier]).filter(item => !checkedIds.has(item.id));
+
+    player.grid[tier] = player.grid[tier].map((item, index) => {
+      if (checked.has(index)) return item;
+
+      const replacementIndex = candidates.findIndex(candidate => {
+        const isUltra = Boolean(ultraKey(candidate));
+        return !usedIds.has(candidate.id) && (!isUltra || !hasUltra);
+      });
+
+      if (replacementIndex === -1) return item;
+
+      const [replacement] = candidates.splice(replacementIndex, 1);
+      usedIds.add(replacement.id);
+      if (ultraKey(replacement)) hasUltra = true;
+      delete player.occurrences[tier][index];
+      return replacement;
+    });
+  }
 }
 
 function getProgress(player) {
@@ -281,6 +317,7 @@ io.on('connection', (socket) => {
       checked: emptyChecked(),
       occurrences: emptyOccurrences(),
       bonuses: emptyBonuses(),
+      pendingBonus: emptyPendingBonus(),
     };
     rooms.set(code, {
       code,
@@ -317,6 +354,7 @@ io.on('connection', (socket) => {
       checked: emptyChecked(),
       occurrences: emptyOccurrences(),
       bonuses: emptyBonuses(),
+      pendingBonus: emptyPendingBonus(),
     };
     room.players.push(player);
     socket.join(roomCode);
@@ -332,6 +370,7 @@ io.on('connection', (socket) => {
     if (!room || room.winner) return;
     const player = room.players.find(p => p.id === socket.id);
     if (!player) return;
+    if (player.pendingBonus) return;
 
     player.occurrences ||= emptyOccurrences();
     player.bonuses ||= emptyBonuses();
@@ -351,8 +390,8 @@ io.on('connection', (socket) => {
 
       if (nextCount >= 3) {
         player.occurrences[category][index] = 1;
-        player.bonuses[category] += 1;
-        socket.emit('bonus-earned', { category, index, bonuses: player.bonuses });
+        player.pendingBonus = { category, index };
+        socket.emit('bonus-choice', { category, index, bonuses: player.bonuses });
       } else {
         player.occurrences[category][index] = nextCount;
         socket.emit('occurrence-update', {
@@ -379,6 +418,42 @@ io.on('connection', (socket) => {
     io.to(socket.roomCode).emit('players-update', getPlayersInfo(room));
   });
 
+  socket.on('choose-bonus', ({ choice }) => {
+    if (!socket.roomCode) return;
+    const room = rooms.get(socket.roomCode);
+    if (!room || room.winner) return;
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player || !player.pendingBonus) return;
+
+    const { category } = player.pendingBonus;
+    player.occurrences ||= emptyOccurrences();
+    player.bonuses ||= emptyBonuses();
+
+    if (choice === 'free-check') {
+      player.bonuses[category] += 1;
+      player.pendingBonus = emptyPendingBonus();
+      socket.emit('bonus-ready', { category, bonuses: player.bonuses });
+      socket.emit('grid-update', {
+        checked: player.checked,
+        occurrences: player.occurrences,
+        bonuses: player.bonuses,
+      });
+      return;
+    }
+
+    if (choice === 'reroll') {
+      rerollUncheckedCells(player);
+      player.pendingBonus = emptyPendingBonus();
+      socket.emit('grid-rerolled', {
+        grid: player.grid,
+        checked: player.checked,
+        occurrences: player.occurrences,
+        bonuses: player.bonuses,
+      });
+      io.to(socket.roomCode).emit('players-update', getPlayersInfo(room));
+    }
+  });
+
   socket.on('new-game', () => {
     if (!socket.roomCode) return;
     const room = rooms.get(socket.roomCode);
@@ -390,6 +465,7 @@ io.on('connection', (socket) => {
       p.checked = emptyChecked();
       p.occurrences = emptyOccurrences();
       p.bonuses = emptyBonuses();
+      p.pendingBonus = emptyPendingBonus();
     });
 
     room.players.forEach(p => {

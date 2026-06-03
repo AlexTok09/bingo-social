@@ -627,6 +627,30 @@ input[type="text"]::placeholder {
   animation: slam 0.28s ease;
 }
 
+.bonus-choice-content {
+  width: min(100%, 380px);
+  padding: 22px 16px;
+  display: grid;
+  gap: 10px;
+  text-align: center;
+  border: 4px solid var(--ink);
+  border-radius: 8px;
+  background: var(--legendaire-soft);
+  box-shadow: 8px 8px 0 var(--acid), 14px 14px 0 var(--ink);
+  animation: slam 0.28s ease;
+}
+
+.bonus-choice-content h2 {
+  font: 900 2rem/0.9 var(--font);
+  text-transform: uppercase;
+  text-shadow: 3px 3px 0 #fff;
+}
+
+.bonus-choice-content p {
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 .win-drawing {
   width: 118px;
   height: 118px;

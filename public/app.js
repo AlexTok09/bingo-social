@@ -64,6 +64,13 @@ const btnNewGame = $('#btn-new-game');
 const btnNewGame2 = $('#btn-new-game-2');
 const toastEl = $('#toast');
 const bonusFlash = $('#bonus-flash');
+const bonusChoiceOverlay = $('#bonus-choice-overlay');
+const bonusChoiceDrawing = $('#bonus-choice-drawing');
+const bonusChoiceDetail = $('#bonus-choice-detail');
+const btnBonusFree = $('#btn-bonus-free');
+const btnBonusReroll = $('#btn-bonus-reroll');
+
+let pendingBonusCategory = null;
 
 function showScreen(screen) {
   $$('.screen').forEach(s => s.classList.remove('active'));
@@ -163,6 +170,20 @@ function showBonusFlash(message) {
   window.requestAnimationFrame(() => bonusFlash.classList.add('show'));
   window.clearTimeout(showBonusFlash.timeout);
   showBonusFlash.timeout = window.setTimeout(() => bonusFlash.classList.remove('show'), 1500);
+}
+
+function showBonusChoice(category) {
+  pendingBonusCategory = category;
+  playBonusSound();
+  showBonusFlash(`Bonus ${TIER_NAMES[category]} !`);
+  bonusChoiceDrawing.innerHTML = categoryDrawing({ id: category, label: TIER_NAMES[category] || category }, category);
+  bonusChoiceDetail.textContent = `Choisis ton bonus ${TIER_NAMES[category]}.`;
+  bonusChoiceOverlay.classList.add('active');
+}
+
+function closeBonusChoice() {
+  pendingBonusCategory = null;
+  bonusChoiceOverlay.classList.remove('active');
 }
 
 function emitSocket(eventName, payload) {
@@ -266,16 +287,37 @@ if (socket) {
     renderGrid();
   });
 
+  socket.on('bonus-choice', ({ category, bonuses }) => {
+    myBonuses = { ...emptyBonuses(), ...(bonuses || myBonuses) };
+    showBonusChoice(category);
+    renderGrid();
+  });
+
+  socket.on('bonus-ready', ({ category, bonuses }) => {
+    myBonuses = { ...emptyBonuses(), ...(bonuses || myBonuses) };
+    showToast(`Case gratuite ${TIER_NAMES[category]}`);
+    renderGrid();
+  });
+
   socket.on('bonus-earned', ({ category, bonuses }) => {
     myBonuses = { ...emptyBonuses(), ...(bonuses || myBonuses) };
-    playBonusSound();
-    showBonusFlash(`Bonus ${TIER_NAMES[category]} !`);
+    showBonusChoice(category);
     renderGrid();
   });
 
   socket.on('bonus-used', ({ category, bonuses }) => {
     myBonuses = { ...emptyBonuses(), ...(bonuses || myBonuses) };
     showToast(`Bonus ${TIER_NAMES[category]} utilisé`);
+    renderGrid();
+  });
+
+  socket.on('grid-rerolled', ({ grid, checked, occurrences, bonuses }) => {
+    myGrid = grid;
+    myChecked = { ...emptyChecked(), ...(checked || {}) };
+    myOccurrences = { ...emptyOccurrences(), ...(occurrences || {}) };
+    myBonuses = { ...emptyBonuses(), ...(bonuses || {}) };
+    playBonusSound();
+    showToast('Cases non cochées relancées');
     renderGrid();
   });
 
@@ -573,6 +615,18 @@ btnShare.addEventListener('click', () => {
 
 btnNewGame.addEventListener('click', () => emitSocket('new-game'));
 btnNewGame2.addEventListener('click', () => emitSocket('new-game'));
+
+btnBonusFree.addEventListener('click', () => {
+  if (!pendingBonusCategory) return;
+  closeBonusChoice();
+  emitSocket('choose-bonus', { choice: 'free-check' });
+});
+
+btnBonusReroll.addEventListener('click', () => {
+  if (!pendingBonusCategory) return;
+  closeBonusChoice();
+  emitSocket('choose-bonus', { choice: 'reroll' });
+});
 
 // --- CATEGORY EDITOR ---
 
