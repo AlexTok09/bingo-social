@@ -14,62 +14,62 @@ const CATEGORIES_FILE = path.join(__dirname, 'categories.json');
 
 const DEFAULT_CATEGORIES = {
   ordinaire: [
-    { id: 'papi-mami', label: 'Papi et mami', emoji: '\u{1F474}' },
-    { id: 'doudoune', label: 'Doudoune sans manche', emoji: '\u{1F9E5}' },
-    { id: 'vieux-bourgeois', label: 'Vieux bourgeois', emoji: '\u{1F3A9}' },
-    { id: 'femme-chien', label: 'Femme et chien', emoji: '\u{1F429}' },
-    { id: 'clodo', label: 'Clodo', emoji: '\u{1F377}' },
-    { id: 'vieille-bourgeoise', label: 'Vieille bourgeoise', emoji: '\u{1F451}' },
-    { id: 'jean-charles', label: 'Jean Charles marinière', emoji: '\u{26F5}' },
-    { id: 'etudiant', label: 'Étudiant', emoji: '\u{1F4DA}' },
-    { id: 'hippie', label: 'Hippie', emoji: '\u{270C}\u{FE0F}' },
-    { id: 'mechant', label: 'Mr ou Mme méchant', emoji: '\u{1F624}' },
-    { id: 'claquette', label: 'Claquette', emoji: '\u{1FA74}' },
-    { id: 'gros-touriste', label: 'Gros touriste', emoji: '\u{1F4F8}' },
-    { id: 'poussette', label: 'Poussette', emoji: '\u{1F476}' },
-    { id: 'velo-cargo', label: 'Vélo cargo', emoji: '\u{1F6B2}' },
-    { id: 'instrument', label: 'Porte un instrument', emoji: '\u{1F3B8}' },
-    { id: 'panama', label: 'Panama', emoji: '\u{1F920}' },
-    { id: 'bob', label: 'Bob', emoji: '\u{1FA96}' },
-    { id: 'casquette', label: 'Casquette', emoji: '\u{1F9E2}' },
-    { id: 'style-ouf', label: 'Style de ouf', emoji: '\u{1F60E}' },
-    { id: 'caillra', label: 'Caillra', emoji: '\u{1F525}' },
-    { id: 'fait-la-gueule', label: 'Fait la gueule', emoji: '\u{1F612}' },
-    { id: 'heureux', label: 'Heureux comme tout', emoji: '\u{1F604}' },
-    { id: 'triste', label: 'Triste à souhait', emoji: '\u{1F622}' },
-    { id: 'ultra-frais', label: 'Il/elle ultra frais/fraîche', emoji: '\u{2744}\u{FE0F}' },
-    { id: 'scotche-tel', label: 'Scotché au tel', emoji: '\u{1F4F1}' },
-    { id: 'costard', label: 'Costard', emoji: '\u{1F454}' },
+    { id: 'papi-mami', label: 'Papi et mami' },
+    { id: 'doudoune', label: 'Doudoune sans manche' },
+    { id: 'vieux-bourgeois', label: 'Vieux bourgeois' },
+    { id: 'femme-chien', label: 'Femme et chien' },
+    { id: 'clodo', label: 'Clodo' },
+    { id: 'vieille-bourgeoise', label: 'Vieille bourgeoise' },
+    { id: 'jean-charles', label: 'Jean Charles marinière' },
+    { id: 'etudiant', label: 'Étudiant' },
+    { id: 'hippie', label: 'Hippie' },
+    { id: 'mechant', label: 'Mr ou Mme méchant' },
+    { id: 'claquette', label: 'Claquette' },
+    { id: 'gros-touriste', label: 'Gros touriste' },
+    { id: 'poussette', label: 'Poussette' },
+    { id: 'velo-cargo', label: 'Vélo cargo' },
+    { id: 'instrument', label: 'Porte un instrument' },
+    { id: 'panama', label: 'Panama' },
+    { id: 'bob', label: 'Bob' },
+    { id: 'casquette', label: 'Casquette' },
+    { id: 'style-ouf', label: 'Style de ouf' },
+    { id: 'caillra', label: 'Caillra' },
+    { id: 'fait-la-gueule', label: 'Fait la gueule' },
+    { id: 'heureux', label: 'Heureux comme tout' },
+    { id: 'triste', label: 'Triste à souhait' },
+    { id: 'ultra-frais', label: 'Il/elle ultra frais/fraîche' },
+    { id: 'scotche-tel', label: 'Scotché au tel' },
+    { id: 'costard', label: 'Costard' },
   ],
   semi: [
-    { id: 'bien-ivre', label: 'Bien ivre', emoji: '\u{1F37A}' },
-    { id: 'couple-decathlon', label: 'Couple décathlon', emoji: '\u{1F3C3}' },
-    { id: 'clodo-venere', label: 'Clodo vénère', emoji: '\u{1F92C}' },
-    { id: 'auto-selfie', label: 'Auto-selfie', emoji: '\u{1F933}' },
-    { id: 'danse-rue', label: 'Danse dans la rue', emoji: '\u{1F483}' },
-    { id: 'horodateur', label: "Fouille dans l'horodateur", emoji: '\u{1F17F}\u{FE0F}' },
-    { id: 'lit-livre', label: 'Lit un livre', emoji: '\u{1F4D6}' },
-    { id: 'embrassent', label: "Gens qui s'embrassent", emoji: '\u{1F48F}' },
-    { id: 'jumeaux', label: 'Jumeaux', emoji: '\u{1F46F}' },
-    { id: 'parle-seul', label: 'Parle tout seul', emoji: '\u{1F5E3}\u{FE0F}' },
-    { id: 'skate', label: 'Roule en skate', emoji: '\u{1F6F9}' },
-    { id: 'court', label: 'Il/elle court', emoji: '\u{1F3C3}\u{200D}\u{2640}\u{FE0F}' },
-    { id: 'fume-tar', label: 'Fume un tar', emoji: '\u{1F6AC}' },
-    { id: 'trebuche', label: 'Trébuche', emoji: '\u{1F938}' },
-    { id: 'deguise', label: 'Déguisé(e)', emoji: '\u{1F3AD}' },
-    { id: 'couple-improbable', label: 'Couple improbable', emoji: '\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F466}' },
+    { id: 'bien-ivre', label: 'Bien ivre' },
+    { id: 'couple-decathlon', label: 'Couple décathlon' },
+    { id: 'clodo-venere', label: 'Clodo vénère' },
+    { id: 'auto-selfie', label: 'Auto-selfie' },
+    { id: 'danse-rue', label: 'Danse dans la rue' },
+    { id: 'horodateur', label: "Fouille dans l'horodateur" },
+    { id: 'lit-livre', label: 'Lit un livre' },
+    { id: 'embrassent', label: "Gens qui s'embrassent" },
+    { id: 'jumeaux', label: 'Jumeaux' },
+    { id: 'parle-seul', label: 'Parle tout seul' },
+    { id: 'skate', label: 'Roule en skate' },
+    { id: 'court', label: 'Il/elle court' },
+    { id: 'fume-tar', label: 'Fume un tar' },
+    { id: 'trebuche', label: 'Trébuche' },
+    { id: 'deguise', label: 'Déguisé(e)' },
+    { id: 'couple-improbable', label: 'Couple improbable' },
   ],
   rare: [
-    { id: 'police', label: 'Contrôle police', emoji: '\u{1F694}' },
-    { id: 'bagarre', label: 'Bagarre de rue', emoji: '\u{1F94A}' },
-    { id: 'mouette', label: 'Mouette qui vol un sandwich', emoji: '\u{1F985}' },
-    { id: 'pipi-rue', label: 'Pipi dans la rue', emoji: '\u{1F6BD}' },
-    { id: 'trace', label: 'Tape une trace', emoji: '\u{1F443}' },
-    { id: 'nudite', label: 'Nudité', emoji: '\u{1FAE3}' },
-    { id: 'accident', label: 'Accident de la circulation', emoji: '\u{1F4A5}' },
+    { id: 'police', label: 'Contrôle police' },
+    { id: 'bagarre', label: 'Bagarre de rue' },
+    { id: 'mouette', label: 'Mouette qui vol un sandwich' },
+    { id: 'pipi-rue', label: 'Pipi dans la rue' },
+    { id: 'trace', label: 'Tape une trace' },
+    { id: 'nudite', label: 'Nudité' },
+    { id: 'accident', label: 'Accident de la circulation' },
   ],
   legendaire: [
-    { id: 'instant-win', label: 'La scène impossible', emoji: '\u{1F52E}' },
+    { id: 'instant-win', label: 'La scène impossible' },
   ]
 };
 
@@ -78,14 +78,21 @@ function loadCategories() {
   try {
     if (fs.existsSync(CATEGORIES_FILE)) {
       const data = fs.readFileSync(CATEGORIES_FILE, 'utf-8');
-      return { ...defaults, ...JSON.parse(data) };
+      return normalizeCategories({ ...defaults, ...JSON.parse(data) });
     }
   } catch (e) {}
-  return defaults;
+  return normalizeCategories(defaults);
 }
 
 function saveCategories(categories) {
-  fs.writeFileSync(CATEGORIES_FILE, JSON.stringify(categories, null, 2), 'utf-8');
+  fs.writeFileSync(CATEGORIES_FILE, JSON.stringify(normalizeCategories(categories), null, 2), 'utf-8');
+}
+
+function normalizeCategories(categories) {
+  return Object.fromEntries(Object.entries(categories).map(([tier, items]) => [
+    tier,
+    (items || []).map(({ id, label }) => ({ id, label })),
+  ]));
 }
 
 let CATEGORIES = loadCategories();
@@ -152,13 +159,13 @@ io.on('connection', (socket) => {
 
   socket.on('save-categories', (categories) => {
     if (!categories || !categories.ordinaire || !categories.semi || !categories.rare || !categories.legendaire) return;
-    CATEGORIES = categories;
+    CATEGORIES = normalizeCategories(categories);
     saveCategories(CATEGORIES);
     socket.emit('categories-saved');
   });
 
   socket.on('reset-categories', () => {
-    CATEGORIES = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+    CATEGORIES = normalizeCategories(JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)));
     saveCategories(CATEGORIES);
     socket.emit('categories-data', CATEGORIES);
     socket.emit('categories-saved');

@@ -386,10 +386,19 @@ input[type="text"]::placeholder {
   box-shadow: 1px 1px 0 var(--shadow);
 }
 
-.cell .emoji {
-  font-size: 1.45rem;
-  line-height: 1;
-  filter: saturate(1.35) contrast(1.12);
+.drawing-wrap {
+  display: block;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  filter: saturate(1.18) contrast(1.05);
+}
+
+.drawing {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
 .cell .label {
@@ -408,8 +417,10 @@ input[type="text"]::placeholder {
   background: linear-gradient(135deg, #ffffff 0%, var(--legendaire-soft) 45%, var(--purple) 100%);
 }
 
-.legendaire-cell .emoji {
-  font-size: 2.15rem;
+.legendaire-cell .drawing-wrap {
+  width: 78px;
+  height: 78px;
+  flex-basis: 78px;
 }
 
 .legendaire-cell .label {
@@ -584,9 +595,16 @@ input[type="text"]::placeholder {
   animation: slam 0.28s ease;
 }
 
-.win-emoji {
-  font-size: 4rem;
-  line-height: 1;
+.win-drawing {
+  width: 118px;
+  height: 118px;
+  margin: 0 auto;
+}
+
+.win-drawing .drawing-wrap,
+.win-drawing .drawing {
+  width: 100%;
+  height: 100%;
 }
 
 .win-content h2 {
@@ -664,7 +682,7 @@ input[type="text"]::placeholder {
 
 .editor-item {
   display: grid;
-  grid-template-columns: 52px 1fr 42px;
+  grid-template-columns: 64px 1fr 42px;
   align-items: center;
   gap: 8px;
 }
@@ -676,9 +694,13 @@ input[type="text"]::placeholder {
   border-width: 2px;
 }
 
-.editor-item .edit-emoji {
-  text-align: center;
-  font-size: 1.2rem;
+.edit-drawing-preview {
+  width: 54px;
+  height: 54px;
+  padding: 3px;
+  border: 2px solid var(--ink);
+  border-radius: 7px;
+  background: #fff9dd;
 }
 
 .editor-item .edit-label {
@@ -748,8 +770,10 @@ input[type="text"]::placeholder {
     min-height: 68px;
   }
 
-  .cell .emoji {
-    font-size: 1.25rem;
+  .drawing-wrap {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
   }
 
   .cell .label {
