@@ -9,6 +9,8 @@ const TIER_NAMES = {
 
 let myGrid = null;
 let myChecked = emptyChecked();
+let myOccurrences = emptyOccurrences();
+let myBonuses = emptyBonuses();
 let roomCode = null;
 let playerName = null;
 let myId = null;
@@ -23,12 +25,27 @@ function emptyChecked() {
   }, {});
 }
 
+function emptyOccurrences() {
+  return TIERS.reduce((acc, tier) => {
+    acc[tier] = {};
+    return acc;
+  }, {});
+}
+
+function emptyBonuses() {
+  return TIERS.reduce((acc, tier) => {
+    acc[tier] = 0;
+    return acc;
+  }, {});
+}
+
 const screenHome = $('#screen-home');
 const screenGame = $('#screen-game');
 const inputName = $('#player-name');
 const inputCode = $('#room-code');
 const btnCreate = $('#btn-create');
 const btnJoin = $('#btn-join');
+const btnInfo = $('#btn-info');
 const btnEditCats = $('#btn-edit-cats');
 const errorMsg = $('#error-msg');
 const displayCode = $('#display-code');
@@ -46,6 +63,7 @@ const winDetail = $('#win-detail');
 const btnNewGame = $('#btn-new-game');
 const btnNewGame2 = $('#btn-new-game-2');
 const toastEl = $('#toast');
+const bonusFlash = $('#bonus-flash');
 
 function showScreen(screen) {
   $$('.screen').forEach(s => s.classList.remove('active'));
@@ -106,7 +124,7 @@ function playTapSound(category, wasChecked) {
   }
 
   if (wasChecked) {
-    playTone({ frequency: 260, slideTo: 140, duration: 0.09, type: 'triangle', volume: 0.05 });
+    playTone({ frequency: 390, slideTo: 520, duration: 0.06, type: 'triangle', volume: 0.045 });
     return;
   }
 
@@ -131,6 +149,20 @@ function playWinSound(category) {
   [440, 660, 990].forEach((frequency, step) => {
     playTone({ frequency, duration: 0.09, type: 'square', volume: 0.055, delay: step * 0.07 });
   });
+}
+
+function playBonusSound() {
+  [330, 660, 990, 1320].forEach((frequency, step) => {
+    playTone({ frequency, duration: 0.08, type: 'square', volume: 0.06, delay: step * 0.055 });
+  });
+}
+
+function showBonusFlash(message) {
+  bonusFlash.textContent = message;
+  bonusFlash.classList.remove('show');
+  window.requestAnimationFrame(() => bonusFlash.classList.add('show'));
+  window.clearTimeout(showBonusFlash.timeout);
+  showBonusFlash.timeout = window.setTimeout(() => bonusFlash.classList.remove('show'), 1500);
 }
 
 function emitSocket(eventName, payload) {
@@ -168,6 +200,10 @@ btnJoin.addEventListener('click', () => {
   emitSocket('join-room', { code, playerName: name });
 });
 
+btnInfo.addEventListener('click', () => {
+  window.location.href = '/info.html';
+});
+
 inputName.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     if (inputCode.value.trim().length >= 4) {
@@ -197,6 +233,8 @@ if (socket) {
     roomCode = code;
     myGrid = grid;
     myChecked = emptyChecked();
+    myOccurrences = emptyOccurrences();
+    myBonuses = emptyBonuses();
     enterGame();
   });
 
@@ -204,6 +242,8 @@ if (socket) {
     roomCode = code;
     myGrid = grid;
     myChecked = emptyChecked();
+    myOccurrences = emptyOccurrences();
+    myBonuses = emptyBonuses();
     enterGame();
   });
 
@@ -212,7 +252,30 @@ if (socket) {
   });
 
   socket.on('grid-update', (checked) => {
-    myChecked = { ...emptyChecked(), ...checked };
+    const state = checked.checked ? checked : { checked };
+    myChecked = { ...emptyChecked(), ...state.checked };
+    myOccurrences = { ...emptyOccurrences(), ...(state.occurrences || {}) };
+    myBonuses = { ...emptyBonuses(), ...(state.bonuses || {}) };
+    renderGrid();
+  });
+
+  socket.on('occurrence-update', ({ category, count, occurrences, bonuses }) => {
+    myOccurrences = { ...emptyOccurrences(), ...(occurrences || myOccurrences) };
+    myBonuses = { ...emptyBonuses(), ...(bonuses || myBonuses) };
+    showToast(`${TIER_NAMES[category]} x${count}`);
+    renderGrid();
+  });
+
+  socket.on('bonus-earned', ({ category, bonuses }) => {
+    myBonuses = { ...emptyBonuses(), ...(bonuses || myBonuses) };
+    playBonusSound();
+    showBonusFlash(`Bonus ${TIER_NAMES[category]} !`);
+    renderGrid();
+  });
+
+  socket.on('bonus-used', ({ category, bonuses }) => {
+    myBonuses = { ...emptyBonuses(), ...(bonuses || myBonuses) };
+    showToast(`Bonus ${TIER_NAMES[category]} utilisé`);
     renderGrid();
   });
 
@@ -247,6 +310,8 @@ if (socket) {
   socket.on('new-game-started', ({ grid }) => {
     myGrid = grid;
     myChecked = emptyChecked();
+    myOccurrences = emptyOccurrences();
+    myBonuses = emptyBonuses();
     winOverlay.classList.remove('active');
     btnNewGame.style.display = 'none';
     renderGrid();
@@ -354,6 +419,8 @@ function renderGrid() {
     const section = $(`#section-${category}`);
     const items = myGrid[category] || [];
     const checked = myChecked[category] || [];
+    const occurrences = myOccurrences[category] || {};
+    const bonuses = myBonuses[category] || 0;
     if (!container || !section) return;
 
     container.innerHTML = '';
@@ -366,6 +433,10 @@ function renderGrid() {
         cell.classList.add('checked');
       }
 
+      if (!checked.includes(index) && bonuses > 0) {
+        cell.classList.add('bonus-target');
+      }
+
       const drawingWrap = document.createElement('span');
       drawingWrap.className = 'drawing-wrap';
       drawingWrap.innerHTML = categoryDrawing(item, category);
@@ -376,6 +447,14 @@ function renderGrid() {
 
       cell.appendChild(drawingWrap);
       cell.appendChild(labelSpan);
+
+      const count = occurrences[index] || (checked.includes(index) ? 1 : 0);
+      if (count > 1) {
+        const countBadge = document.createElement('span');
+        countBadge.className = 'occurrence-badge';
+        countBadge.textContent = `x${count}`;
+        cell.appendChild(countBadge);
+      }
 
       cell.addEventListener('click', () => {
         const wasChecked = checked.includes(index);
@@ -390,6 +469,10 @@ function renderGrid() {
 
     const progress = $(`#progress-${category}`);
     progress.textContent = `${checked.length}/${items.length}`;
+    const bonus = $(`#bonus-${category}`);
+    if (bonus) {
+      bonus.textContent = bonuses > 0 ? `bonus x${bonuses}` : '';
+    }
 
     if (checked.length === items.length) {
       section.classList.add('complete');

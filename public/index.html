@@ -31,6 +31,7 @@
 
       <div id="error-msg" class="error"></div>
 
+      <button id="btn-info" class="btn btn-link">Règles du jeu</button>
       <button id="btn-edit-cats" class="btn btn-link">Modifier les catégories</button>
     </div>
   </div>
@@ -102,7 +103,7 @@
       <div class="grid-section" id="section-ordinaire">
         <div class="section-header ordinaire">
           <h3>Ordinaire <span class="section-pct">60%</span></h3>
-          <span class="progress" id="progress-ordinaire">0/12</span>
+          <span class="progress"><span id="bonus-ordinaire" class="bonus-count"></span><span id="progress-ordinaire">0/12</span></span>
         </div>
         <div class="grid grid-4" id="grid-ordinaire"></div>
       </div>
@@ -110,7 +111,7 @@
       <div class="grid-section" id="section-semi">
         <div class="section-header semi">
           <h3>Semi-Ordinaire <span class="section-pct">30%</span></h3>
-          <span class="progress" id="progress-semi">0/6</span>
+          <span class="progress"><span id="bonus-semi" class="bonus-count"></span><span id="progress-semi">0/6</span></span>
         </div>
         <div class="grid grid-3" id="grid-semi"></div>
       </div>
@@ -118,7 +119,7 @@
       <div class="grid-section" id="section-rare">
         <div class="section-header rare">
           <h3>Rare <span class="section-pct">10%</span></h3>
-          <span class="progress" id="progress-rare">0/2</span>
+          <span class="progress"><span id="bonus-rare" class="bonus-count"></span><span id="progress-rare">0/2</span></span>
         </div>
         <div class="grid grid-2" id="grid-rare"></div>
       </div>
@@ -126,7 +127,7 @@
       <div class="grid-section" id="section-legendaire">
         <div class="section-header legendaire">
           <h3>Légendaire <span class="section-pct">victoire instantanée</span></h3>
-          <span class="progress" id="progress-legendaire">0/1</span>
+          <span class="progress"><span id="bonus-legendaire" class="bonus-count"></span><span id="progress-legendaire">0/1</span></span>
         </div>
         <div class="grid grid-1" id="grid-legendaire"></div>
       </div>
@@ -155,6 +156,7 @@
   </div>
 
   <!-- TOAST -->
+  <div id="bonus-flash" class="bonus-flash"></div>
   <div id="toast" class="toast"></div>
 
   <script src="/socket.io/socket.io.js"></script>

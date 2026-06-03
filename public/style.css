@@ -338,6 +338,18 @@ input[type="text"]::placeholder {
   text-transform: uppercase;
 }
 
+.progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.bonus-count {
+  display: inline-block;
+  min-height: 18px;
+  color: var(--purple);
+}
+
 .section-header.ordinaire { background: var(--ordinaire-soft); }
 .section-header.semi { background: var(--semi-soft); }
 .section-header.rare { background: var(--rare-soft); }
@@ -434,6 +446,12 @@ input[type="text"]::placeholder {
   filter: saturate(1.2);
 }
 
+.cell.bonus-target {
+  outline: 4px dashed var(--purple);
+  outline-offset: -7px;
+  animation: bonusPulse 0.9s ease-in-out infinite;
+}
+
 .cell.checked::after {
   content: "BIM";
   position: absolute;
@@ -446,6 +464,20 @@ input[type="text"]::placeholder {
   color: #fff;
   font: 900 0.6rem var(--font);
   transform: rotate(8deg);
+}
+
+.occurrence-badge {
+  position: absolute;
+  left: 5px;
+  top: 5px;
+  min-width: 28px;
+  padding: 2px 5px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--blue);
+  color: #fff;
+  font: 900 0.62rem var(--font);
+  transform: rotate(-8deg);
 }
 
 .grid-section.complete .section-header {
@@ -644,6 +676,27 @@ input[type="text"]::placeholder {
   bottom: 22px;
 }
 
+.bonus-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  display: none;
+  place-items: center;
+  padding: 22px;
+  pointer-events: none;
+  color: var(--acid);
+  text-align: center;
+  font: 900 clamp(2.8rem, 18vw, 7rem)/0.82 var(--font);
+  text-transform: uppercase;
+  text-shadow: 5px 5px 0 var(--pink), 10px 10px 0 var(--ink);
+  background: rgba(128, 44, 255, 0.2);
+}
+
+.bonus-flash.show {
+  display: grid;
+  animation: bonusSlam 1.45s ease forwards;
+}
+
 .editor-container {
   min-height: 100dvh;
   display: flex;
@@ -745,6 +798,31 @@ input[type="text"]::placeholder {
 @keyframes pop {
   50% {
     transform: scale(1.08) rotate(-1deg);
+  }
+}
+
+@keyframes bonusPulse {
+  50% {
+    filter: saturate(1.5) brightness(1.08);
+    transform: rotate(0deg) scale(1.03);
+  }
+}
+
+@keyframes bonusSlam {
+  0% {
+    opacity: 0;
+    transform: scale(0.45) rotate(-8deg);
+  }
+  18% {
+    opacity: 1;
+    transform: scale(1.08) rotate(2deg);
+  }
+  78% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.2) rotate(-2deg);
   }
 }
 
@@ -958,8 +1036,63 @@ input[type="text"]::placeholder {
   color: var(--red);
 }
 
+.info-shell {
+  width: min(100%, 780px);
+  margin: 0 auto;
+  padding: 18px 12px 44px;
+}
+
+.info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 4px solid var(--ink);
+}
+
+.info-header h1 {
+  font: 900 clamp(2.8rem, 13vw, 6rem)/0.86 var(--font);
+  color: var(--acid);
+  text-shadow: 4px 4px 0 var(--pink), 8px 8px 0 var(--ink);
+  text-transform: uppercase;
+}
+
+.info-header p {
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.info-rules {
+  padding: 16px;
+  border: 4px solid var(--ink);
+  border-radius: 8px;
+  background: #fff9dd;
+  box-shadow: 6px 6px 0 var(--shadow);
+}
+
+.info-rules h2 {
+  margin: 18px 0 6px;
+  font: 900 1.25rem var(--font);
+  text-transform: uppercase;
+}
+
+.info-rules h2:first-child {
+  margin-top: 0;
+}
+
+.info-rules p {
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 @media (max-width: 620px) {
   .admin-header {
+    flex-direction: column;
+  }
+
+  .info-header {
     flex-direction: column;
   }
 

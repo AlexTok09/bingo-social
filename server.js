@@ -14,67 +14,73 @@ app.use(express.json({ limit: '200kb' }));
 
 const CATEGORIES_FILE = process.env.CATEGORIES_FILE || path.join(__dirname, 'categories.json');
 
-const DEFAULT_CATEGORIES = {
-  ordinaire: [
-    { id: 'papi-mami', label: 'Papi et mami' },
-    { id: 'doudoune', label: 'Doudoune sans manche' },
-    { id: 'vieux-bourgeois', label: 'Vieux bourgeois' },
-    { id: 'femme-chien', label: 'Femme et chien' },
-    { id: 'clodo', label: 'Clodo' },
-    { id: 'vieille-bourgeoise', label: 'Vieille bourgeoise' },
-    { id: 'jean-charles', label: 'Jean Charles marinière' },
-    { id: 'etudiant', label: 'Étudiant' },
-    { id: 'hippie', label: 'Hippie' },
-    { id: 'mechant', label: 'Mr ou Mme méchant' },
-    { id: 'claquette', label: 'Claquette' },
-    { id: 'gros-touriste', label: 'Gros touriste' },
-    { id: 'poussette', label: 'Poussette' },
-    { id: 'velo-cargo', label: 'Vélo cargo' },
-    { id: 'instrument', label: 'Porte un instrument' },
-    { id: 'panama', label: 'Panama' },
-    { id: 'bob', label: 'Bob' },
-    { id: 'casquette', label: 'Casquette' },
-    { id: 'style-ouf', label: 'Style de ouf' },
-    { id: 'caillra', label: 'Caillra' },
-    { id: 'fait-la-gueule', label: 'Fait la gueule' },
-    { id: 'heureux', label: 'Heureux comme tout' },
-    { id: 'triste', label: 'Triste à souhait' },
-    { id: 'ultra-frais', label: 'Il/elle ultra frais/fraîche' },
-    { id: 'scotche-tel', label: 'Scotché au tel' },
-    { id: 'costard', label: 'Costard' },
-  ],
-  semi: [
-    { id: 'bien-ivre', label: 'Bien ivre' },
-    { id: 'couple-decathlon', label: 'Couple décathlon' },
-    { id: 'clodo-venere', label: 'Clodo vénère' },
-    { id: 'auto-selfie', label: 'Auto-selfie' },
-    { id: 'danse-rue', label: 'Danse dans la rue' },
-    { id: 'horodateur', label: "Fouille dans l'horodateur" },
-    { id: 'lit-livre', label: 'Lit un livre' },
-    { id: 'embrassent', label: "Gens qui s'embrassent" },
-    { id: 'jumeaux', label: 'Jumeaux' },
-    { id: 'parle-seul', label: 'Parle tout seul' },
-    { id: 'skate', label: 'Roule en skate' },
-    { id: 'court', label: 'Il/elle court' },
-    { id: 'fume-tar', label: 'Fume un tar' },
-    { id: 'trebuche', label: 'Trébuche' },
-    { id: 'deguise', label: 'Déguisé(e)' },
-    { id: 'couple-improbable', label: 'Couple improbable' },
-  ],
-  rare: [
-    { id: 'police', label: 'Contrôle police' },
-    { id: 'bagarre', label: 'Bagarre de rue' },
-    { id: 'mouette', label: 'Mouette qui vol un sandwich' },
-    { id: 'pipi-rue', label: 'Pipi dans la rue' },
-    { id: 'trace', label: 'Tape une trace' },
-    { id: 'nudite', label: 'Nudité' },
-    { id: 'accident', label: 'Accident de la circulation' },
-  ],
-  legendaire: [
-    { id: 'instant-win', label: 'La scène impossible' },
-  ]
+const CATEGORIES_SOURCE_FILE = path.join(__dirname, 'categories-editables.txt');
+const TIER_HEADINGS = {
+  'ordinaire': 'ordinaire',
+  'semi-ordinaire': 'semi',
+  'semi': 'semi',
+  'rare': 'rare',
+  'legendaire': 'legendaire',
+  'légendaire': 'legendaire',
 };
 
+function slugifyLabel(label) {
+  return label
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 60) || 'categorie';
+}
+
+function emptyCategories() {
+  return { ordinaire: [], semi: [], rare: [], legendaire: [] };
+}
+
+function emptyChecked() {
+  return { ordinaire: [], semi: [], rare: [], legendaire: [] };
+}
+
+function emptyOccurrences() {
+  return { ordinaire: {}, semi: {}, rare: {}, legendaire: {} };
+}
+
+function emptyBonuses() {
+  return { ordinaire: 0, semi: 0, rare: 0, legendaire: 0 };
+}
+
+function parseEditableCategories(text) {
+  const categories = emptyCategories();
+  let currentTier = null;
+
+  text.split(/\r?\n/).forEach(rawLine => {
+    const line = rawLine.trim();
+    if (!line) return;
+
+    const heading = line.replace(/:$/, '').toLowerCase();
+    if (TIER_HEADINGS[heading]) {
+      currentTier = TIER_HEADINGS[heading];
+      return;
+    }
+
+    if (!currentTier) return;
+    categories[currentTier].push({
+      id: slugifyLabel(line),
+      label: line,
+    });
+  });
+
+  return categories;
+}
+
+function loadDefaultCategories() {
+  const data = fs.readFileSync(CATEGORIES_SOURCE_FILE, 'utf-8');
+  return parseEditableCategories(data);
+}
+
+const DEFAULT_CATEGORIES = loadDefaultCategories();
 function loadCategories() {
   const defaults = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
   try {
@@ -128,7 +134,9 @@ function applyCategories(categories, options = {}) {
     room.winner = null;
     room.players.forEach(p => {
       p.grid = generateGrid();
-      p.checked = { ordinaire: [], semi: [], rare: [], legendaire: [] };
+      p.checked = emptyChecked();
+      p.occurrences = emptyOccurrences();
+      p.bonuses = emptyBonuses();
     });
 
     room.players.forEach(p => {
@@ -163,11 +171,31 @@ function shuffleArray(arr) {
 
 function generateGrid() {
   return {
-    ordinaire: shuffleArray(CATEGORIES.ordinaire).slice(0, GRID_CONFIG.ordinaire),
-    semi: shuffleArray(CATEGORIES.semi).slice(0, GRID_CONFIG.semi),
-    rare: shuffleArray(CATEGORIES.rare).slice(0, GRID_CONFIG.rare),
-    legendaire: shuffleArray(CATEGORIES.legendaire).slice(0, GRID_CONFIG.legendaire),
+    ordinaire: pickGridItems(CATEGORIES.ordinaire, GRID_CONFIG.ordinaire),
+    semi: pickGridItems(CATEGORIES.semi, GRID_CONFIG.semi),
+    rare: pickGridItems(CATEGORIES.rare, GRID_CONFIG.rare),
+    legendaire: pickGridItems(CATEGORIES.legendaire, GRID_CONFIG.legendaire),
   };
+}
+
+function ultraKey(item) {
+  if (!/\(ultra\)/i.test(item.label)) return null;
+  return slugifyLabel(item.label.replace(/\(ultra\)/ig, ''));
+}
+
+function pickGridItems(items, count) {
+  const selected = [];
+  let hasUltra = false;
+
+  for (const item of shuffleArray(items)) {
+    const isUltra = Boolean(ultraKey(item));
+    if (isUltra && hasUltra) continue;
+    selected.push(item);
+    if (isUltra) hasUltra = true;
+    if (selected.length === count) return selected;
+  }
+
+  return selected;
 }
 
 function getProgress(player) {
@@ -250,7 +278,9 @@ io.on('connection', (socket) => {
       id: socket.id,
       name: playerName,
       grid,
-      checked: { ordinaire: [], semi: [], rare: [], legendaire: [] },
+      checked: emptyChecked(),
+      occurrences: emptyOccurrences(),
+      bonuses: emptyBonuses(),
     };
     rooms.set(code, {
       code,
@@ -284,7 +314,9 @@ io.on('connection', (socket) => {
       id: socket.id,
       name: playerName,
       grid,
-      checked: { ordinaire: [], semi: [], rare: [], legendaire: [] },
+      checked: emptyChecked(),
+      occurrences: emptyOccurrences(),
+      bonuses: emptyBonuses(),
     };
     room.players.push(player);
     socket.join(roomCode);
@@ -301,16 +333,43 @@ io.on('connection', (socket) => {
     const player = room.players.find(p => p.id === socket.id);
     if (!player) return;
 
+    player.occurrences ||= emptyOccurrences();
+    player.bonuses ||= emptyBonuses();
+
     const checkedList = player.checked[category];
     if (!checkedList || !player.grid[category]) return;
     const idx = checkedList.indexOf(index);
     if (idx === -1) {
       checkedList.push(index);
+      if (player.bonuses[category] > 0) {
+        player.bonuses[category] -= 1;
+        socket.emit('bonus-used', { category, index, bonuses: player.bonuses });
+      }
     } else {
-      checkedList.splice(idx, 1);
+      const currentCount = player.occurrences[category][index] || 1;
+      const nextCount = currentCount + 1;
+
+      if (nextCount >= 3) {
+        player.occurrences[category][index] = 1;
+        player.bonuses[category] += 1;
+        socket.emit('bonus-earned', { category, index, bonuses: player.bonuses });
+      } else {
+        player.occurrences[category][index] = nextCount;
+        socket.emit('occurrence-update', {
+          category,
+          index,
+          count: nextCount,
+          occurrences: player.occurrences,
+          bonuses: player.bonuses,
+        });
+      }
     }
 
-    socket.emit('grid-update', player.checked);
+    socket.emit('grid-update', {
+      checked: player.checked,
+      occurrences: player.occurrences,
+      bonuses: player.bonuses,
+    });
 
     if (checkedList.length === player.grid[category].length) {
       room.winner = { id: player.id, name: player.name, category };
@@ -328,7 +387,9 @@ io.on('connection', (socket) => {
     room.winner = null;
     room.players.forEach(p => {
       p.grid = generateGrid();
-      p.checked = { ordinaire: [], semi: [], rare: [], legendaire: [] };
+      p.checked = emptyChecked();
+      p.occurrences = emptyOccurrences();
+      p.bonuses = emptyBonuses();
     });
 
     room.players.forEach(p => {
