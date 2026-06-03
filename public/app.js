@@ -72,7 +72,6 @@ const btnBonusReroll = $('#btn-bonus-reroll');
 let pendingBonusCategory = null;
 let rerollRemaining = 0;
 let freeCheckCategory = null;
-let bonusCategory = null;
 const btnBonusFreecheck = $('#btn-bonus-freecheck');
 
 function showScreen(screen) {
@@ -378,7 +377,7 @@ function showBonusFlash(message) {
 }
 
 function showBonusChoice(category) {
-  bonusCategory = category;
+  pendingBonusCategory = category;
   playBonusSound();
   launchEmojiConfetti();
   showBonusFlash('Bonus !');
