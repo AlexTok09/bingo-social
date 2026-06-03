@@ -158,6 +158,97 @@ function playWinSound() {
   playSfx('/bingo.wav');
 }
 
+function winAnimOrdinaire() {
+  launchEmojiConfetti();
+}
+
+function winAnimSemi() {
+  launchEmojiConfetti();
+  setTimeout(() => launchEmojiConfetti(), 400);
+  const overlay = document.querySelector('#win-overlay');
+  if (overlay) {
+    overlay.style.animation = 'winPulse 0.5s ease 3';
+    setTimeout(() => overlay.style.animation = '', 1600);
+  }
+}
+
+function winAnimRare() {
+  for (let i = 0; i < 4; i++) setTimeout(() => launchEmojiConfetti(), i * 300);
+  const content = document.querySelector('.win-content');
+  if (content) {
+    content.style.animation = 'winShake 0.15s ease 8, winGlow 0.6s ease infinite alternate';
+    setTimeout(() => content.style.animation = 'slam 0.28s ease', 2500);
+  }
+  const overlay = document.querySelector('#win-overlay');
+  if (overlay) {
+    overlay.style.animation = 'winPulse 0.3s ease 6';
+    setTimeout(() => overlay.style.animation = '', 2000);
+  }
+}
+
+function winAnimLegendaire() {
+  const chaos = document.createElement('div');
+  chaos.id = 'legendaire-chaos';
+  chaos.style.cssText = 'position:fixed;inset:0;z-index:9998;pointer-events:none;overflow:hidden';
+  document.body.appendChild(chaos);
+
+  for (let i = 0; i < 8; i++) setTimeout(() => launchEmojiConfetti(), i * 250);
+
+  const rainbow = document.createElement('div');
+  rainbow.style.cssText = 'position:fixed;inset:0;z-index:9997;pointer-events:none;animation:rainbowFlash 0.15s linear infinite;mix-blend-mode:overlay;opacity:0.6';
+  chaos.appendChild(rainbow);
+
+  const emojiRain = [];
+  for (let i = 0; i < 40; i++) {
+    const drop = document.createElement('span');
+    drop.textContent = CONFETTI_EMOJIS[Math.floor(Math.random() * CONFETTI_EMOJIS.length)];
+    drop.style.cssText = `position:absolute;font-size:${1.5 + Math.random() * 2}rem;left:${Math.random() * 100}%;top:-5%;opacity:0.85;`;
+    chaos.appendChild(drop);
+    emojiRain.push({ el: drop, x: Math.random() * 100, y: -5 - Math.random() * 20, speed: 1.5 + Math.random() * 3, wobble: Math.random() * 4 - 2 });
+  }
+
+  document.body.style.animation = 'screenShake 0.08s linear infinite';
+
+  let flip = false;
+  const flipInterval = setInterval(() => {
+    flip = !flip;
+    document.body.style.transform = flip ? `rotate(${(Math.random() - 0.5) * 6}deg) scale(${0.97 + Math.random() * 0.06})` : '';
+  }, 200);
+
+  const content = document.querySelector('.win-content');
+  if (content) {
+    content.style.animation = 'legendSpin 0.5s ease infinite alternate, winGlow 0.2s ease infinite alternate';
+  }
+
+  const title = document.querySelector('#win-title');
+  if (title) {
+    title.style.animation = 'textGlitch 0.1s steps(2) infinite';
+  }
+
+  const startRain = performance.now();
+  function rainTick(now) {
+    if (now - startRain > 5000) return;
+    emojiRain.forEach(d => {
+      d.y += d.speed;
+      d.x += d.wobble * 0.1;
+      if (d.y > 110) { d.y = -5; d.x = Math.random() * 100; }
+      d.el.style.left = d.x + '%';
+      d.el.style.top = d.y + '%';
+    });
+    requestAnimationFrame(rainTick);
+  }
+  requestAnimationFrame(rainTick);
+
+  setTimeout(() => {
+    clearInterval(flipInterval);
+    document.body.style.animation = '';
+    document.body.style.transform = '';
+    if (content) content.style.animation = 'slam 0.28s ease';
+    if (title) title.style.animation = '';
+    chaos.remove();
+  }, 5000);
+}
+
 function playBonusSound() {
   playSfx('/bonus.mp3');
 }
@@ -422,6 +513,7 @@ if (socket) {
 
   socket.on('game-won', ({ name, category }) => {
     playWinSound();
+    winOverlay.className = 'overlay active win-tier-' + category;
     winDrawing.textContent = categoryEmoji({ id: category, label: TIER_NAMES[category] || category });
     if (name === playerName) {
       winTitle.textContent = 'Tu as gagné !';
@@ -431,8 +523,10 @@ if (socket) {
     winDetail.textContent = category === 'legendaire'
       ? 'Case légendaire cochée : victoire instantanée'
       : `Grille "${TIER_NAMES[category] || category}" complétée`;
-    winOverlay.classList.add('active');
     btnNewGame.style.display = 'block';
+
+    const winAnims = { ordinaire: winAnimOrdinaire, semi: winAnimSemi, rare: winAnimRare, legendaire: winAnimLegendaire };
+    (winAnims[category] || winAnimOrdinaire)();
   });
 
   socket.on('new-game-started', ({ grid }) => {
@@ -441,8 +535,12 @@ if (socket) {
     myOccurrences = emptyOccurrences();
     myBonuses = emptyBonuses();
     rerollRemaining = 0;
-    winOverlay.classList.remove('active');
+    winOverlay.className = 'overlay';
     btnNewGame.style.display = 'none';
+    document.body.style.animation = '';
+    document.body.style.transform = '';
+    const oldChaos = document.getElementById('legendaire-chaos');
+    if (oldChaos) oldChaos.remove();
     renderGrid();
     showToast('Nouvelle partie !');
   });
