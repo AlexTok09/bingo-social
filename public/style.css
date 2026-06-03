@@ -850,8 +850,19 @@ input[type="text"]::placeholder {
   }
 }
 
+@keyframes longPressPop {
+  50% {
+    transform: scale(1.08) rotate(-2deg);
+    box-shadow: 1px 1px 0 var(--shadow), 0 0 0 5px var(--purple);
+  }
+}
+
 .cell.just-checked {
   animation: pop 0.2s ease;
+}
+
+.cell.long-pressing {
+  animation: longPressPop 0.26s ease;
 }
 
 @media (max-width: 370px) {

@@ -498,7 +498,35 @@ function renderGrid() {
         cell.appendChild(countBadge);
       }
 
-      cell.addEventListener('click', () => {
+      let longPressTimer = null;
+      let didLongPress = false;
+
+      cell.addEventListener('pointerdown', () => {
+        didLongPress = false;
+        if (!checked.includes(index)) return;
+        longPressTimer = window.setTimeout(() => {
+          didLongPress = true;
+          playTapSound(category, true);
+          emitSocket('repeat-cell', { category, index });
+          cell.classList.add('long-pressing');
+          window.setTimeout(() => cell.classList.remove('long-pressing'), 260);
+        }, 560);
+      });
+
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach(eventName => {
+        cell.addEventListener(eventName, () => {
+          window.clearTimeout(longPressTimer);
+          longPressTimer = null;
+        });
+      });
+
+      cell.addEventListener('click', (event) => {
+        if (didLongPress) {
+          event.preventDefault();
+          event.stopPropagation();
+          window.setTimeout(() => { didLongPress = false; }, 0);
+          return;
+        }
         const wasChecked = checked.includes(index);
         playTapSound(category, wasChecked);
         emitSocket('toggle-cell', { category, index });

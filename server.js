@@ -380,28 +380,14 @@ io.on('connection', (socket) => {
     const idx = checkedList.indexOf(index);
     if (idx === -1) {
       checkedList.push(index);
+      player.occurrences[category][index] = 1;
       if (player.bonuses[category] > 0) {
         player.bonuses[category] -= 1;
         socket.emit('bonus-used', { category, index, bonuses: player.bonuses });
       }
     } else {
-      const currentCount = player.occurrences[category][index] || 1;
-      const nextCount = currentCount + 1;
-
-      if (nextCount >= 3) {
-        player.occurrences[category][index] = 1;
-        player.pendingBonus = { category, index };
-        socket.emit('bonus-choice', { category, index, bonuses: player.bonuses });
-      } else {
-        player.occurrences[category][index] = nextCount;
-        socket.emit('occurrence-update', {
-          category,
-          index,
-          count: nextCount,
-          occurrences: player.occurrences,
-          bonuses: player.bonuses,
-        });
-      }
+      checkedList.splice(idx, 1);
+      delete player.occurrences[category][index];
     }
 
     socket.emit('grid-update', {
@@ -416,6 +402,45 @@ io.on('connection', (socket) => {
     }
 
     io.to(socket.roomCode).emit('players-update', getPlayersInfo(room));
+  });
+
+  socket.on('repeat-cell', ({ category, index }) => {
+    if (!socket.roomCode) return;
+    const room = rooms.get(socket.roomCode);
+    if (!room || room.winner) return;
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player) return;
+    if (player.pendingBonus) return;
+
+    player.occurrences ||= emptyOccurrences();
+    player.bonuses ||= emptyBonuses();
+
+    const checkedList = player.checked[category];
+    if (!checkedList || !player.grid[category] || !checkedList.includes(index)) return;
+
+    const currentCount = player.occurrences[category][index] || 1;
+    const nextCount = currentCount + 1;
+
+    if (nextCount >= 3) {
+      player.occurrences[category][index] = 1;
+      player.pendingBonus = { category, index };
+      socket.emit('bonus-choice', { category, index, bonuses: player.bonuses });
+    } else {
+      player.occurrences[category][index] = nextCount;
+      socket.emit('occurrence-update', {
+        category,
+        index,
+        count: nextCount,
+        occurrences: player.occurrences,
+        bonuses: player.bonuses,
+      });
+    }
+
+    socket.emit('grid-update', {
+      checked: player.checked,
+      occurrences: player.occurrences,
+      bonuses: player.bonuses,
+    });
   });
 
   socket.on('choose-bonus', ({ choice }) => {
