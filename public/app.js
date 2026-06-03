@@ -140,6 +140,7 @@ const sfxCache = {};
 const SFX_FILES = [
   '/ordinaire.mp3', '/semi-ordinaire.mp3', '/rare.mp3', '/legendaire.mp3',
   '/bonus.mp3', '/multipick.mp3', '/bingo.wav', '/socioloGenerique.wav',
+  '/win-ordinaire.mp3', '/win-semi.mp3', '/win-rare.mp3', '/win-legendaire.mp3',
 ];
 
 function preloadSounds() {
@@ -176,42 +177,13 @@ function playWinSound() {
 }
 
 function playWinCasinoSound(category) {
-  playWinSound();
-  if (category === 'ordinaire') {
-    [800, 1000, 1200, 800, 1000, 1200, 1400].forEach((f, i) => {
-      playTone({ frequency: f, duration: 0.06, type: 'square', volume: 0.07, delay: i * 0.08 });
-    });
-  } else if (category === 'semi') {
-    [660, 880, 1100, 880, 1100, 1320, 1100, 1320, 1540].forEach((f, i) => {
-      playTone({ frequency: f, duration: 0.07, type: 'square', volume: 0.07, delay: i * 0.07 });
-    });
-    [330, 440, 550, 440, 550, 660].forEach((f, i) => {
-      playTone({ frequency: f, duration: 0.1, type: 'sawtooth', volume: 0.03, delay: i * 0.12 });
-    });
-  } else if (category === 'rare') {
-    for (let w = 0; w < 3; w++) {
-      [523, 659, 784, 1046, 1318].forEach((f, i) => {
-        playTone({ frequency: f, duration: 0.05, type: 'square', volume: 0.06, delay: w * 0.4 + i * 0.05 });
-      });
-    }
-    [220, 330, 440, 550, 660, 880, 1100, 1320].forEach((f, i) => {
-      playTone({ frequency: f, duration: 0.08, type: 'sawtooth', volume: 0.04, delay: i * 0.06 });
-    });
-  } else if (category === 'legendaire') {
-    for (let w = 0; w < 5; w++) {
-      [523, 659, 784, 1046, 1318, 1568, 1760, 2093].forEach((f, i) => {
-        playTone({ frequency: f, duration: 0.06, type: 'square', volume: 0.06, delay: w * 0.5 + i * 0.04 });
-      });
-    }
-    for (let c = 0; c < 20; c++) {
-      const f = 2000 + Math.random() * 4000;
-      playTone({ frequency: f, duration: 0.02, type: 'square', volume: 0.04, delay: Math.random() * 3 });
-    }
-    [110, 220, 330, 440, 550, 660, 880, 1100, 1320, 1760].forEach((f, i) => {
-      playTone({ frequency: f, duration: 0.15, type: 'sawtooth', volume: 0.035, delay: 0.2 + i * 0.08 });
-    });
-    playTone({ frequency: 80, slideTo: 2500, duration: 2.5, type: 'sawtooth', volume: 0.03, delay: 0.5 });
-  }
+  const files = {
+    ordinaire: '/win-ordinaire.mp3',
+    semi: '/win-semi.mp3',
+    rare: '/win-rare.mp3',
+    legendaire: '/win-legendaire.mp3',
+  };
+  playSfx(files[category] || files.ordinaire);
 }
 
 function winAnimOrdinaire() {
@@ -271,13 +243,16 @@ function winAnimLegendaire() {
   rainbow.style.cssText = 'position:fixed;inset:0;z-index:9997;pointer-events:none;animation:rainbowFlash 0.15s linear infinite;mix-blend-mode:overlay;opacity:0.6';
   chaos.appendChild(rainbow);
 
+  const w = window.innerWidth;
+  const h = window.innerHeight;
   const emojiRain = [];
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 30; i++) {
     const drop = document.createElement('span');
     drop.textContent = CONFETTI_EMOJIS[Math.floor(Math.random() * CONFETTI_EMOJIS.length)];
-    drop.style.cssText = `position:absolute;font-size:${1.5 + Math.random() * 2}rem;left:${Math.random() * 100}%;top:-5%;opacity:0.85;`;
+    const startX = Math.random() * w;
+    drop.style.cssText = `position:absolute;left:0;top:0;font-size:${1.5 + Math.random() * 2}rem;opacity:0.85;will-change:transform;`;
     chaos.appendChild(drop);
-    emojiRain.push({ el: drop, x: Math.random() * 100, y: -5 - Math.random() * 20, speed: 1.5 + Math.random() * 3, wobble: Math.random() * 4 - 2 });
+    emojiRain.push({ el: drop, x: startX, y: -30 - Math.random() * h * 0.2, speed: 2 + Math.random() * 4, wobble: Math.random() * 3 - 1.5 });
   }
 
   document.body.style.animation = 'screenShake 0.08s linear infinite';
@@ -303,10 +278,9 @@ function winAnimLegendaire() {
     if (now - startRain > 5000) return;
     emojiRain.forEach(d => {
       d.y += d.speed;
-      d.x += d.wobble * 0.1;
-      if (d.y > 110) { d.y = -5; d.x = Math.random() * 100; }
-      d.el.style.left = d.x + '%';
-      d.el.style.top = d.y + '%';
+      d.x += d.wobble;
+      if (d.y > h + 30) { d.y = -30; d.x = Math.random() * w; }
+      d.el.style.transform = `translate(${d.x}px,${d.y}px)`;
     });
     requestAnimationFrame(rainTick);
   }
@@ -348,7 +322,7 @@ const CONFETTI_EMOJIS = [
 ];
 
 function launchEmojiConfetti() {
-  const count = 60;
+  const count = 40;
   const container = document.createElement('div');
   container.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:none;overflow:hidden';
   document.body.appendChild(container);
@@ -361,35 +335,35 @@ function launchEmojiConfetti() {
     const el = document.createElement('span');
     el.textContent = CONFETTI_EMOJIS[Math.floor(Math.random() * CONFETTI_EMOJIS.length)];
     const angle = Math.random() * Math.PI * 2;
-    const speed = 4 + Math.random() * 8;
+    const speed = 5 + Math.random() * 10;
     const size = 1.4 + Math.random() * 1.2;
-    el.style.cssText = `position:absolute;font-size:${size}rem;left:0;top:0;will-change:transform;`;
+    el.style.cssText = `position:absolute;font-size:${size}rem;left:0;top:0;will-change:transform;opacity:1;`;
     container.appendChild(el);
     particles.push({
       el,
       x: cx,
       y: cy,
       vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 4,
+      vy: Math.sin(angle) * speed - 5,
       rot: 0,
-      vr: (Math.random() - 0.5) * 15,
-      opacity: 1,
+      vr: (Math.random() - 0.5) * 18,
     });
   }
 
   const start = performance.now();
   function tick(now) {
     const elapsed = now - start;
-    if (elapsed > 2500) { container.remove(); return; }
-    particles.forEach(p => {
+    if (elapsed > 2000) { container.remove(); return; }
+    const fade = elapsed > 1000 ? Math.max(0, 1 - (elapsed - 1000) / 1000) : 1;
+    if (fade < 1) container.style.opacity = fade;
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
       p.x += p.vx;
       p.y += p.vy;
-      p.vy += 0.25;
+      p.vy += 0.3;
       p.rot += p.vr;
-      if (elapsed > 1200) p.opacity = Math.max(0, 1 - (elapsed - 1200) / 1300);
       p.el.style.transform = `translate(${p.x}px,${p.y}px) rotate(${p.rot}deg)`;
-      p.el.style.opacity = p.opacity;
-    });
+    }
     requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
@@ -487,6 +461,7 @@ if (socket) {
   socket.on('room-created', ({ code, grid }) => {
     roomCode = code;
     myGrid = grid;
+    gridBuilt = false;
     myChecked = emptyChecked();
     myOccurrences = emptyOccurrences();
     myBonuses = emptyBonuses();
@@ -497,6 +472,7 @@ if (socket) {
   socket.on('room-joined', ({ code, grid }) => {
     roomCode = code;
     myGrid = grid;
+    gridBuilt = false;
     myChecked = emptyChecked();
     myOccurrences = emptyOccurrences();
     myBonuses = emptyBonuses();
@@ -552,6 +528,7 @@ if (socket) {
 
   socket.on('reroll-update', ({ grid, checked, occurrences, bonuses, remaining }) => {
     myGrid = grid;
+    gridBuilt = false;
     myChecked = { ...emptyChecked(), ...(checked || {}) };
     myOccurrences = { ...emptyOccurrences(), ...(occurrences || {}) };
     myBonuses = { ...emptyBonuses(), ...(bonuses || {}) };
@@ -563,6 +540,7 @@ if (socket) {
 
   socket.on('grid-rerolled', ({ grid, checked, occurrences, bonuses }) => {
     myGrid = grid;
+    gridBuilt = false;
     myChecked = { ...emptyChecked(), ...(checked || {}) };
     myOccurrences = { ...emptyOccurrences(), ...(occurrences || {}) };
     myBonuses = { ...emptyBonuses(), ...(bonuses || {}) };
@@ -604,6 +582,7 @@ if (socket) {
 
   socket.on('new-game-started', ({ grid }) => {
     myGrid = grid;
+    gridBuilt = false;
     myChecked = emptyChecked();
     myOccurrences = emptyOccurrences();
     myBonuses = emptyBonuses();
@@ -819,33 +798,20 @@ function categoryDrawing(item, category) {
   return `<svg class="drawing" viewBox="0 0 100 100" aria-hidden="true">${common}${drawings[type] || drawings.weird}</svg>`;
 }
 
-function renderGrid() {
+let gridBuilt = false;
+
+function buildGrid() {
+  gridBuilt = true;
   TIERS.forEach(category => {
     const container = $(`#grid-${category}`);
-    const section = $(`#section-${category}`);
-    const items = myGrid[category] || [];
-    const checked = myChecked[category] || [];
-    const occurrences = myOccurrences[category] || {};
-    const bonuses = myBonuses[category] || 0;
-    if (!container || !section) return;
-
+    if (!container) return;
     container.innerHTML = '';
+    const items = myGrid[category] || [];
 
     items.forEach((item, index) => {
       const cell = document.createElement('div');
       cell.className = `cell ${category}-cell`;
-
-      if (checked.includes(index)) {
-        cell.classList.add('checked');
-      }
-
-      if (!checked.includes(index) && rerollRemaining > 0) {
-        cell.classList.add('reroll-target');
-      }
-
-      if (!checked.includes(index) && freeCheckCategory === category) {
-        cell.classList.add('freecheck-target');
-      }
+      cell.dataset.idx = index;
 
       const emojiSpan = document.createElement('span');
       emojiSpan.className = 'emoji';
@@ -858,19 +824,12 @@ function renderGrid() {
       cell.appendChild(emojiSpan);
       cell.appendChild(labelSpan);
 
-      const count = occurrences[index] || (checked.includes(index) ? 1 : 0);
-      if (count > 1) {
-        const countBadge = document.createElement('span');
-        countBadge.className = 'occurrence-badge';
-        countBadge.textContent = `x${count}`;
-        cell.appendChild(countBadge);
-      }
-
       let longPressTimer = null;
       let didLongPress = false;
 
       cell.addEventListener('pointerdown', () => {
         didLongPress = false;
+        const checked = myChecked[category] || [];
         if (!checked.includes(index)) return;
         longPressTimer = window.setTimeout(() => {
           didLongPress = true;
@@ -895,6 +854,7 @@ function renderGrid() {
           window.setTimeout(() => { didLongPress = false; }, 0);
           return;
         }
+        const checked = myChecked[category] || [];
         if (freeCheckCategory) {
           if (category !== freeCheckCategory) {
             showToast(`Choisis dans ${TIER_NAMES[freeCheckCategory]}`);
@@ -924,6 +884,43 @@ function renderGrid() {
 
       container.appendChild(cell);
     });
+  });
+}
+
+function renderGrid() {
+  if (!gridBuilt) buildGrid();
+
+  TIERS.forEach(category => {
+    const container = $(`#grid-${category}`);
+    const section = $(`#section-${category}`);
+    const items = myGrid[category] || [];
+    const checked = myChecked[category] || [];
+    const occurrences = myOccurrences[category] || {};
+    const bonuses = myBonuses[category] || 0;
+    if (!container || !section) return;
+
+    const cells = container.children;
+    for (let index = 0; index < cells.length; index++) {
+      const cell = cells[index];
+      const isChecked = checked.includes(index);
+
+      cell.classList.toggle('checked', isChecked);
+      cell.classList.toggle('reroll-target', !isChecked && rerollRemaining > 0);
+      cell.classList.toggle('freecheck-target', !isChecked && freeCheckCategory === category);
+
+      const count = occurrences[index] || (isChecked ? 1 : 0);
+      let badge = cell.querySelector('.occurrence-badge');
+      if (count > 1) {
+        if (!badge) {
+          badge = document.createElement('span');
+          badge.className = 'occurrence-badge';
+          cell.appendChild(badge);
+        }
+        badge.textContent = `x${count}`;
+      } else if (badge) {
+        badge.remove();
+      }
+    }
 
     const progress = $(`#progress-${category}`);
     progress.textContent = `${checked.length}/${items.length}`;
