@@ -65,6 +65,74 @@ function showError(msg) {
   setTimeout(() => { if (errorMsg.textContent === msg) errorMsg.textContent = ''; }, 4000);
 }
 
+let audioContext = null;
+function getAudioContext() {
+  const AudioCtor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtor) return null;
+  if (!audioContext) audioContext = new AudioCtor();
+  if (audioContext.state === 'suspended') audioContext.resume().catch(() => {});
+  return audioContext;
+}
+
+function playTone({ frequency, duration, type = 'square', volume = 0.08, slideTo = null, delay = 0 }) {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  const start = ctx.currentTime + delay;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = type;
+  osc.frequency.setValueAtTime(frequency, start);
+  if (slideTo) {
+    osc.frequency.exponentialRampToValueAtTime(slideTo, start + duration);
+  }
+
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(volume, start + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(start);
+  osc.stop(start + duration + 0.02);
+}
+
+function playTapSound(category, wasChecked) {
+  if (category === 'legendaire' && !wasChecked) {
+    playTone({ frequency: 220, slideTo: 880, duration: 0.18, type: 'sawtooth', volume: 0.09 });
+    playTone({ frequency: 1320, duration: 0.08, type: 'square', volume: 0.06, delay: 0.1 });
+    return;
+  }
+
+  if (wasChecked) {
+    playTone({ frequency: 260, slideTo: 140, duration: 0.09, type: 'triangle', volume: 0.05 });
+    return;
+  }
+
+  const pitch = {
+    ordinaire: 520,
+    semi: 660,
+    rare: 820,
+  }[category] || 560;
+
+  playTone({ frequency: pitch, slideTo: pitch * 1.45, duration: 0.075, type: 'square', volume: 0.07 });
+  playTone({ frequency: pitch / 2, duration: 0.045, type: 'triangle', volume: 0.045, delay: 0.035 });
+}
+
+function playWinSound(category) {
+  if (category === 'legendaire') {
+    [260, 390, 585, 880].forEach((frequency, step) => {
+      playTone({ frequency, duration: 0.11, type: 'sawtooth', volume: 0.07, delay: step * 0.08 });
+    });
+    return;
+  }
+
+  [440, 660, 990].forEach((frequency, step) => {
+    playTone({ frequency, duration: 0.09, type: 'square', volume: 0.055, delay: step * 0.07 });
+  });
+}
+
 function emitSocket(eventName, payload) {
   if (!socket) {
     showError('Multijoueur indisponible : il faut lancer le serveur Node/Socket.IO.');
@@ -162,6 +230,7 @@ if (socket) {
   });
 
   socket.on('game-won', ({ name, category }) => {
+    playWinSound(category);
     winDrawing.innerHTML = categoryDrawing({ id: category, label: TIER_NAMES[category] || category }, category);
     if (name === playerName) {
       winTitle.textContent = 'Tu as gagné !';
@@ -309,6 +378,8 @@ function renderGrid() {
       cell.appendChild(labelSpan);
 
       cell.addEventListener('click', () => {
+        const wasChecked = checked.includes(index);
+        playTapSound(category, wasChecked);
         emitSocket('toggle-cell', { category, index });
         cell.classList.add('just-checked');
         setTimeout(() => cell.classList.remove('just-checked'), 250);
