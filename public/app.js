@@ -98,7 +98,7 @@ function startBgMusic() {
   if (bgMusic) return;
   bgMusic = new Audio('/socioloGenerique.wav');
   bgMusic.loop = false;
-  bgMusic.volume = 0.3;
+  bgMusic.volume = 0.8;
   bgMusic.play().catch(() => {});
 }
 
@@ -154,11 +154,9 @@ function playTapSound(category, wasChecked) {
 }
 
 function playWinSound() {
-  const notes = [523, 659, 784, 1046, 784, 1046, 1318, 1568];
-  notes.forEach((frequency, step) => {
-    playTone({ frequency, duration: 0.08, type: 'square', volume: 0.055, delay: step * 0.065 });
-    playTone({ frequency: frequency * 1.5, duration: 0.06, type: 'sawtooth', volume: 0.025, delay: step * 0.065 + 0.02 });
-  });
+  const sfx = new Audio('/bingo.wav');
+  sfx.volume = 0.8;
+  sfx.play().catch(() => {});
 }
 
 function playBonusSound() {
