@@ -135,47 +135,43 @@ function playTone({ frequency, duration, type = 'square', volume = 0.08, slideTo
   osc.stop(start + duration + 0.02);
 }
 
-function playTapSound(category, wasChecked) {
-  if (category === 'legendaire' && !wasChecked) {
-    playTone({ frequency: 880, duration: 0.06, type: 'square', volume: 0.06 });
-    playTone({ frequency: 1108, duration: 0.06, type: 'square', volume: 0.055, delay: 0.06 });
-    playTone({ frequency: 1318, duration: 0.06, type: 'square', volume: 0.05, delay: 0.12 });
-    playTone({ frequency: 1760, duration: 0.12, type: 'sawtooth', volume: 0.04, delay: 0.18 });
-    return;
-  }
+const SFX_VOLUME = 0.8;
+const tapSounds = {
+  ordinaire: '/ordinaire.mp3',
+  semi: '/semi-ordinaire.mp3',
+  rare: '/rare.mp3',
+  legendaire: '/legendaire.mp3',
+};
 
-  if (wasChecked) {
-    playTone({ frequency: 500, slideTo: 250, duration: 0.1, type: 'triangle', volume: 0.04 });
-    return;
-  }
-
-  playTone({ frequency: 1200, duration: 0.025, type: 'square', volume: 0.06 });
-  playTone({ frequency: 1800, duration: 0.03, type: 'square', volume: 0.04, delay: 0.03 });
-}
-
-function playWinSound() {
-  const sfx = new Audio('/bingo.wav');
-  sfx.volume = 0.8;
+function playSfx(src) {
+  const sfx = new Audio(src);
+  sfx.volume = SFX_VOLUME;
   sfx.play().catch(() => {});
 }
 
+function playTapSound(category, wasChecked) {
+  if (wasChecked) return;
+  playSfx(tapSounds[category] || tapSounds.ordinaire);
+}
+
+function playWinSound() {
+  playSfx('/bingo.wav');
+}
+
 function playBonusSound() {
-  [660, 880, 1108, 1318, 1568, 1760].forEach((frequency, step) => {
-    playTone({ frequency, duration: 0.05, type: 'square', volume: 0.05, delay: step * 0.05 });
-  });
-  playTone({ frequency: 2093, duration: 0.15, type: 'sawtooth', volume: 0.035, delay: 0.3 });
+  playSfx('/bonus.mp3');
 }
 
 function playRerollSound() {
-  [1200, 900, 1100, 800, 1000, 1400].forEach((frequency, step) => {
-    playTone({ frequency, duration: 0.03, type: 'square', volume: 0.045, delay: step * 0.04 });
-  });
+  playSfx('/bonus.mp3');
 }
 
 function playFreeCheckSound() {
-  playTone({ frequency: 880, duration: 0.04, type: 'square', volume: 0.05 });
-  playTone({ frequency: 1318, duration: 0.04, type: 'square', volume: 0.05, delay: 0.04 });
-  playTone({ frequency: 1760, duration: 0.1, type: 'sawtooth', volume: 0.04, delay: 0.08 });
+  playSfx(tapSounds.legendaire);
+}
+
+function playMultipickSound() {
+  playSfx('/multipick.mp3');
 }
 
 function showBonusFlash(message) {
@@ -649,7 +645,7 @@ function renderGrid() {
         if (!checked.includes(index)) return;
         longPressTimer = window.setTimeout(() => {
           didLongPress = true;
-          playTapSound(category, true);
+          playMultipickSound();
           emitSocket('repeat-cell', { category, index });
           cell.classList.add('long-pressing');
           window.setTimeout(() => cell.classList.remove('long-pressing'), 260);
