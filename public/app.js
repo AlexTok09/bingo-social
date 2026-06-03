@@ -71,6 +71,9 @@ const btnBonusReroll = $('#btn-bonus-reroll');
 
 let pendingBonusCategory = null;
 let rerollRemaining = 0;
+let freeCheckCategory = null;
+let bonusCategory = null;
+const btnBonusFreecheck = $('#btn-bonus-freecheck');
 
 function showScreen(screen) {
   $$('.screen').forEach(s => s.classList.remove('active'));
@@ -125,50 +128,47 @@ function playTone({ frequency, duration, type = 'square', volume = 0.08, slideTo
 
 function playTapSound(category, wasChecked) {
   if (category === 'legendaire' && !wasChecked) {
-    playTone({ frequency: 523, duration: 0.07, type: 'triangle', volume: 0.055 });
-    playTone({ frequency: 784, duration: 0.07, type: 'triangle', volume: 0.05, delay: 0.06 });
-    playTone({ frequency: 1046, duration: 0.11, type: 'square', volume: 0.045, delay: 0.12 });
+    playTone({ frequency: 880, duration: 0.06, type: 'square', volume: 0.06 });
+    playTone({ frequency: 1108, duration: 0.06, type: 'square', volume: 0.055, delay: 0.06 });
+    playTone({ frequency: 1318, duration: 0.06, type: 'square', volume: 0.05, delay: 0.12 });
+    playTone({ frequency: 1760, duration: 0.12, type: 'sawtooth', volume: 0.04, delay: 0.18 });
     return;
   }
 
   if (wasChecked) {
-    playTone({ frequency: 660, slideTo: 330, duration: 0.08, type: 'triangle', volume: 0.035 });
+    playTone({ frequency: 500, slideTo: 250, duration: 0.1, type: 'triangle', volume: 0.04 });
     return;
   }
 
-  const pitch = {
-    ordinaire: 520,
-    semi: 660,
-    rare: 820,
-  }[category] || 560;
-
-  playTone({ frequency: pitch, duration: 0.045, type: 'triangle', volume: 0.052 });
-  playTone({ frequency: pitch * 1.5, duration: 0.045, type: 'triangle', volume: 0.042, delay: 0.045 });
+  playTone({ frequency: 1200, duration: 0.025, type: 'square', volume: 0.06 });
+  playTone({ frequency: 1800, duration: 0.03, type: 'square', volume: 0.04, delay: 0.03 });
 }
 
-function playWinSound(category) {
-  if (category === 'legendaire') {
-    [523, 659, 784, 1046, 1318].forEach((frequency, step) => {
-      playTone({ frequency, duration: 0.09, type: 'square', volume: 0.055, delay: step * 0.07 });
-    });
-    return;
-  }
-
-  [392, 523, 659, 784].forEach((frequency, step) => {
-    playTone({ frequency, duration: 0.065, type: 'triangle', volume: 0.05, delay: step * 0.055 });
+function playWinSound() {
+  const notes = [523, 659, 784, 1046, 784, 1046, 1318, 1568];
+  notes.forEach((frequency, step) => {
+    playTone({ frequency, duration: 0.08, type: 'square', volume: 0.055, delay: step * 0.065 });
+    playTone({ frequency: frequency * 1.5, duration: 0.06, type: 'sawtooth', volume: 0.025, delay: step * 0.065 + 0.02 });
   });
 }
 
 function playBonusSound() {
-  [880, 988, 1174, 1318, 1568].forEach((frequency, step) => {
-    playTone({ frequency, duration: 0.055, type: 'square', volume: 0.052, delay: step * 0.045 });
+  [660, 880, 1108, 1318, 1568, 1760].forEach((frequency, step) => {
+    playTone({ frequency, duration: 0.05, type: 'square', volume: 0.05, delay: step * 0.05 });
   });
+  playTone({ frequency: 2093, duration: 0.15, type: 'sawtooth', volume: 0.035, delay: 0.3 });
 }
 
 function playRerollSound() {
-  [740, 660, 740, 880].forEach((frequency, step) => {
-    playTone({ frequency, duration: 0.045, type: 'square', volume: 0.045, delay: step * 0.035 });
+  [1200, 900, 1100, 800, 1000, 1400].forEach((frequency, step) => {
+    playTone({ frequency, duration: 0.03, type: 'square', volume: 0.045, delay: step * 0.04 });
   });
+}
+
+function playFreeCheckSound() {
+  playTone({ frequency: 880, duration: 0.04, type: 'square', volume: 0.05 });
+  playTone({ frequency: 1318, duration: 0.04, type: 'square', volume: 0.05, delay: 0.04 });
+  playTone({ frequency: 1760, duration: 0.1, type: 'sawtooth', volume: 0.04, delay: 0.08 });
 }
 
 function showBonusFlash(message) {
@@ -179,13 +179,12 @@ function showBonusFlash(message) {
   showBonusFlash.timeout = window.setTimeout(() => bonusFlash.classList.remove('show'), 1500);
 }
 
-function showRerollBonus(remaining) {
-  rerollRemaining = remaining;
-  pendingBonusCategory = 'reroll';
+function showBonusChoice(category) {
+  bonusCategory = category;
   playBonusSound();
-  showBonusFlash('Reroll x3 !');
+  showBonusFlash('Bonus !');
   bonusChoiceDrawing.textContent = '🎰';
-  bonusChoiceDetail.textContent = 'Choisis 3 cases non cochées à relancer.';
+  bonusChoiceDetail.textContent = `Catégorie : ${TIER_NAMES[category]}`;
   bonusChoiceOverlay.classList.add('active');
 }
 
@@ -297,8 +296,30 @@ if (socket) {
     renderGrid();
   });
 
+  socket.on('bonus-choice-start', ({ category }) => {
+    showBonusChoice(category);
+    renderGrid();
+  });
+
   socket.on('reroll-bonus-start', ({ remaining }) => {
-    showRerollBonus(remaining);
+    rerollRemaining = remaining;
+    showToast(`Choisis ${remaining} cases à rejouer !`);
+    renderGrid();
+  });
+
+  socket.on('free-check-start', ({ category }) => {
+    freeCheckCategory = category;
+    showToast(`Coche une case gratis dans ${TIER_NAMES[category]}`);
+    renderGrid();
+  });
+
+  socket.on('free-check-done', ({ category, checked, occurrences, bonuses }) => {
+    freeCheckCategory = null;
+    myChecked = { ...emptyChecked(), ...(checked || {}) };
+    myOccurrences = { ...emptyOccurrences(), ...(occurrences || {}) };
+    myBonuses = { ...emptyBonuses(), ...(bonuses || {}) };
+    playFreeCheckSound();
+    showToast('Case cochée gratis !');
     renderGrid();
   });
 
@@ -309,7 +330,7 @@ if (socket) {
     myBonuses = { ...emptyBonuses(), ...(bonuses || {}) };
     rerollRemaining = remaining || 0;
     playRerollSound();
-    showToast(rerollRemaining > 0 ? `Encore ${rerollRemaining} reroll` : 'Reroll terminé');
+    showToast(rerollRemaining > 0 ? `Encore ${rerollRemaining} à rejouer` : 'Rejeu terminé !');
     renderGrid();
   });
 
@@ -319,7 +340,7 @@ if (socket) {
     myOccurrences = { ...emptyOccurrences(), ...(occurrences || {}) };
     myBonuses = { ...emptyBonuses(), ...(bonuses || {}) };
     playBonusSound();
-    showToast('Cases non cochées relancées');
+    showToast('Cases rejouées !');
     renderGrid();
   });
 
@@ -337,8 +358,7 @@ if (socket) {
   });
 
   socket.on('game-won', ({ name, category }) => {
-    playWinSound(category);
-    winDrawing.innerHTML = categoryDrawing({ id: category, label: TIER_NAMES[category] || category }, category);
+    playWinSound();
     winDrawing.textContent = categoryEmoji({ id: category, label: TIER_NAMES[category] || category });
     if (name === playerName) {
       winTitle.textContent = 'Tu as gagné !';
@@ -377,8 +397,124 @@ function enterGame() {
   renderGrid();
 }
 
+function categoryEmoji(item) {
+  const key = `${item.id || ''} ${item.label || ''}`.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+  if (key.includes('papi') && key.includes('mami')) return '👴';
+  if (key.includes('doudoune')) return '🧥';
+  if (key.includes('vieux bourgeois')) return '🎩';
+  if (key.includes('chien') && !key.includes('accouplement')) return '🐩';
+  if (key.includes('clodo')) return '🛒';
+  if (key.includes('vieille bourgeoise')) return '👒';
+  if (key.includes('mariniere') || key.includes('jean charles')) return '⚓';
+  if (key.includes('etudiant')) return '🎓';
+  if (key.includes('hippie')) return '☮️';
+  if (key.includes('mechant')) return '😤';
+  if (key.includes('touriste')) return '📸';
+  if (key.includes('poussette')) return '👶';
+  if (key.includes('velo') && key.includes('cargo')) return '📦';
+  if (key.includes('casquette')) return '🧢';
+  if (key.includes('style') || key.includes('frais')) return '😎';
+  if (key.includes('caillra')) return '🔥';
+  if (key.includes('gueule')) return '😾';
+  if (key.includes('heureux')) return '😁';
+  if (key.includes('triste')) return '😢';
+  if (key.includes('scotche') || key.includes('tel')) return '📱';
+  if (key.includes('costard')) return '👔';
+  if (key.includes('shlagos')) return '🤪';
+  if (key.includes('deliveroo')) return '🛵';
+  if (key.includes('taxi')) return '🚕';
+  if (key.includes('deux amis')) return '🤝';
+  if (key.includes('calvitie')) return '👨‍🦲';
+  if (key.includes('lesbien')) return '👩‍❤️‍👩';
+  if (key.includes('couple gay')) return '👨‍❤️‍👨';
+  if (key.includes('hipster')) return '🧔';
+  if (key.includes('velib')) return '🚲';
+  if (key.includes('zara')) return '👗';
+  if (key.includes('drague')) return '💋';
+  if (key.includes('creneau')) return '🅿️';
+  if (key.includes('rasta') && !key.includes('blanc')) return '🟢';
+  if (key.includes('trotinette') || key.includes('electrique')) return '🛴';
+  if (key.includes('jogger') || key.includes('jogg')) return '🏃';
+  if (key.includes('tricot')) return '🧶';
+  if (key.includes('mange')) return '🍔';
+  if (key.includes('rire') && !key.includes('fou')) return '😂';
+  if (key.includes('dock') || key.includes('martins')) return '👢';
+
+  if (key.includes('panama')) return '🏝️';
+  if (key.includes('bob')) return '🪣';
+  if (key.includes('instrument')) return '🎸';
+  if (key.includes('militaire')) return '🪖';
+  if (key.includes('kit main libre')) return '🎧';
+  if (key.includes('son a donf')) return '🔊';
+  if (key.includes('canne')) return '🦯';
+  if (key.includes('enfant relou')) return '🧒';
+  if (key.includes('geek')) return '🤓';
+  if (key.includes('cheveux') && key.includes('fesses')) return '💇';
+  if (key.includes('ivre')) return '🍺';
+  if (key.includes('rasta blanc')) return '🌿';
+  if (key.includes('decathlon')) return '🏋️';
+  if (key.includes('selfie')) return '🤳';
+  if (key.includes('danse') && !key.includes('tiktok')) return '💃';
+  if (key.includes('horodateur')) return '⏰';
+  if (key.includes('lit un livre')) return '📖';
+  if (key.includes('embrass')) return '💏';
+  if (key.includes('parle tout seul')) return '🗣️';
+  if (key.includes('skate')) return '🛹';
+  if (key.includes('court')) return '🦵';
+  if (key.includes('trebuche')) return '🤸';
+  if (key.includes('deguise')) return '🎭';
+  if (key.includes('nordique') || key.includes('batons')) return '🥾';
+  if (key.includes('controle') && key.includes('raciste')) return '🚨';
+  if (key.includes('faf')) return '💀';
+  if (key.includes('col roule')) return '🧣';
+  if (key.includes('embrouille') && key.includes('couple')) return '💔';
+  if (key.includes('megot')) return '🚬';
+
+  if (key.includes('religieux')) return '🙏';
+  if (key.includes('cheveux') && key.includes('multicolore')) return '🌈';
+  if (key.includes('pleure')) return '😭';
+  if (key.includes('monocycle')) return '🎪';
+  if (key.includes('controle') && key.includes('police')) return '🚓';
+  if (key.includes('bagarre')) return '🥊';
+  if (key.includes('pipi')) return '💦';
+  if (key.includes('accident')) return '💥';
+  if (key.includes('pied') && key.includes('nus')) return '🦶';
+  if (key.includes('crete') || key.includes('punk')) return '🤘';
+  if (key.includes('meuble')) return '🪑';
+  if (key.includes('tiktok')) return '📲';
+  if (key.includes('fou rire')) return '🤣';
+  if (key.includes('mariage')) return '💒';
+  if (key.includes('flyers')) return '📄';
+  if (key.includes('ballon') || key.includes('baudruche')) return '🎈';
+
+  if (key.includes('oiseau') || key.includes('chier')) return '🐦';
+  if (key.includes('vol de rue')) return '🦹';
+  if (key.includes('nudite')) return '🫣';
+  if (key.includes('mouette') || key.includes('sandwich')) return '🦅';
+  if (key.includes('accouplement')) return '🫦';
+  if (key.includes('merde')) return '💩';
+  if (key.includes('jumeaux')) return '👯';
+  if (key.includes('pipe') || key.includes('piple')) return '🪈';
+  if (key.includes('cape')) return '🦸';
+  if (key.includes('coupure') && key.includes('electricite')) return '⚡';
+  if (key.includes('enterrement') && key.includes('garcon')) return '🎉';
+
+  return '🎲';
+}
+
+function drawingPalette(category) {
+  const palettes = {
+    ordinaire: ['#b9e4ff', '#138ee8', '#ff4fa3'],
+    semi: ['#bef7a7', '#20bf63', '#ff7a1a'],
+    rare: ['#ffc2a6', '#ff412f', '#15a6ff'],
+    legendaire: ['#d7b7ff', '#802cff', '#d6ff32'],
+  };
+  return palettes[category] || palettes.ordinaire;
+}
+
 function drawingType(item) {
-  const key = `${item.id || ''} ${item.label || ''}`.toLowerCase();
+  const key = `${item.id || ''} ${item.label || ''}`.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   if (key.includes('papi') || key.includes('mami') || key.includes('vieux') || key.includes('vieille')) return 'old';
   if (key.includes('doudoune') || key.includes('costard') || key.includes('panama') || key.includes('bob') || key.includes('casquette')) return 'clothes';
   if (key.includes('chien')) return 'dog';
@@ -406,50 +542,6 @@ function drawingType(item) {
   if (key.includes('accident')) return 'crash';
   if (key.includes('impossible') || key.includes('instant') || key.includes('legendaire')) return 'legend';
   return 'weird';
-}
-
-function categoryEmoji(item) {
-  const type = drawingType(item);
-  const emojis = {
-    old: '👴',
-    clothes: '🧥',
-    dog: '🐕',
-    rough: '🍷',
-    tourist: '📸',
-    book: '📚',
-    star: '✨',
-    face: '😠',
-    legs: '🦵',
-    wheels: '🚲',
-    guitar: '🎸',
-    smoke: '💨',
-    drink: '🍺',
-    sport: '🏃',
-    dance: '💃',
-    meter: '🅿️',
-    twins: '👯',
-    speech: '🗣️',
-    mask: '🎭',
-    police: '🚓',
-    fight: '🥊',
-    bird: '🐦',
-    splash: '💦',
-    body: '🫣',
-    crash: '💥',
-    legend: '🔮',
-    weird: '🎲',
-  };
-  return emojis[type] || emojis.weird;
-}
-
-function drawingPalette(category) {
-  const palettes = {
-    ordinaire: ['#b9e4ff', '#138ee8', '#ff4fa3'],
-    semi: ['#bef7a7', '#20bf63', '#ff7a1a'],
-    rare: ['#ffc2a6', '#ff412f', '#15a6ff'],
-    legendaire: ['#d7b7ff', '#802cff', '#d6ff32'],
-  };
-  return palettes[category] || palettes.ordinaire;
 }
 
 function categoryDrawing(item, category) {
@@ -517,6 +609,10 @@ function renderGrid() {
         cell.classList.add('reroll-target');
       }
 
+      if (!checked.includes(index) && freeCheckCategory === category) {
+        cell.classList.add('freecheck-target');
+      }
+
       const emojiSpan = document.createElement('span');
       emojiSpan.className = 'emoji';
       emojiSpan.textContent = categoryEmoji(item);
@@ -565,6 +661,18 @@ function renderGrid() {
           window.setTimeout(() => { didLongPress = false; }, 0);
           return;
         }
+        if (freeCheckCategory) {
+          if (category !== freeCheckCategory) {
+            showToast(`Choisis dans ${TIER_NAMES[freeCheckCategory]}`);
+            return;
+          }
+          if (checked.includes(index)) {
+            showToast('Choisis une case non cochée');
+            return;
+          }
+          emitSocket('free-check-cell', { category, index });
+          return;
+        }
         if (rerollRemaining > 0) {
           if (checked.includes(index)) {
             showToast('Choisis une case non cochée');
@@ -587,7 +695,7 @@ function renderGrid() {
     progress.textContent = `${checked.length}/${items.length}`;
     const bonus = $(`#bonus-${category}`);
     if (bonus) {
-      bonus.textContent = rerollRemaining > 0 ? `reroll x${rerollRemaining}` : (bonuses > 0 ? `bonus x${bonuses}` : '');
+      bonus.textContent = rerollRemaining > 0 ? `rejouer x${rerollRemaining}` : (freeCheckCategory === category ? 'gratis !' : (bonuses > 0 ? `bonus x${bonuses}` : ''));
     }
 
     if (checked.length === items.length) {
@@ -690,11 +798,14 @@ btnShare.addEventListener('click', () => {
 btnNewGame.addEventListener('click', () => emitSocket('new-game'));
 btnNewGame2.addEventListener('click', () => emitSocket('new-game'));
 
-btnBonusReroll.addEventListener('click', () => {
-  if (!pendingBonusCategory) return;
+btnBonusFreecheck.addEventListener('click', () => {
   closeBonusChoice();
-  showToast(`Choisis ${rerollRemaining} cases`);
-  renderGrid();
+  emitSocket('choose-bonus', { choice: 'free-check' });
+});
+
+btnBonusReroll.addEventListener('click', () => {
+  closeBonusChoice();
+  emitSocket('choose-bonus', { choice: 'reroll' });
 });
 
 // --- CATEGORY EDITOR ---

@@ -463,6 +463,12 @@ input[type="text"]::placeholder {
   animation: bonusPulse 0.9s ease-in-out infinite;
 }
 
+.cell.freecheck-target {
+  outline: 4px dashed var(--green);
+  outline-offset: -7px;
+  animation: bonusPulse 0.9s ease-in-out infinite;
+}
+
 .cell.checked::after {
   content: "BIM";
   position: absolute;

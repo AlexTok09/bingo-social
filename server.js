@@ -407,8 +407,8 @@ io.on('connection', (socket) => {
 
     if (nextCount >= 3) {
       player.occurrences[category][index] = 1;
-      player.pendingBonus = { type: 'reroll-picks', remaining: 3, picked: [] };
-      socket.emit('reroll-bonus-start', { remaining: 3 });
+      player.pendingBonus = { type: 'bonus-choice', category };
+      socket.emit('bonus-choice-start', { category });
     } else {
       player.occurrences[category][index] = nextCount;
       socket.emit('occurrence-update', {
@@ -455,6 +455,54 @@ io.on('connection', (socket) => {
       bonuses: player.bonuses,
       remaining,
     });
+    io.to(socket.roomCode).emit('players-update', getPlayersInfo(room));
+  });
+
+  socket.on('choose-bonus', ({ choice }) => {
+    if (!socket.roomCode) return;
+    const room = rooms.get(socket.roomCode);
+    if (!room || room.winner) return;
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player || player.pendingBonus?.type !== 'bonus-choice') return;
+
+    const category = player.pendingBonus.category;
+
+    if (choice === 'free-check') {
+      player.pendingBonus = { type: 'free-check', category };
+      socket.emit('free-check-start', { category });
+    } else if (choice === 'reroll') {
+      player.pendingBonus = { type: 'reroll-picks', remaining: 3, picked: [] };
+      socket.emit('reroll-bonus-start', { remaining: 3 });
+    }
+  });
+
+  socket.on('free-check-cell', ({ category, index }) => {
+    if (!socket.roomCode) return;
+    const room = rooms.get(socket.roomCode);
+    if (!room || room.winner) return;
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player || player.pendingBonus?.type !== 'free-check') return;
+    if (category !== player.pendingBonus.category) return;
+    if (!player.grid[category] || !Number.isInteger(index)) return;
+    if (player.checked[category].includes(index)) return;
+
+    player.checked[category].push(index);
+    player.occurrences[category][index] = 1;
+    player.pendingBonus = emptyPendingBonus();
+
+    socket.emit('free-check-done', {
+      category,
+      index,
+      checked: player.checked,
+      occurrences: player.occurrences,
+      bonuses: player.bonuses,
+    });
+
+    if (player.checked[category].length === player.grid[category].length) {
+      room.winner = { id: player.id, name: player.name, category };
+      io.to(socket.roomCode).emit('game-won', room.winner);
+    }
+
     io.to(socket.roomCode).emit('players-update', getPlayersInfo(room));
   });
 
