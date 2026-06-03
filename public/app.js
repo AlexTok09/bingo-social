@@ -184,38 +184,51 @@ const CONFETTI_EMOJIS = [
 ];
 
 function launchEmojiConfetti() {
-  const count = 50;
+  const count = 60;
   const container = document.createElement('div');
-  container.style.cssText = 'position:fixed;inset:0;z-index:500;pointer-events:none;overflow:hidden';
+  container.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:none;overflow:hidden';
   document.body.appendChild(container);
 
-  for (let i = 0; i < count; i++) {
-    const particle = document.createElement('span');
-    particle.textContent = CONFETTI_EMOJIS[Math.floor(Math.random() * CONFETTI_EMOJIS.length)];
-    const x = 40 + Math.random() * 20;
-    const y = 40 + Math.random() * 20;
-    const angle = Math.random() * Math.PI * 2;
-    const dist = 60 + Math.random() * 100;
-    const tx = Math.cos(angle) * dist;
-    const ty = Math.sin(angle) * dist - 40;
-    const rot = (Math.random() - 0.5) * 720;
-    const scale = 0.6 + Math.random() * 0.8;
-    const dur = 1.2 + Math.random() * 0.8;
-    const delay = Math.random() * 0.3;
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 2;
+  const particles = [];
 
-    particle.style.cssText = `
-      position:absolute;
-      left:${x}%;top:${y}%;
-      font-size:${scale * 1.8}rem;
-      opacity:1;
-      pointer-events:none;
-      animation:emojiExplode ${dur}s ${delay}s ease-out forwards;
-      --tx:${tx}vw;--ty:${ty}vh;--rot:${rot}deg;
-    `;
-    container.appendChild(particle);
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('span');
+    el.textContent = CONFETTI_EMOJIS[Math.floor(Math.random() * CONFETTI_EMOJIS.length)];
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 4 + Math.random() * 8;
+    const size = 1.4 + Math.random() * 1.2;
+    el.style.cssText = `position:absolute;font-size:${size}rem;left:0;top:0;will-change:transform;`;
+    container.appendChild(el);
+    particles.push({
+      el,
+      x: cx,
+      y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 4,
+      rot: 0,
+      vr: (Math.random() - 0.5) * 15,
+      opacity: 1,
+    });
   }
 
-  setTimeout(() => container.remove(), 2500);
+  const start = performance.now();
+  function tick(now) {
+    const elapsed = now - start;
+    if (elapsed > 2500) { container.remove(); return; }
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.25;
+      p.rot += p.vr;
+      if (elapsed > 1200) p.opacity = Math.max(0, 1 - (elapsed - 1200) / 1300);
+      p.el.style.transform = `translate(${p.x}px,${p.y}px) rotate(${p.rot}deg)`;
+      p.el.style.opacity = p.opacity;
+    });
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
 }
 
 function showBonusFlash(message) {
