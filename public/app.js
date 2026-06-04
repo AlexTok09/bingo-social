@@ -548,8 +548,8 @@ if (socket) {
     animateFreeCheckCell(document.querySelector(`#grid-${category} [data-idx="${index}"]`));
   });
 
-  socket.on('cell-activity', ({ name, category, index, label, checked }) => {
-    if (name === playerName) return;
+  socket.on('cell-activity', ({ playerId, name, category, index, label, checked }) => {
+    if (playerId && playerId === myId) return;
     const action = checked ? 'a coché' : 'a décoché';
     const itemLabel = (label || `case ${index + 1}`).replace(/\s*\(ultra\)/gi, '');
     showActivityNotice(`${name} ${action} ${TIER_NAMES[category]} · ${itemLabel}`);

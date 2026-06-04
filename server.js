@@ -386,6 +386,7 @@ io.on('connection', (socket) => {
     }
 
     io.to(socket.roomCode).emit('cell-activity', {
+      playerId: player.id,
       name: player.name,
       category,
       index,
@@ -512,6 +513,7 @@ io.on('connection', (socket) => {
       bonuses: player.bonuses,
     });
     io.to(socket.roomCode).emit('cell-activity', {
+      playerId: player.id,
       name: player.name,
       category,
       index,
