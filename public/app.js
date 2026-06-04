@@ -368,7 +368,7 @@ function playRerollSound() {
 }
 
 function playFreeCheckSound() {
-  playSfx(tapSounds.legendaire);
+  playRerollSound();
 }
 
 function playMultipickSound() {
