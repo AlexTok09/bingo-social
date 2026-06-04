@@ -58,6 +58,7 @@ const panelBackdrop = $('#panel-backdrop');
 const playersList = $('#players-list');
 const btnClosePanel = $('#btn-close-panel');
 const winOverlay = $('#win-overlay');
+const winContent = document.querySelector('.win-content');
 const winDrawing = $('#win-drawing');
 const winTitle = $('#win-title');
 const winDetail = $('#win-detail');
@@ -114,6 +115,19 @@ function showActivityNotice(msg) {
   activityNotice.classList.add('show');
   window.clearTimeout(activityNoticeTimeout);
   activityNoticeTimeout = window.setTimeout(() => activityNotice.classList.remove('show'), 2200);
+}
+
+function restartWinBurst() {
+  [winContent, winDrawing, winTitle].forEach(el => {
+    if (!el) return;
+    el.classList.remove('win-burst');
+    void el.offsetWidth;
+    el.classList.add('win-burst');
+  });
+  window.clearTimeout(restartWinBurst.timeout);
+  restartWinBurst.timeout = window.setTimeout(() => {
+    [winContent, winDrawing, winTitle].forEach(el => el && el.classList.remove('win-burst'));
+  }, 750);
 }
 
 let bgMusic = null;
@@ -618,6 +632,7 @@ if (socket) {
       ? 'Case légendaire cochée : victoire instantanée'
       : `Grille "${TIER_NAMES[category] || category}" complétée`;
     btnNewGame.style.display = 'block';
+    restartWinBurst();
 
     const winAnims = { ordinaire: winAnimOrdinaire, semi: winAnimSemi, rare: winAnimRare, legendaire: winAnimLegendaire };
     (winAnims[category] || winAnimOrdinaire)();
@@ -634,6 +649,7 @@ if (socket) {
     btnNewGame.style.display = 'none';
     document.body.style.animation = '';
     document.body.style.transform = '';
+    [winContent, winDrawing, winTitle].forEach(el => el && el.classList.remove('win-burst'));
     const oldChaos = document.getElementById('legendaire-chaos');
     if (oldChaos) oldChaos.remove();
     renderGrid();

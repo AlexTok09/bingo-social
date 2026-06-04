@@ -40,6 +40,7 @@ body {
     linear-gradient(135deg, #fff1bd 0%, #ffd86b 45%, #ff9f37 100%);
   color: var(--ink);
   overflow-x: hidden;
+  overscroll-behavior-y: none;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -70,6 +71,7 @@ body::after {
 .screen {
   display: none;
   min-height: 100dvh;
+  min-height: 100svh;
 }
 
 .screen.active {
@@ -84,6 +86,7 @@ body::after {
 
 .home-container {
   min-height: 100dvh;
+  min-height: 100svh;
   padding: 32px 18px 28px;
   display: flex;
   flex-direction: column;
@@ -645,6 +648,10 @@ input[type="text"]::placeholder {
   animation: slam 0.28s ease;
 }
 
+.win-content.win-burst {
+  animation: slam 0.28s ease, winBurst 0.65s ease;
+}
+
 .win-tier-ordinaire { background: rgba(22, 18, 15, 0.7); }
 .win-tier-ordinaire .win-content { background: var(--ordinaire-soft); }
 
@@ -676,6 +683,14 @@ input[type="text"]::placeholder {
 }
 .win-tier-legendaire #win-title {
   animation: textGlitch 0.1s steps(2) infinite;
+}
+
+.win-drawing.win-burst {
+  animation: winBounce 0.65s ease;
+}
+
+.win-title.win-burst {
+  animation: winTitlePop 0.65s ease;
 }
 
 .bonus-choice-content {
@@ -929,6 +944,24 @@ input[type="text"]::placeholder {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
+}
+
+@keyframes winBurst {
+  0% { transform: scale(0.78) rotate(-6deg); }
+  45% { transform: scale(1.08) rotate(2deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+@keyframes winBounce {
+  0% { transform: scale(0.7) rotate(-10deg); filter: brightness(0.9); }
+  50% { transform: scale(1.18) rotate(8deg); filter: brightness(1.2); }
+  100% { transform: scale(1) rotate(0deg); filter: brightness(1); }
+}
+
+@keyframes winTitlePop {
+  0% { transform: translateY(10px) scale(0.92); opacity: 0; }
+  55% { transform: translateY(0) scale(1.08); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
 }
 
 @keyframes textGlitch {
