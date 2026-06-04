@@ -428,14 +428,30 @@ io.on('connection', (socket) => {
     removePlayerFromRoom(socket);
   });
 
-  socket.on('toggle-cell', ({ category, index }) => {
+  socket.on('toggle-cell', ({ category, index }, ack) => {
+    const reply = (payload) => {
+      if (typeof ack === 'function') ack(payload);
+    };
+
     if (!socket.roomCode) return;
     const room = rooms.get(socket.roomCode);
-    if (!room || room.winner) return;
+    if (!room) {
+      reply({ ok: false, reason: 'Salon introuvable.' });
+      return;
+    }
     const player = room.players.find(p => p.id === socket.id);
-    if (!player) return;
+    if (room.winner) {
+      if (player) syncPlayerState(socket, player);
+      reply({ ok: false, reason: 'La partie est déjà terminée.' });
+      return;
+    }
+    if (!player) {
+      reply({ ok: false, reason: 'Joueur introuvable.' });
+      return;
+    }
     if (player.pendingBonus) {
       syncPlayerState(socket, player);
+      reply({ ok: false, reason: 'Termine ton bonus avant de cocher une case.' });
       return;
     }
 
@@ -448,6 +464,7 @@ io.on('connection', (socket) => {
     const gridItems = player.grid[categoryKey];
     if (!isValidTier(categoryKey) || !Array.isArray(checkedList) || !Array.isArray(gridItems) || !Number.isInteger(indexNumber) || indexNumber < 0 || indexNumber >= gridItems.length) {
       syncPlayerState(socket, player);
+      reply({ ok: false, reason: 'Case invalide.' });
       return;
     }
 
@@ -461,6 +478,7 @@ io.on('connection', (socket) => {
     }
 
     syncPlayerState(socket, player);
+    reply({ ok: true });
 
     if (checkedList.length === gridItems.length) {
       room.winner = { id: player.id, name: player.name, category: categoryKey };

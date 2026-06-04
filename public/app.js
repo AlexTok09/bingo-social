@@ -468,12 +468,12 @@ function animateFreeCheckCell(cell) {
   }, 420);
 }
 
-function emitSocket(eventName, payload) {
+function emitSocket(eventName, payload, ack) {
   if (!socket) {
     showError('Multijoueur indisponible : il faut lancer le serveur Node/Socket.IO.');
     return false;
   }
-  socket.emit(eventName, payload);
+  socket.emit(eventName, payload, ack);
   return true;
 }
 
@@ -968,7 +968,17 @@ function buildGrid() {
         playTapSound(category, wasChecked);
         applyLocalToggle(category, index);
         renderGrid();
-        emitSocket('toggle-cell', { category, index });
+        const sent = emitSocket('toggle-cell', { category, index }, ({ ok, reason }) => {
+          if (ok) return;
+          applyLocalToggle(category, index);
+          renderGrid();
+          if (reason) showToast(reason);
+        });
+        if (!sent) {
+          applyLocalToggle(category, index);
+          renderGrid();
+          return;
+        }
         cell.classList.add('just-checked');
         setTimeout(() => cell.classList.remove('just-checked'), 250);
       });
