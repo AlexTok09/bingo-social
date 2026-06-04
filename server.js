@@ -239,6 +239,28 @@ function getPlayersInfo(room) {
   }));
 }
 
+function removePlayerFromRoom(socket) {
+  if (!socket.roomCode) return;
+  const room = rooms.get(socket.roomCode);
+  if (!room) {
+    socket.roomCode = null;
+    return;
+  }
+
+  const name = room.players.find(p => p.id === socket.id)?.name;
+  room.players = room.players.filter(p => p.id !== socket.id);
+  socket.leave(socket.roomCode);
+
+  if (room.players.length === 0) {
+    rooms.delete(socket.roomCode);
+  } else {
+    io.to(socket.roomCode).emit('players-update', getPlayersInfo(room));
+    if (name) io.to(socket.roomCode).emit('player-left', name);
+  }
+
+  socket.roomCode = null;
+}
+
 app.get('/api/admin/categories', (req, res) => {
   if (!isAdminRequest(req)) {
     res.status(401).json({ error: 'Mot de passe invalide.' });
@@ -350,6 +372,10 @@ io.on('connection', (socket) => {
     socket.emit('room-joined', { code: roomCode, grid });
     io.to(roomCode).emit('players-update', getPlayersInfo(room));
     io.to(roomCode).emit('player-joined', playerName);
+  });
+
+  socket.on('leave-room', () => {
+    removePlayerFromRoom(socket);
   });
 
   socket.on('toggle-cell', ({ category, index }) => {
@@ -554,19 +580,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    if (socket.roomCode) {
-      const room = rooms.get(socket.roomCode);
-      if (room) {
-        const name = room.players.find(p => p.id === socket.id)?.name;
-        room.players = room.players.filter(p => p.id !== socket.id);
-        if (room.players.length === 0) {
-          rooms.delete(socket.roomCode);
-        } else {
-          io.to(socket.roomCode).emit('players-update', getPlayersInfo(room));
-          if (name) io.to(socket.roomCode).emit('player-left', name);
-        }
-      }
-    }
+    removePlayerFromRoom(socket);
   });
 });
 

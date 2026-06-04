@@ -52,6 +52,7 @@ const displayCode = $('#display-code');
 const playerCount = $('#player-count');
 const btnPlayers = $('#btn-players');
 const btnShare = $('#btn-share');
+const btnBackHome = $('#btn-back-home');
 const playersPanel = $('#players-panel');
 const panelBackdrop = $('#panel-backdrop');
 const playersList = $('#players-list');
@@ -91,6 +92,19 @@ function showToast(msg) {
 function showError(msg) {
   errorMsg.textContent = msg;
   setTimeout(() => { if (errorMsg.textContent === msg) errorMsg.textContent = ''; }, 4000);
+}
+
+function resetGameState() {
+  roomCode = null;
+  myGrid = null;
+  myChecked = emptyChecked();
+  myOccurrences = emptyOccurrences();
+  myBonuses = emptyBonuses();
+  rerollRemaining = 0;
+  freeCheckCategory = null;
+  pendingBonusCategory = null;
+  closeBonusChoice();
+  closePanel();
 }
 
 let activityNoticeTimeout;
@@ -1050,6 +1064,13 @@ btnShare.addEventListener('click', () => {
     navigator.clipboard.writeText(text);
     showToast('Lien copié !');
   }
+});
+
+btnBackHome.addEventListener('click', () => {
+  if (socket) socket.emit('leave-room');
+  resetGameState();
+  showScreen(screenHome);
+  showToast('Retour au menu');
 });
 
 // --- NEW GAME ---
