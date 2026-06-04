@@ -585,7 +585,7 @@ if (socket) {
 
   socket.on('reroll-bonus-start', ({ remaining }) => {
     rerollRemaining = remaining;
-    showToast(`Choisis ${remaining} cases à rejouer !`);
+    showToast(`Choisis ${remaining} case${remaining > 1 ? 's' : ''} à rejouer !`);
     renderGrid();
   });
 

@@ -55,6 +55,10 @@ function emptyPendingBonus() {
   return null;
 }
 
+function totalCheckedCount(player) {
+  return Object.values(player.checked || {}).reduce((sum, checked) => sum + (checked?.length || 0), 0);
+}
+
 function parseEditableCategories(text) {
   const categories = emptyCategories();
   let currentTier = null;
@@ -417,6 +421,12 @@ io.on('connection', (socket) => {
     if (checkedList.length === player.grid[category].length) {
       room.winner = { id: player.id, name: player.name, category };
       io.to(socket.roomCode).emit('game-won', room.winner);
+    }
+
+    const checkedTotal = totalCheckedCount(player);
+    if (!room.winner && !player.pendingBonus && checkedTotal >= 2 && checkedTotal % 2 === 0) {
+      player.pendingBonus = { type: 'reroll-picks', remaining: 1, picked: [] };
+      socket.emit('reroll-bonus-start', { remaining: 1 });
     }
 
     io.to(socket.roomCode).emit('cell-activity', {
