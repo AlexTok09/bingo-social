@@ -578,6 +578,8 @@ io.on('connection', (socket) => {
       occurrences: player.occurrences,
       bonuses: player.bonuses,
       remaining,
+      category: categoryKey,
+      index: indexNumber,
     });
     io.to(socket.roomCode).emit('players-update', getPlayersInfo(room));
   });

@@ -1045,8 +1045,31 @@ input[type="text"]::placeholder {
   animation: pop 0.2s ease;
 }
 
+.cell.reroll-hit {
+  animation: rerollHit 0.52s ease;
+  box-shadow: 0 0 0 4px rgba(255, 122, 26, 0.8), 4px 4px 0 var(--shadow);
+}
+
 .cell.long-pressing {
   animation: longPressPop 0.26s ease;
+}
+
+@keyframes rerollHit {
+  0% {
+    transform: scale(0.98) rotate(0deg);
+    filter: brightness(1);
+  }
+  30% {
+    transform: scale(1.08) rotate(-2deg);
+    filter: brightness(1.12) saturate(1.15);
+  }
+  60% {
+    transform: scale(1.04) rotate(1deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    filter: brightness(1);
+  }
 }
 
 @media (max-width: 370px) {

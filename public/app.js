@@ -468,6 +468,18 @@ function animateFreeCheckCell(cell) {
   }, 420);
 }
 
+function animateRerollCell(cell) {
+  if (!cell) return;
+  cell.classList.remove('reroll-hit');
+  window.requestAnimationFrame(() => {
+    cell.classList.add('reroll-hit');
+  });
+  window.clearTimeout(animateRerollCell.timeout);
+  animateRerollCell.timeout = window.setTimeout(() => {
+    cell.classList.remove('reroll-hit');
+  }, 520);
+}
+
 function emitSocket(eventName, payload, ack) {
   if (!socket) {
     showError('Multijoueur indisponible : il faut lancer le serveur Node/Socket.IO.');
@@ -613,7 +625,7 @@ if (socket) {
     showActivityNotice(`${name} ${action} ${TIER_NAMES[category]} · ${itemLabel}`);
   });
 
-  socket.on('reroll-update', ({ grid, checked, occurrences, bonuses, remaining }) => {
+  socket.on('reroll-update', ({ grid, checked, occurrences, bonuses, remaining, category, index }) => {
     myGrid = grid;
     gridBuilt = false;
     myChecked = { ...emptyChecked(), ...(checked || {}) };
@@ -623,6 +635,9 @@ if (socket) {
     playRerollSound();
     showToast(rerollRemaining > 0 ? `Encore ${rerollRemaining} à rejouer` : 'Rejeu terminé !');
     renderGrid();
+    if (category !== undefined && index !== undefined) {
+      animateRerollCell(document.querySelector(`#grid-${category} [data-idx="${index}"]`));
+    }
   });
 
   socket.on('grid-rerolled', ({ grid, checked, occurrences, bonuses }) => {
