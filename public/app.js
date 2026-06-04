@@ -75,6 +75,7 @@ const activityNotice = $('#activity-notice');
 let pendingBonusCategory = null;
 let rerollRemaining = 0;
 let freeCheckCategory = null;
+let bonusRerollCount = 3;
 const btnBonusFreecheck = $('#btn-bonus-freecheck');
 
 function showScreen(screen) {
@@ -102,6 +103,7 @@ function resetGameState() {
   myOccurrences = emptyOccurrences();
   myBonuses = emptyBonuses();
   rerollRemaining = 0;
+  bonusRerollCount = 3;
   freeCheckCategory = null;
   pendingBonusCategory = null;
   closeBonusChoice();
@@ -421,6 +423,7 @@ function showBonusChoice(category) {
   showBonusFlash('Bonus !');
   bonusChoiceDrawing.textContent = '🎰';
   bonusChoiceDetail.textContent = `Catégorie : ${TIER_NAMES[category]}`;
+  btnBonusReroll.textContent = `Rejouer ${bonusRerollCount} cases`;
   bonusChoiceOverlay.classList.add('active');
 }
 
@@ -515,6 +518,7 @@ if (socket) {
     myOccurrences = emptyOccurrences();
     myBonuses = emptyBonuses();
     rerollRemaining = 0;
+    bonusRerollCount = 3;
     enterGame();
   });
 
@@ -526,6 +530,7 @@ if (socket) {
     myOccurrences = emptyOccurrences();
     myBonuses = emptyBonuses();
     rerollRemaining = 0;
+    bonusRerollCount = 3;
     enterGame();
   });
 
@@ -548,7 +553,8 @@ if (socket) {
     renderGrid();
   });
 
-  socket.on('bonus-choice-start', ({ category }) => {
+  socket.on('bonus-choice-start', ({ category, rerollCount }) => {
+    bonusRerollCount = rerollCount || 3;
     showBonusChoice(category);
     renderGrid();
   });
@@ -645,6 +651,7 @@ if (socket) {
     myOccurrences = emptyOccurrences();
     myBonuses = emptyBonuses();
     rerollRemaining = 0;
+    bonusRerollCount = 3;
     winOverlay.className = 'overlay';
     btnNewGame.style.display = 'none';
     document.body.style.animation = '';

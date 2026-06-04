@@ -117,6 +117,14 @@ const GRID_CONFIG = {
   legendaire: 1
 };
 
+const BONUS_REPEAT_THRESHOLD = {
+  semi: 2,
+};
+
+const BONUS_REROLL_COUNT = {
+  semi: 2,
+};
+
 const rooms = new Map();
 
 function isAdminRequest(req) {
@@ -439,11 +447,13 @@ io.on('connection', (socket) => {
 
     const currentCount = player.occurrences[category][index] || 1;
     const nextCount = currentCount + 1;
+    const bonusThreshold = BONUS_REPEAT_THRESHOLD[category] || 3;
+    const rerollCount = BONUS_REROLL_COUNT[category] || 3;
 
-    if (nextCount >= 3) {
+    if (nextCount >= bonusThreshold) {
       player.occurrences[category][index] = 1;
-      player.pendingBonus = { type: 'bonus-choice', category };
-      socket.emit('bonus-choice-start', { category });
+      player.pendingBonus = { type: 'bonus-choice', category, rerollCount };
+      socket.emit('bonus-choice-start', { category, rerollCount });
     } else {
       player.occurrences[category][index] = nextCount;
       socket.emit('occurrence-update', {
@@ -501,13 +511,14 @@ io.on('connection', (socket) => {
     if (!player || player.pendingBonus?.type !== 'bonus-choice') return;
 
     const category = player.pendingBonus.category;
+    const rerollCount = player.pendingBonus.rerollCount || 3;
 
     if (choice === 'free-check') {
       player.pendingBonus = { type: 'free-check', category };
       socket.emit('free-check-start', { category });
     } else if (choice === 'reroll') {
-      player.pendingBonus = { type: 'reroll-picks', remaining: 3, picked: [] };
-      socket.emit('reroll-bonus-start', { remaining: 3 });
+      player.pendingBonus = { type: 'reroll-picks', remaining: rerollCount, picked: [] };
+      socket.emit('reroll-bonus-start', { remaining: rerollCount });
     }
   });
 
