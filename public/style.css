@@ -40,7 +40,8 @@ body {
     linear-gradient(135deg, #fff1bd 0%, #ffd86b 45%, #ff9f37 100%);
   color: var(--ink);
   overflow-x: hidden;
-  overscroll-behavior-y: none;
+  overflow-y: auto;
+  overscroll-behavior-y: auto;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -1177,6 +1178,13 @@ input[type="text"]::placeholder {
 /* ADMIN */
 .admin-body {
   min-height: 100dvh;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
 }
 
 .admin-shell {
