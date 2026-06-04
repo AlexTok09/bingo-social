@@ -59,6 +59,40 @@ function totalCheckedCount(player) {
   return Object.values(player.checked || {}).reduce((sum, checked) => sum + (checked?.length || 0), 0);
 }
 
+function isValidTier(tier) {
+  return Object.prototype.hasOwnProperty.call(GRID_CONFIG, tier);
+}
+
+function snapshotPlayerState(player) {
+  return {
+    checked: player.checked,
+    occurrences: player.occurrences,
+    bonuses: player.bonuses,
+  };
+}
+
+function syncPlayerState(socket, player) {
+  socket.emit('grid-update', snapshotPlayerState(player));
+}
+
+function validateCategoriesConfig(categories) {
+  if (!categories || typeof categories !== 'object') {
+    return 'Catégories invalides.';
+  }
+
+  for (const [tier, count] of Object.entries(GRID_CONFIG)) {
+    const items = categories[tier];
+    if (!Array.isArray(items) || items.length < count) {
+      return `La catégorie ${tier} doit contenir au moins ${count} éléments.`;
+    }
+    if (items.some(item => !item || typeof item.label !== 'string' || !item.label.trim())) {
+      return `La catégorie ${tier} contient un élément invalide.`;
+    }
+  }
+
+  return null;
+}
+
 function parseEditableCategories(text) {
   const categories = emptyCategories();
   let currentTier = null;
@@ -94,7 +128,10 @@ function loadCategories() {
   try {
     if (fs.existsSync(CATEGORIES_FILE)) {
       const data = fs.readFileSync(CATEGORIES_FILE, 'utf-8');
-      return normalizeCategories({ ...defaults, ...JSON.parse(data) });
+      const loaded = normalizeCategories({ ...defaults, ...JSON.parse(data) });
+      if (!validateCategoriesConfig(loaded)) {
+        return loaded;
+      }
     }
   } catch (e) {}
   return normalizeCategories(defaults);
@@ -289,8 +326,9 @@ app.put('/api/admin/categories', (req, res) => {
 
   const categories = req.body?.categories;
   const resetRooms = req.body?.resetRooms !== false;
-  if (!categories || !categories.ordinaire || !categories.semi || !categories.rare || !categories.legendaire) {
-    res.status(400).json({ error: 'Catégories invalides.' });
+  const categoriesError = validateCategoriesConfig(categories);
+  if (categoriesError) {
+    res.status(400).json({ error: categoriesError });
     return;
   }
 
@@ -396,30 +434,36 @@ io.on('connection', (socket) => {
     if (!room || room.winner) return;
     const player = room.players.find(p => p.id === socket.id);
     if (!player) return;
-    if (player.pendingBonus) return;
+    if (player.pendingBonus) {
+      syncPlayerState(socket, player);
+      return;
+    }
 
     player.occurrences ||= emptyOccurrences();
     player.bonuses ||= emptyBonuses();
 
-    const checkedList = player.checked[category];
-    if (!checkedList || !player.grid[category]) return;
-    const idx = checkedList.indexOf(index);
-    if (idx === -1) {
-      checkedList.push(index);
-      player.occurrences[category][index] = 1;
-    } else {
-      checkedList.splice(idx, 1);
-      delete player.occurrences[category][index];
+    const categoryKey = typeof category === 'string' ? category : '';
+    const indexNumber = Number(index);
+    const checkedList = player.checked[categoryKey];
+    const gridItems = player.grid[categoryKey];
+    if (!isValidTier(categoryKey) || !Array.isArray(checkedList) || !Array.isArray(gridItems) || !Number.isInteger(indexNumber) || indexNumber < 0 || indexNumber >= gridItems.length) {
+      syncPlayerState(socket, player);
+      return;
     }
 
-    socket.emit('grid-update', {
-      checked: player.checked,
-      occurrences: player.occurrences,
-      bonuses: player.bonuses,
-    });
+    const idx = checkedList.indexOf(indexNumber);
+    if (idx === -1) {
+      checkedList.push(indexNumber);
+      player.occurrences[categoryKey][indexNumber] = 1;
+    } else {
+      checkedList.splice(idx, 1);
+      delete player.occurrences[categoryKey][indexNumber];
+    }
 
-    if (checkedList.length === player.grid[category].length) {
-      room.winner = { id: player.id, name: player.name, category };
+    syncPlayerState(socket, player);
+
+    if (checkedList.length === gridItems.length) {
+      room.winner = { id: player.id, name: player.name, category: categoryKey };
       io.to(socket.roomCode).emit('game-won', room.winner);
     }
 
@@ -432,9 +476,9 @@ io.on('connection', (socket) => {
     io.to(socket.roomCode).emit('cell-activity', {
       playerId: player.id,
       name: player.name,
-      category,
-      index,
-      label: player.grid[category][index]?.label || '',
+      category: categoryKey,
+      index: indexNumber,
+      label: gridItems[indexNumber]?.label || '',
       checked: idx === -1,
     });
 
@@ -452,23 +496,27 @@ io.on('connection', (socket) => {
     player.occurrences ||= emptyOccurrences();
     player.bonuses ||= emptyBonuses();
 
-    const checkedList = player.checked[category];
-    if (!checkedList || !player.grid[category] || !checkedList.includes(index)) return;
+    const categoryKey = typeof category === 'string' ? category : '';
+    const indexNumber = Number(index);
+    const checkedList = player.checked[categoryKey];
+    const gridItems = player.grid[categoryKey];
+    if (!isValidTier(categoryKey) || !Array.isArray(checkedList) || !Array.isArray(gridItems) || !Number.isInteger(indexNumber) || indexNumber < 0 || indexNumber >= gridItems.length) return;
+    if (!checkedList.includes(indexNumber)) return;
 
-    const currentCount = player.occurrences[category][index] || 1;
+    const currentCount = player.occurrences[categoryKey][indexNumber] || 1;
     const nextCount = currentCount + 1;
-    const bonusThreshold = BONUS_REPEAT_THRESHOLD[category] || 3;
-    const rerollCount = BONUS_REROLL_COUNT[category] || 3;
+    const bonusThreshold = BONUS_REPEAT_THRESHOLD[categoryKey] || 3;
+    const rerollCount = BONUS_REROLL_COUNT[categoryKey] || 3;
 
     if (nextCount >= bonusThreshold) {
-      player.occurrences[category][index] = 1;
-      player.pendingBonus = { type: 'bonus-choice', category, rerollCount };
-      socket.emit('bonus-choice-start', { category, rerollCount });
+      player.occurrences[categoryKey][indexNumber] = 1;
+      player.pendingBonus = { type: 'bonus-choice', category: categoryKey, rerollCount };
+      socket.emit('bonus-choice-start', { category: categoryKey, rerollCount });
     } else {
-      player.occurrences[category][index] = nextCount;
+      player.occurrences[categoryKey][indexNumber] = nextCount;
       socket.emit('occurrence-update', {
-        category,
-        index,
+        category: categoryKey,
+        index: indexNumber,
         count: nextCount,
         occurrences: player.occurrences,
         bonuses: player.bonuses,
@@ -488,14 +536,17 @@ io.on('connection', (socket) => {
     if (!room || room.winner) return;
     const player = room.players.find(p => p.id === socket.id);
     if (!player || player.pendingBonus?.type !== 'reroll-picks') return;
-    if (!player.grid[category] || !Number.isInteger(index)) return;
-    const pickKey = `${category}:${index}`;
+    const categoryKey = typeof category === 'string' ? category : '';
+    const indexNumber = Number(index);
+    const gridItems = player.grid[categoryKey];
+    if (!isValidTier(categoryKey) || !Array.isArray(gridItems) || !Number.isInteger(indexNumber) || indexNumber < 0 || indexNumber >= gridItems.length) return;
+    const pickKey = `${categoryKey}:${indexNumber}`;
     if (player.pendingBonus.picked.includes(pickKey)) return;
 
     player.occurrences ||= emptyOccurrences();
     player.bonuses ||= emptyBonuses();
 
-    if (!rerollOneCell(player, category, index)) return;
+    if (!rerollOneCell(player, categoryKey, indexNumber)) return;
     player.pendingBonus.picked.push(pickKey);
     player.pendingBonus.remaining -= 1;
     const remaining = player.pendingBonus.remaining;
@@ -538,18 +589,19 @@ io.on('connection', (socket) => {
     if (!room || room.winner) return;
     const player = room.players.find(p => p.id === socket.id);
     if (!player || player.pendingBonus?.type !== 'free-check') return;
-    index = Number(index);
-    if (category !== player.pendingBonus.category) return;
-    if (!player.grid[category] || !Number.isInteger(index)) return;
-    if (player.checked[category].includes(index)) return;
+    const categoryKey = typeof category === 'string' ? category : '';
+    const indexNumber = Number(index);
+    if (categoryKey !== player.pendingBonus.category) return;
+    if (!isValidTier(categoryKey) || !Array.isArray(player.grid[categoryKey]) || !Number.isInteger(indexNumber) || indexNumber < 0 || indexNumber >= player.grid[categoryKey].length) return;
+    if (player.checked[categoryKey].includes(indexNumber)) return;
 
-    player.checked[category].push(index);
-    player.occurrences[category][index] = 1;
+    player.checked[categoryKey].push(indexNumber);
+    player.occurrences[categoryKey][indexNumber] = 1;
     player.pendingBonus = emptyPendingBonus();
 
     socket.emit('free-check-done', {
-      category,
-      index,
+      category: categoryKey,
+      index: indexNumber,
       checked: player.checked,
       occurrences: player.occurrences,
       bonuses: player.bonuses,
@@ -562,14 +614,14 @@ io.on('connection', (socket) => {
     io.to(socket.roomCode).emit('cell-activity', {
       playerId: player.id,
       name: player.name,
-      category,
-      index,
-      label: player.grid[category][index]?.label || '',
+      category: categoryKey,
+      index: indexNumber,
+      label: player.grid[categoryKey][indexNumber]?.label || '',
       checked: true,
     });
 
-    if (player.checked[category].length === player.grid[category].length) {
-      room.winner = { id: player.id, name: player.name, category };
+    if (player.checked[categoryKey].length === player.grid[categoryKey].length) {
+      room.winner = { id: player.id, name: player.name, category: categoryKey };
       io.to(socket.roomCode).emit('game-won', room.winner);
     }
 
