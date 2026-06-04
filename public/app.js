@@ -119,6 +119,30 @@ function showActivityNotice(msg) {
   activityNoticeTimeout = window.setTimeout(() => activityNotice.classList.remove('show'), 2200);
 }
 
+function applyLocalToggle(category, index) {
+  const checked = myChecked[category] || [];
+  const wasChecked = checked.includes(index);
+
+  myChecked = {
+    ...myChecked,
+    [category]: wasChecked ? checked.filter(i => i !== index) : [...checked, index],
+  };
+
+  const nextOccurrences = { ...(myOccurrences[category] || {}) };
+  if (wasChecked) {
+    delete nextOccurrences[index];
+  } else {
+    nextOccurrences[index] = 1;
+  }
+
+  myOccurrences = {
+    ...myOccurrences,
+    [category]: nextOccurrences,
+  };
+
+  return wasChecked;
+}
+
 function restartWinBurst() {
   [winContent, winDrawing, winTitle].forEach(el => {
     if (!el) return;
@@ -942,6 +966,8 @@ function buildGrid() {
         }
         const wasChecked = checked.includes(index);
         playTapSound(category, wasChecked);
+        applyLocalToggle(category, index);
+        renderGrid();
         emitSocket('toggle-cell', { category, index });
         cell.classList.add('just-checked');
         setTimeout(() => cell.classList.remove('just-checked'), 250);
