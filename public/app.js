@@ -36,7 +36,7 @@ function emptyBonuses() {
   return TIERS.reduce((acc, tier) => {
     acc[tier] = 0;
     return acc;
-  }, {});
+  }, { joker: 0 });
 }
 
 const screenHome = $('#screen-home');
@@ -52,6 +52,7 @@ const displayCode = $('#display-code');
 const playerCount = $('#player-count');
 const btnPlayers = $('#btn-players');
 const btnShare = $('#btn-share');
+const btnJoker = $('#btn-joker');
 const btnBackHome = $('#btn-back-home');
 const playersPanel = $('#players-panel');
 const panelBackdrop = $('#panel-backdrop');
@@ -71,6 +72,7 @@ const bonusChoiceDrawing = $('#bonus-choice-drawing');
 const bonusChoiceDetail = $('#bonus-choice-detail');
 const btnBonusReroll = $('#btn-bonus-reroll');
 const activityNotice = $('#activity-notice');
+const jokerCountEl = $('#joker-count');
 
 let pendingBonusCategory = null;
 let rerollRemaining = 0;
@@ -108,6 +110,7 @@ function resetGameState() {
   pendingBonusCategory = null;
   closeBonusChoice();
   closePanel();
+  updateJokerSlot();
 }
 
 let activityNoticeTimeout;
@@ -141,6 +144,16 @@ function applyLocalToggle(category, index) {
   };
 
   return wasChecked;
+}
+
+function updateJokerSlot() {
+  if (!btnJoker || !jokerCountEl) return;
+  const count = myBonuses.joker || 0;
+  jokerCountEl.textContent = count;
+  btnJoker.classList.toggle('has-bonus', count > 0);
+  btnJoker.disabled = count <= 0;
+  btnJoker.title = count > 0 ? `Joker disponible x${count}` : 'Aucun joker disponible';
+  btnJoker.setAttribute('aria-label', count > 0 ? `Joker disponible x${count}` : 'Aucun joker disponible');
 }
 
 function restartWinBurst() {
@@ -553,6 +566,7 @@ if (socket) {
     myChecked = emptyChecked();
     myOccurrences = emptyOccurrences();
     myBonuses = emptyBonuses();
+    updateJokerSlot();
     rerollRemaining = 0;
     bonusRerollCount = 3;
     enterGame();
@@ -565,6 +579,7 @@ if (socket) {
     myChecked = emptyChecked();
     myOccurrences = emptyOccurrences();
     myBonuses = emptyBonuses();
+    updateJokerSlot();
     rerollRemaining = 0;
     bonusRerollCount = 3;
     enterGame();
@@ -579,12 +594,14 @@ if (socket) {
     myChecked = { ...emptyChecked(), ...state.checked };
     myOccurrences = { ...emptyOccurrences(), ...(state.occurrences || {}) };
     myBonuses = { ...emptyBonuses(), ...(state.bonuses || {}) };
+    updateJokerSlot();
     renderGrid();
   });
 
   socket.on('occurrence-update', ({ category, count, occurrences, bonuses }) => {
     myOccurrences = { ...emptyOccurrences(), ...(occurrences || myOccurrences) };
     myBonuses = { ...emptyBonuses(), ...(bonuses || myBonuses) };
+    updateJokerSlot();
     showToast(`${TIER_NAMES[category]} x${count}`);
     renderGrid();
   });
@@ -612,10 +629,25 @@ if (socket) {
     myChecked = { ...emptyChecked(), ...(checked || {}) };
     myOccurrences = { ...emptyOccurrences(), ...(occurrences || {}) };
     myBonuses = { ...emptyBonuses(), ...(bonuses || {}) };
+    updateJokerSlot();
     playFreeCheckSound();
     showToast('Case cochée gratis !');
     renderGrid();
     animateFreeCheckCell(document.querySelector(`#grid-${category} [data-idx="${index}"]`));
+  });
+
+  socket.on('joker-earned', ({ count }) => {
+    myBonuses = { ...myBonuses, joker: count };
+    updateJokerSlot();
+    playBonusSound();
+    showToast(count > 1 ? `Joker gagné x${count} !` : 'Joker gagné !');
+    if (btnJoker) {
+      btnJoker.classList.remove('joker-pop');
+      void btnJoker.offsetWidth;
+      btnJoker.classList.add('joker-pop');
+      window.clearTimeout(updateJokerSlot.timeout);
+      updateJokerSlot.timeout = window.setTimeout(() => btnJoker.classList.remove('joker-pop'), 600);
+    }
   });
 
   socket.on('cell-activity', ({ playerId, name, category, index, label, checked }) => {
@@ -631,6 +663,7 @@ if (socket) {
     myChecked = { ...emptyChecked(), ...(checked || {}) };
     myOccurrences = { ...emptyOccurrences(), ...(occurrences || {}) };
     myBonuses = { ...emptyBonuses(), ...(bonuses || {}) };
+    updateJokerSlot();
     rerollRemaining = remaining || 0;
     playRerollSound();
     showToast(rerollRemaining > 0 ? `Encore ${rerollRemaining} à rejouer` : 'Rejeu terminé !');
@@ -646,6 +679,7 @@ if (socket) {
     myChecked = { ...emptyChecked(), ...(checked || {}) };
     myOccurrences = { ...emptyOccurrences(), ...(occurrences || {}) };
     myBonuses = { ...emptyBonuses(), ...(bonuses || {}) };
+    updateJokerSlot();
     playBonusSound();
     showToast('Cases rejouées !');
     renderGrid();
@@ -689,6 +723,7 @@ if (socket) {
     myChecked = emptyChecked();
     myOccurrences = emptyOccurrences();
     myBonuses = emptyBonuses();
+    updateJokerSlot();
     rerollRemaining = 0;
     bonusRerollCount = 3;
     winOverlay.className = 'overlay';
@@ -712,6 +747,7 @@ if (socket) {
 function enterGame() {
   displayCode.textContent = roomCode;
   showScreen(screenGame);
+  updateJokerSlot();
   renderGrid();
 }
 
@@ -1051,6 +1087,8 @@ function renderGrid() {
       section.classList.remove('complete');
     }
   });
+
+  updateJokerSlot();
 }
 
 function renderPlayersList(players) {
@@ -1138,6 +1176,14 @@ btnShare.addEventListener('click', () => {
     navigator.clipboard.writeText(text);
     showToast('Lien copié !');
   }
+});
+
+btnJoker.addEventListener('click', () => {
+  if ((myBonuses.joker || 0) <= 0) {
+    showToast('Pas de joker disponible');
+    return;
+  }
+  emitSocket('use-joker');
 });
 
 btnBackHome.addEventListener('click', () => {

@@ -48,7 +48,7 @@ function emptyOccurrences() {
 }
 
 function emptyBonuses() {
-  return { ordinaire: 0, semi: 0, rare: 0, legendaire: 0 };
+  return { ordinaire: 0, semi: 0, rare: 0, legendaire: 0, joker: 0 };
 }
 
 function emptyPendingBonus() {
@@ -487,8 +487,8 @@ io.on('connection', (socket) => {
 
     const checkedTotal = totalCheckedCount(player);
     if (!room.winner && !player.pendingBonus && checkedTotal >= 2 && checkedTotal % 2 === 0) {
-      player.pendingBonus = { type: 'reroll-picks', remaining: 1, picked: [] };
-      socket.emit('reroll-bonus-start', { remaining: 1 });
+      player.bonuses.joker = (player.bonuses.joker || 0) + 1;
+      socket.emit('joker-earned', { count: player.bonuses.joker });
     }
 
     io.to(socket.roomCode).emit('cell-activity', {
@@ -582,6 +582,26 @@ io.on('connection', (socket) => {
       index: indexNumber,
     });
     io.to(socket.roomCode).emit('players-update', getPlayersInfo(room));
+  });
+
+  socket.on('use-joker', () => {
+    if (!socket.roomCode) return;
+    const room = rooms.get(socket.roomCode);
+    if (!room || room.winner) return;
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player || player.pendingBonus) return;
+
+    player.bonuses ||= emptyBonuses();
+    if ((player.bonuses.joker || 0) <= 0) return;
+
+    player.bonuses.joker -= 1;
+    player.pendingBonus = { type: 'reroll-picks', remaining: 1, picked: [], source: 'joker' };
+    socket.emit('reroll-bonus-start', { remaining: 1 });
+    socket.emit('grid-update', {
+      checked: player.checked,
+      occurrences: player.occurrences,
+      bonuses: player.bonuses,
+    });
   });
 
   socket.on('choose-bonus', ({ choice }) => {
