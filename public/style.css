@@ -1075,8 +1075,37 @@ input[type="text"]::placeholder {
 }
 
 .cell.reroll-hit {
-  animation: rerollHit 0.52s ease;
+  animation: rerollHit 0.58s ease;
   box-shadow: 0 0 0 4px rgba(255, 122, 26, 0.8), 4px 4px 0 var(--shadow);
+}
+
+.cell.reroll-hit::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  pointer-events: none;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 28% 58%, rgba(255, 255, 255, 0.96) 0 16%, transparent 17%),
+    radial-gradient(circle at 47% 38%, rgba(255, 255, 255, 0.98) 0 20%, transparent 21%),
+    radial-gradient(circle at 69% 58%, rgba(255, 255, 255, 0.96) 0 16%, transparent 17%),
+    radial-gradient(circle at 50% 72%, rgba(255, 255, 255, 0.92) 0 20%, transparent 21%);
+  filter: blur(1px);
+  opacity: 0;
+  animation: rerollCloud 0.58s ease;
+}
+
+.cell.reroll-hit::after {
+  content: "✨";
+  position: absolute;
+  top: -14px;
+  right: -2px;
+  pointer-events: none;
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0;
+  transform: scale(0.4) rotate(-10deg);
+  animation: rerollSpark 0.58s ease;
 }
 
 .cell.long-pressing {
@@ -1098,6 +1127,42 @@ input[type="text"]::placeholder {
   100% {
     transform: scale(1) rotate(0deg);
     filter: brightness(1);
+  }
+}
+
+@keyframes rerollCloud {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) translateY(8px);
+  }
+  28% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  70% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.12) translateY(-4px);
+  }
+}
+
+@keyframes rerollSpark {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) rotate(-10deg);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.1) rotate(8deg);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.2) rotate(18deg);
   }
 }
 
