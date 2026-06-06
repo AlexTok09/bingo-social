@@ -291,7 +291,7 @@ const SFX_VOLUME = 0.8;
 const sfxCache = {};
 const SFX_FILES = [
   '/ordinaire.mp3', '/semi-ordinaire.mp3', '/rare.mp3', '/legendaire.mp3',
-  '/bonus.mp3', '/jokersound.mp3', '/multipick.mp3', '/bingo.wav', '/socioloGenerique.wav',
+  '/bonus.mp3', '/bonusSound.mp3', '/jokersound.mp3', '/multipick.mp3', '/bingo.wav', '/socioloGenerique.wav',
   '/win-ordinaire.mp3', '/win-semi.mp3', '/win-rare.mp3', '/win-legendaire.mp3',
 ];
 
@@ -451,6 +451,10 @@ function playBonusSound() {
   playSfx('/bonus.mp3');
 }
 
+function playBonusChoiceSound() {
+  playSfx('/bonusSound.mp3');
+}
+
 function playJokerSound() {
   playSfx('/jokersound.mp3');
 }
@@ -534,7 +538,7 @@ function showBonusFlash(message) {
 
 function showBonusChoice(category) {
   pendingBonusCategory = category;
-  playBonusSound();
+  playBonusChoiceSound();
   launchEmojiConfetti();
   showBonusFlash('Bonus !');
   bonusChoiceDrawing.textContent = '🎰';
