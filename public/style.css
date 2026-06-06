@@ -79,8 +79,7 @@ body::after {
   display: flex;
 }
 
-.home-container,
-.editor-container {
+.home-container {
   width: min(100%, 520px);
   margin: 0 auto;
 }
@@ -246,14 +245,11 @@ input[type="text"]::placeholder {
   border: 0;
 }
 
-#screen-game,
-#screen-editor {
+#screen-game {
   flex-direction: column;
 }
 
-.game-header,
-.editor-top-bar,
-.editor-footer {
+.game-header {
   position: sticky;
   z-index: 20;
   background: var(--paper);
@@ -560,8 +556,7 @@ input[type="text"]::placeholder {
   border-bottom: 4px solid var(--ink);
 }
 
-.panel-header h3,
-.editor-top-bar h2 {
+.panel-header h3 {
   font: 900 1.25rem var(--font);
   text-transform: uppercase;
 }
@@ -575,8 +570,7 @@ input[type="text"]::placeholder {
   color: #fff;
 }
 
-.player-card,
-.editor-item {
+.player-card {
   margin-bottom: 9px;
   padding: 10px;
   border: 3px solid var(--ink);
@@ -832,92 +826,6 @@ input[type="text"]::placeholder {
   animation: bonusSlam 1.45s ease forwards;
 }
 
-.editor-container {
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-}
-
-.editor-top-bar {
-  top: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-}
-
-.btn-reset {
-  background: var(--rare-soft);
-  color: var(--ink);
-}
-
-.editor-sections {
-  flex: 1;
-  padding: 14px 10px 22px;
-}
-
-.editor-section {
-  margin-bottom: 18px;
-}
-
-.editor-list {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  margin-bottom: 8px;
-}
-
-.editor-item {
-  display: grid;
-  grid-template-columns: 64px 1fr 42px;
-  align-items: center;
-  gap: 8px;
-}
-
-.editor-item input[type="text"] {
-  min-height: 40px;
-  margin: 0;
-  box-shadow: none;
-  border-width: 2px;
-}
-
-.edit-drawing-preview {
-  width: 54px;
-  height: 54px;
-  padding: 3px;
-  border: 2px solid var(--ink);
-  border-radius: 7px;
-  background: #fff9dd;
-}
-
-.editor-item .edit-label {
-  font-size: 0.92rem;
-}
-
-.btn-delete-item {
-  width: 42px;
-  height: 40px;
-  border: 3px solid var(--ink);
-  border-radius: 7px;
-  background: var(--red);
-  color: #fff;
-  cursor: pointer;
-  font: 900 1.2rem var(--font);
-  box-shadow: 2px 2px 0 var(--shadow);
-}
-
-.btn-add {
-  border-style: dashed;
-  background: #fff9dd;
-}
-
-.editor-footer {
-  bottom: 0;
-  padding: 12px;
-  border-top: 4px solid var(--ink);
-  border-bottom: 0;
-}
 
 @keyframes slam {
   from { opacity: 0; transform: scale(0.85) rotate(-3deg); }

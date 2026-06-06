@@ -187,6 +187,24 @@ const RECONNECT_GRACE_MS = 15 * 60 * 1000;
 
 const rooms = new Map();
 
+const RATE_LIMIT_WINDOW_MS = 2000;
+const RATE_LIMIT_MAX = 15;
+
+function checkRateLimit(socket) {
+  const now = Date.now();
+  if (!socket._rlWindow || now - socket._rlWindow > RATE_LIMIT_WINDOW_MS) {
+    socket._rlWindow = now;
+    socket._rlCount = 1;
+    return true;
+  }
+  socket._rlCount += 1;
+  if (socket._rlCount > RATE_LIMIT_MAX) {
+    socket.emit('error-msg', 'Trop de requêtes, ralentis.');
+    return false;
+  }
+  return true;
+}
+
 function loadCategories() {
   const defaults = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
   try {
@@ -419,6 +437,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('create-room', (payload) => {
+    if (!checkRateLimit(socket)) return;
     const playerName = typeof payload === 'string' ? payload : payload?.playerName;
     const clientId = typeof payload === 'object' && payload ? payload.clientId : null;
     const normalizedName = typeof playerName === 'string' ? playerName.trim() : '';
@@ -452,6 +471,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('join-room', (payload) => {
+    if (!checkRateLimit(socket)) return;
     const code = payload?.code;
     const playerName = payload?.playerName;
     const clientId = payload?.clientId || null;
@@ -529,6 +549,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('toggle-cell', (payload = {}, ack) => {
+    if (!checkRateLimit(socket)) return;
     const { category, index } = payload;
     const reply = (payload) => {
       if (typeof ack === 'function') ack(payload);
@@ -605,6 +626,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('repeat-cell', (payload = {}) => {
+    if (!checkRateLimit(socket)) return;
     const { category, index } = payload;
     if (!socket.roomCode) return;
     const room = rooms.get(socket.roomCode);
@@ -651,6 +673,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('reroll-cell', (payload = {}) => {
+    if (!checkRateLimit(socket)) return;
     const { category, index } = payload;
     if (!socket.roomCode) return;
     const room = rooms.get(socket.roomCode);
@@ -688,6 +711,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('use-joker', () => {
+    if (!checkRateLimit(socket)) return;
     if (!socket.roomCode) return;
     const room = rooms.get(socket.roomCode);
     if (!room || room.winner) return;
@@ -708,6 +732,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('choose-bonus', (payload = {}) => {
+    if (!checkRateLimit(socket)) return;
     const { choice } = payload;
     if (!socket.roomCode) return;
     const room = rooms.get(socket.roomCode);
@@ -728,6 +753,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('free-check-cell', (payload = {}) => {
+    if (!checkRateLimit(socket)) return;
     const { category, index } = payload;
     if (!socket.roomCode) return;
     const room = rooms.get(socket.roomCode);
@@ -774,6 +800,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('new-game', () => {
+    if (!checkRateLimit(socket)) return;
     if (!socket.roomCode) return;
     const room = rooms.get(socket.roomCode);
     if (!room) return;

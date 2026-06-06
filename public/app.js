@@ -248,7 +248,7 @@ function restartWinBurst() {
 let bgMusic = null;
 function startBgMusic() {
   if (bgMusic) return;
-  bgMusic = new Audio('/sociolobingo.wav');
+  bgMusic = new Audio('/sociolobingo.mp3');
   bgMusic.loop = false;
   bgMusic.volume = 0.8;
   bgMusic.play().catch(() => {});
@@ -291,7 +291,7 @@ const SFX_VOLUME = 0.8;
 const sfxCache = {};
 const SFX_FILES = [
   '/ordinaire.mp3', '/semi-ordinaire.mp3', '/rare.mp3', '/legendaire.mp3',
-  '/bonus.mp3', '/bonusSound.mp3', '/jokersound.mp3', '/multipick.mp3', '/bingo.wav', '/sociolobingo.wav',
+  '/bonus.mp3', '/bonusSound.mp3', '/jokersound.mp3', '/multipick.mp3', '/bingo.mp3', '/sociolobingo.mp3',
   '/win-ordinaire.mp3', '/win-semi.mp3', '/win-rare.mp3', '/win-legendaire.mp3',
 ];
 
@@ -324,7 +324,7 @@ function playTapSound(category, wasChecked) {
 }
 
 function playWinSound() {
-  playSfx('/bingo.wav');
+  playSfx('/bingo.mp3');
 }
 
 function playWinCasinoSound(category) {
@@ -1346,117 +1346,6 @@ btnBonusReroll.addEventListener('click', () => {
   emitSocket('choose-bonus', { choice: 'reroll' });
 });
 
-// --- CATEGORY EDITOR ---
-
-const screenEditor = $('#screen-editor');
-const btnEditorBack = $('#btn-editor-back');
-const btnEditorReset = $('#btn-editor-reset');
-const btnSaveCats = $('#btn-save-cats');
-
-let editCategories = null;
-
 btnEditCats.addEventListener('click', () => {
   window.location.href = '/admin';
 });
-
-if (socket) {
-  socket.on('categories-data', (categories) => {
-    editCategories = { ...TIERS.reduce((acc, tier) => ({ ...acc, [tier]: [] }), {}), ...JSON.parse(JSON.stringify(categories)) };
-    renderEditor();
-    showScreen(screenEditor);
-  });
-}
-
-btnEditorBack.addEventListener('click', () => {
-  showScreen(screenHome);
-});
-
-btnEditorReset.addEventListener('click', () => {
-  if (confirm('Remettre toutes les catégories par défaut ?')) {
-    emitSocket('reset-categories');
-  }
-});
-
-btnSaveCats.addEventListener('click', () => {
-  collectEditorData();
-  emitSocket('save-categories', editCategories);
-});
-
-if (socket) {
-  socket.on('categories-saved', () => {
-    showToast('Catégories sauvegardées !');
-    showScreen(screenHome);
-  });
-}
-
-function renderEditor() {
-  TIERS.forEach(tier => {
-    const list = $(`#editor-list-${tier}`);
-    const count = $(`#count-${tier}`);
-    const items = editCategories[tier] || [];
-    if (!list || !count) return;
-
-    count.textContent = `${items.length}`;
-    list.innerHTML = '';
-
-    items.forEach((item, index) => {
-      const row = document.createElement('div');
-      row.className = 'editor-item';
-
-      const preview = document.createElement('div');
-      preview.className = 'edit-drawing-preview';
-      preview.innerHTML = categoryDrawing(item, tier);
-
-      const inputLabel = document.createElement('input');
-      inputLabel.type = 'text';
-      inputLabel.className = 'edit-label';
-      inputLabel.value = item.label;
-      inputLabel.placeholder = 'Nom de la catégorie';
-      inputLabel.setAttribute('data-tier', tier);
-      inputLabel.setAttribute('data-index', index);
-      inputLabel.setAttribute('data-field', 'label');
-
-      const btnDel = document.createElement('button');
-      btnDel.className = 'btn-delete-item';
-      btnDel.textContent = '×';
-      btnDel.addEventListener('click', () => {
-        editCategories[tier].splice(index, 1);
-        renderEditor();
-      });
-
-      row.appendChild(preview);
-      row.appendChild(inputLabel);
-      row.appendChild(btnDel);
-      list.appendChild(row);
-    });
-  });
-
-  $$('.btn-add').forEach(btn => {
-    btn.onclick = () => {
-      const tier = btn.getAttribute('data-tier');
-      editCategories[tier].push({
-        id: 'custom-' + Date.now(),
-        label: ''
-      });
-      renderEditor();
-      const list = $(`#editor-list-${tier}`);
-      const lastInput = list.querySelector('.editor-item:last-child .edit-label');
-      if (lastInput) lastInput.focus();
-    };
-  });
-}
-
-function collectEditorData() {
-  $$('.editor-item').forEach(row => {
-    const labelInput = row.querySelector('.edit-label');
-    if (!labelInput) return;
-    const tier = labelInput.getAttribute('data-tier');
-    const index = parseInt(labelInput.getAttribute('data-index'));
-    if (editCategories[tier] && editCategories[tier][index]) {
-      editCategories[tier][index].label = labelInput.value;
-    }
-  });
-  TIERS.forEach(tier => {
-    editCategories[tier] = editCategories[tier].filter(c => c.label.trim() !== '');
-  });
-}
