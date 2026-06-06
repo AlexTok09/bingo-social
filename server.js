@@ -167,6 +167,26 @@ function loadDefaultCategories() {
 }
 
 const DEFAULT_CATEGORIES = loadDefaultCategories();
+
+const GRID_CONFIG = {
+  ordinaire: 12,
+  semi: 6,
+  rare: 2,
+  legendaire: 1
+};
+
+const BONUS_REPEAT_THRESHOLD = {
+  semi: 2,
+};
+
+const BONUS_REROLL_COUNT = {
+  semi: 2,
+};
+
+const RECONNECT_GRACE_MS = 15 * 60 * 1000;
+
+const rooms = new Map();
+
 function loadCategories() {
   const defaults = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
   try {
@@ -195,25 +215,6 @@ function normalizeCategories(categories) {
 
 let CATEGORIES = loadCategories();
 
-const GRID_CONFIG = {
-  ordinaire: 12,
-  semi: 6,
-  rare: 2,
-  legendaire: 1
-};
-
-const BONUS_REPEAT_THRESHOLD = {
-  semi: 2,
-};
-
-const BONUS_REROLL_COUNT = {
-  semi: 2,
-};
-
-const RECONNECT_GRACE_MS = 15 * 60 * 1000;
-
-const rooms = new Map();
-
 function isAdminRequest(req) {
   return Boolean(ADMIN_PASSWORD) && req.get('x-admin-password') === ADMIN_PASSWORD;
 }
@@ -232,6 +233,8 @@ function applyCategories(categories, options = {}) {
   for (const room of rooms.values()) {
     room.winner = null;
     room.players.forEach(p => {
+      clearReconnectTimer(p);
+      p.disconnectedAt = null;
       p.grid = generateGrid();
       p.checked = emptyChecked();
       p.occurrences = emptyOccurrences();
@@ -418,17 +421,23 @@ io.on('connection', (socket) => {
   socket.on('create-room', (payload) => {
     const playerName = typeof payload === 'string' ? payload : payload?.playerName;
     const clientId = typeof payload === 'object' && payload ? payload.clientId : null;
+    const normalizedName = typeof playerName === 'string' ? playerName.trim() : '';
+    if (!normalizedName) {
+      socket.emit('error-msg', 'Entre ton prénom !');
+      return;
+    }
     const code = generateRoomCode();
     const grid = generateGrid();
     const player = {
       id: socket.id,
       clientId,
-      name: playerName,
+      name: normalizedName,
       grid,
       checked: emptyChecked(),
       occurrences: emptyOccurrences(),
       bonuses: emptyBonuses(),
       pendingBonus: emptyPendingBonus(),
+      disconnectedAt: null,
     };
     rooms.set(code, {
       code,
@@ -446,7 +455,16 @@ io.on('connection', (socket) => {
     const code = payload?.code;
     const playerName = payload?.playerName;
     const clientId = payload?.clientId || null;
-    const roomCode = code.toUpperCase().trim();
+    const roomCode = typeof code === 'string' ? code.toUpperCase().trim() : '';
+    const normalizedName = typeof playerName === 'string' ? playerName.trim() : '';
+    if (!normalizedName) {
+      socket.emit('error-msg', 'Entre ton prénom !');
+      return;
+    }
+    if (roomCode.length < 4) {
+      socket.emit('error-msg', 'Code à 4 caractères !');
+      return;
+    }
     const room = rooms.get(roomCode);
     if (!room) {
       socket.emit('error-msg', 'Salon introuvable !');
@@ -456,7 +474,7 @@ io.on('connection', (socket) => {
       socket.emit('error-msg', 'Cette partie est déjà terminée !');
       return;
     }
-    if (room.players.find(p => p.name === playerName)) {
+    if (room.players.find(p => p.name === normalizedName)) {
       socket.emit('error-msg', 'Ce nom est déjà pris !');
       return;
     }
@@ -464,26 +482,28 @@ io.on('connection', (socket) => {
     const player = {
       id: socket.id,
       clientId,
-      name: playerName,
+      name: normalizedName,
       grid,
       checked: emptyChecked(),
       occurrences: emptyOccurrences(),
       bonuses: emptyBonuses(),
       pendingBonus: emptyPendingBonus(),
+      disconnectedAt: null,
     };
     room.players.push(player);
     socket.join(roomCode);
     socket.roomCode = roomCode;
     socket.emit('room-joined', { code: roomCode, grid });
     io.to(roomCode).emit('players-update', getPlayersInfo(room));
-    io.to(roomCode).emit('player-joined', playerName);
+    io.to(roomCode).emit('player-joined', normalizedName);
   });
 
   socket.on('leave-room', () => {
     removePlayerFromRoom(socket);
   });
 
-  socket.on('resume-session', ({ roomCode, clientId }) => {
+  socket.on('resume-session', (payload = {}) => {
+    const { roomCode, clientId } = payload;
     if (!roomCode || !clientId) return;
     const normalizedRoomCode = roomCode.toUpperCase().trim();
     const room = rooms.get(normalizedRoomCode);
@@ -508,7 +528,8 @@ io.on('connection', (socket) => {
     io.to(normalizedRoomCode).emit('players-update', getPlayersInfo(room));
   });
 
-  socket.on('toggle-cell', ({ category, index }, ack) => {
+  socket.on('toggle-cell', (payload = {}, ack) => {
+    const { category, index } = payload;
     const reply = (payload) => {
       if (typeof ack === 'function') ack(payload);
     };
@@ -560,15 +581,15 @@ io.on('connection', (socket) => {
     syncPlayerState(socket, player);
     reply({ ok: true });
 
+    const checkedTotal = totalCheckedCount(player);
+    if (!player.pendingBonus && checkedTotal >= 2 && checkedTotal % 2 === 0) {
+      player.bonuses.joker = (player.bonuses.joker || 0) + 1;
+      socket.emit('joker-earned', { count: player.bonuses.joker });
+    }
+
     if (checkedList.length === gridItems.length) {
       room.winner = { id: player.id, clientId: player.clientId, name: player.name, category: categoryKey };
       io.to(socket.roomCode).emit('game-won', room.winner);
-    }
-
-    const checkedTotal = totalCheckedCount(player);
-    if (!room.winner && !player.pendingBonus && checkedTotal >= 2 && checkedTotal % 2 === 0) {
-      player.bonuses.joker = (player.bonuses.joker || 0) + 1;
-      socket.emit('joker-earned', { count: player.bonuses.joker });
     }
 
     io.to(socket.roomCode).emit('cell-activity', {
@@ -583,7 +604,8 @@ io.on('connection', (socket) => {
     io.to(socket.roomCode).emit('players-update', getPlayersInfo(room));
   });
 
-  socket.on('repeat-cell', ({ category, index }) => {
+  socket.on('repeat-cell', (payload = {}) => {
+    const { category, index } = payload;
     if (!socket.roomCode) return;
     const room = rooms.get(socket.roomCode);
     if (!room || room.winner) return;
@@ -628,7 +650,8 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('reroll-cell', ({ category, index }) => {
+  socket.on('reroll-cell', (payload = {}) => {
+    const { category, index } = payload;
     if (!socket.roomCode) return;
     const room = rooms.get(socket.roomCode);
     if (!room || room.winner) return;
@@ -684,7 +707,8 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('choose-bonus', ({ choice }) => {
+  socket.on('choose-bonus', (payload = {}) => {
+    const { choice } = payload;
     if (!socket.roomCode) return;
     const room = rooms.get(socket.roomCode);
     if (!room || room.winner) return;
@@ -703,7 +727,8 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('free-check-cell', ({ category, index }) => {
+  socket.on('free-check-cell', (payload = {}) => {
+    const { category, index } = payload;
     if (!socket.roomCode) return;
     const room = rooms.get(socket.roomCode);
     if (!room || room.winner) return;
@@ -755,6 +780,7 @@ io.on('connection', (socket) => {
 
     room.winner = null;
     room.players.forEach(p => {
+      clearReconnectTimer(p);
       p.grid = generateGrid();
       p.checked = emptyChecked();
       p.occurrences = emptyOccurrences();

@@ -1,6 +1,8 @@
 const socket = typeof io === 'function' ? io() : null;
 const TIERS = ['ordinaire', 'semi', 'rare', 'legendaire'];
 const CLIENT_ID_KEY = 'bingo-client-id';
+const SESSION_ROOM_KEY = 'bingo-room-code';
+const SESSION_NAME_KEY = 'bingo-player-name';
 const TIER_NAMES = {
   ordinaire: 'Ordinaire',
   semi: 'Semi-Ordinaire',
@@ -51,6 +53,24 @@ function getOrCreateClientId() {
   } catch {
     return window.crypto?.randomUUID?.() || `cid_${Math.random().toString(36).slice(2)}${Date.now()}`;
   }
+}
+
+function getStoredSessionValue(key) {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function setStoredSessionValue(key, value) {
+  try {
+    if (value === null || value === undefined || value === '') {
+      window.localStorage.removeItem(key);
+    } else {
+      window.localStorage.setItem(key, value);
+    }
+  } catch {}
 }
 
 const screenHome = $('#screen-home');
@@ -125,6 +145,8 @@ function resetGameState() {
   closeBonusChoice();
   closePanel();
   updateJokerSlot();
+  setStoredSessionValue(SESSION_ROOM_KEY, null);
+  setStoredSessionValue(SESSION_NAME_KEY, null);
 }
 
 let activityNoticeTimeout;
@@ -557,8 +579,13 @@ function emitSocket(eventName, payload, ack) {
 }
 
 function requestSessionResume() {
-  if (!socket || !socket.connected || !roomCode || !playerName) return;
-  socket.emit('resume-session', { roomCode, playerName, clientId });
+  if (!socket || !socket.connected) return;
+  const storedRoomCode = roomCode || getStoredSessionValue(SESSION_ROOM_KEY);
+  const storedPlayerName = playerName || getStoredSessionValue(SESSION_NAME_KEY);
+  if (!storedRoomCode || !storedPlayerName) return;
+  roomCode = storedRoomCode;
+  playerName = storedPlayerName;
+  socket.emit('resume-session', { roomCode: storedRoomCode, playerName: storedPlayerName, clientId });
 }
 
 if (!socket) {
@@ -575,6 +602,7 @@ btnCreate.addEventListener('click', () => {
   const name = inputName.value.trim();
   if (!name) { showError('Entre ton prénom !'); return; }
   playerName = name;
+  setStoredSessionValue(SESSION_NAME_KEY, playerName);
   startBgMusic();
   emitSocket('create-room', { playerName: name, clientId });
 });
@@ -585,6 +613,7 @@ btnJoin.addEventListener('click', () => {
   if (!name) { showError('Entre ton prénom !'); return; }
   if (!code || code.length < 4) { showError('Code à 4 caractères !'); return; }
   playerName = name;
+  setStoredSessionValue(SESSION_NAME_KEY, playerName);
   startBgMusic();
   emitSocket('join-room', { code, playerName: name, clientId });
 });
@@ -621,6 +650,7 @@ if (socket) {
 
   socket.on('room-created', ({ code, grid }) => {
     roomCode = code;
+    setStoredSessionValue(SESSION_ROOM_KEY, roomCode);
     myGrid = grid;
     gridBuilt = false;
     myChecked = emptyChecked();
@@ -634,6 +664,7 @@ if (socket) {
 
   socket.on('room-joined', ({ code, grid }) => {
     roomCode = code;
+    setStoredSessionValue(SESSION_ROOM_KEY, roomCode);
     myGrid = grid;
     gridBuilt = false;
     myChecked = emptyChecked();
@@ -660,6 +691,8 @@ if (socket) {
 
   socket.on('session-restored', (state) => {
     roomCode = state.code || roomCode;
+    if (roomCode) setStoredSessionValue(SESSION_ROOM_KEY, roomCode);
+    if (state.players?.length && playerName) setStoredSessionValue(SESSION_NAME_KEY, playerName);
     myGrid = state.grid || myGrid;
     gridBuilt = false;
     myChecked = { ...emptyChecked(), ...(state.checked || {}) };
@@ -682,6 +715,13 @@ if (socket) {
 
   socket.on('session-resume-failed', ({ reason }) => {
     if (reason) showToast(reason);
+    setStoredSessionValue(SESSION_ROOM_KEY, null);
+    setStoredSessionValue(SESSION_NAME_KEY, null);
+    roomCode = null;
+    playerName = null;
+    if (screenGame.classList.contains('active')) {
+      showScreen(screenHome);
+    }
   });
 
   socket.on('occurrence-update', ({ category, count, occurrences, bonuses }) => {
