@@ -1,5 +1,6 @@
 const socket = typeof io === 'function' ? io() : null;
 const TIERS = ['ordinaire', 'semi', 'rare', 'legendaire'];
+const CLIENT_ID_KEY = 'bingo-client-id';
 const TIER_NAMES = {
   ordinaire: 'Ordinaire',
   semi: 'Semi-Ordinaire',
@@ -14,6 +15,7 @@ let myBonuses = emptyBonuses();
 let roomCode = null;
 let playerName = null;
 let myId = null;
+const clientId = getOrCreateClientId();
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -37,6 +39,18 @@ function emptyBonuses() {
     acc[tier] = 0;
     return acc;
   }, { joker: 0 });
+}
+
+function getOrCreateClientId() {
+  try {
+    const existing = window.localStorage.getItem(CLIENT_ID_KEY);
+    if (existing) return existing;
+    const generated = window.crypto?.randomUUID?.() || `cid_${Math.random().toString(36).slice(2)}${Date.now()}`;
+    window.localStorage.setItem(CLIENT_ID_KEY, generated);
+    return generated;
+  } catch {
+    return window.crypto?.randomUUID?.() || `cid_${Math.random().toString(36).slice(2)}${Date.now()}`;
+  }
 }
 
 const screenHome = $('#screen-home');
@@ -154,6 +168,46 @@ function updateJokerSlot() {
   btnJoker.disabled = count <= 0;
   btnJoker.title = count > 0 ? `Joker disponible x${count}` : 'Aucun joker disponible';
   btnJoker.setAttribute('aria-label', count > 0 ? `Joker disponible x${count}` : 'Aucun joker disponible');
+}
+
+function applyPendingBonusState(pendingBonus) {
+  pendingBonusCategory = null;
+  freeCheckCategory = null;
+  rerollRemaining = 0;
+  bonusRerollCount = 3;
+  closeBonusChoice();
+
+  if (!pendingBonus) return;
+
+  if (pendingBonus.type === 'bonus-choice') {
+    pendingBonusCategory = pendingBonus.category;
+    bonusRerollCount = pendingBonus.rerollCount || 3;
+    bonusChoiceDrawing.textContent = '🎰';
+    bonusChoiceDetail.textContent = `Catégorie : ${TIER_NAMES[pendingBonus.category]}`;
+    btnBonusReroll.textContent = `Rejouer ${bonusRerollCount} cases`;
+    bonusChoiceOverlay.classList.add('active');
+  } else if (pendingBonus.type === 'free-check') {
+    freeCheckCategory = pendingBonus.category;
+  } else if (pendingBonus.type === 'reroll-picks') {
+    rerollRemaining = pendingBonus.remaining || 0;
+  }
+}
+
+function showWinnerState(winner, { playEffects = true } = {}) {
+  if (!winner) return;
+  winOverlay.className = 'overlay active win-tier-' + winner.category;
+  winDrawing.textContent = categoryEmoji({ id: winner.category, label: TIER_NAMES[winner.category] || winner.category });
+  winTitle.textContent = winner.name === playerName ? 'Tu as gagné !' : `${winner.name} a gagné !`;
+  winDetail.textContent = winner.category === 'legendaire'
+    ? 'Case légendaire cochée : victoire instantanée'
+    : `Grille "${TIER_NAMES[winner.category] || winner.category}" complétée`;
+  btnNewGame.style.display = 'block';
+  if (playEffects) {
+    playWinCasinoSound(winner.category);
+    restartWinBurst();
+    const winAnims = { ordinaire: winAnimOrdinaire, semi: winAnimSemi, rare: winAnimRare, legendaire: winAnimLegendaire };
+    (winAnims[winner.category] || winAnimOrdinaire)();
+  }
 }
 
 function restartWinBurst() {
@@ -502,6 +556,11 @@ function emitSocket(eventName, payload, ack) {
   return true;
 }
 
+function requestSessionResume() {
+  if (!socket || !socket.connected || !roomCode || !playerName) return;
+  socket.emit('resume-session', { roomCode, playerName, clientId });
+}
+
 if (!socket) {
   showError('GitHub Pages seul ne peut pas lancer les parties multijoueurs.');
   [btnCreate, btnJoin, btnEditCats].forEach(btn => {
@@ -517,7 +576,7 @@ btnCreate.addEventListener('click', () => {
   if (!name) { showError('Entre ton prénom !'); return; }
   playerName = name;
   startBgMusic();
-  emitSocket('create-room', name);
+  emitSocket('create-room', { playerName: name, clientId });
 });
 
 btnJoin.addEventListener('click', () => {
@@ -527,7 +586,7 @@ btnJoin.addEventListener('click', () => {
   if (!code || code.length < 4) { showError('Code à 4 caractères !'); return; }
   playerName = name;
   startBgMusic();
-  emitSocket('join-room', { code, playerName: name });
+  emitSocket('join-room', { code, playerName: name, clientId });
 });
 
 btnInfo.addEventListener('click', () => {
@@ -553,6 +612,7 @@ inputCode.addEventListener('keydown', (e) => {
 if (socket) {
   socket.on('connect', () => {
     myId = socket.id;
+    requestSessionResume();
   });
 
   socket.on('connect_error', () => {
@@ -596,6 +656,32 @@ if (socket) {
     myBonuses = { ...emptyBonuses(), ...(state.bonuses || {}) };
     updateJokerSlot();
     renderGrid();
+  });
+
+  socket.on('session-restored', (state) => {
+    roomCode = state.code || roomCode;
+    myGrid = state.grid || myGrid;
+    gridBuilt = false;
+    myChecked = { ...emptyChecked(), ...(state.checked || {}) };
+    myOccurrences = { ...emptyOccurrences(), ...(state.occurrences || {}) };
+    myBonuses = { ...emptyBonuses(), ...(state.bonuses || {}) };
+    updateJokerSlot();
+    applyPendingBonusState(state.pendingBonus);
+    showScreen(screenGame);
+    displayCode.textContent = roomCode;
+
+    if (state.winner) {
+      showWinnerState(state.winner, { playEffects: false });
+    } else {
+      winOverlay.className = 'overlay';
+      btnNewGame.style.display = 'none';
+    }
+
+    renderGrid();
+  });
+
+  socket.on('session-resume-failed', ({ reason }) => {
+    if (reason) showToast(reason);
   });
 
   socket.on('occurrence-update', ({ category, count, occurrences, bonuses }) => {
@@ -699,22 +785,7 @@ if (socket) {
   });
 
   socket.on('game-won', ({ name, category }) => {
-    playWinCasinoSound(category);
-    winOverlay.className = 'overlay active win-tier-' + category;
-    winDrawing.textContent = categoryEmoji({ id: category, label: TIER_NAMES[category] || category });
-    if (name === playerName) {
-      winTitle.textContent = 'Tu as gagné !';
-    } else {
-      winTitle.textContent = `${name} a gagné !`;
-    }
-    winDetail.textContent = category === 'legendaire'
-      ? 'Case légendaire cochée : victoire instantanée'
-      : `Grille "${TIER_NAMES[category] || category}" complétée`;
-    btnNewGame.style.display = 'block';
-    restartWinBurst();
-
-    const winAnims = { ordinaire: winAnimOrdinaire, semi: winAnimSemi, rare: winAnimRare, legendaire: winAnimLegendaire };
-    (winAnims[category] || winAnimOrdinaire)();
+    showWinnerState({ name, category }, { playEffects: true });
   });
 
   socket.on('new-game-started', ({ grid }) => {
@@ -726,6 +797,9 @@ if (socket) {
     updateJokerSlot();
     rerollRemaining = 0;
     bonusRerollCount = 3;
+    freeCheckCategory = null;
+    pendingBonusCategory = null;
+    closeBonusChoice();
     winOverlay.className = 'overlay';
     btnNewGame.style.display = 'none';
     document.body.style.animation = '';
@@ -1191,6 +1265,22 @@ btnBackHome.addEventListener('click', () => {
   resetGameState();
   showScreen(screenHome);
   showToast('Retour au menu');
+});
+
+window.addEventListener('pageshow', () => {
+  if (socket && !socket.connected) socket.connect();
+  requestSessionResume();
+});
+
+window.addEventListener('focus', () => {
+  requestSessionResume();
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    if (socket && !socket.connected) socket.connect();
+    requestSessionResume();
+  }
 });
 
 // --- NEW GAME ---

@@ -59,6 +59,13 @@ function totalCheckedCount(player) {
   return Object.values(player.checked || {}).reduce((sum, checked) => sum + (checked?.length || 0), 0);
 }
 
+function clearReconnectTimer(player) {
+  if (player.reconnectTimeout) {
+    clearTimeout(player.reconnectTimeout);
+    player.reconnectTimeout = null;
+  }
+}
+
 function isValidTier(tier) {
   return Object.prototype.hasOwnProperty.call(GRID_CONFIG, tier);
 }
@@ -73,6 +80,43 @@ function snapshotPlayerState(player) {
 
 function syncPlayerState(socket, player) {
   socket.emit('grid-update', snapshotPlayerState(player));
+}
+
+function scheduleDisconnectedRemoval(roomCode, clientId) {
+  const room = rooms.get(roomCode);
+  if (!room) return;
+  const player = room.players.find(p => p.clientId === clientId || (!p.clientId && p.id === clientId));
+  if (!player) return;
+
+  clearReconnectTimer(player);
+  player.disconnectedAt = Date.now();
+  player.reconnectTimeout = setTimeout(() => {
+    const currentRoom = rooms.get(roomCode);
+    if (!currentRoom) return;
+    const currentPlayer = currentRoom.players.find(p => p.clientId === clientId || (!p.clientId && p.id === clientId));
+    if (!currentPlayer || !currentPlayer.disconnectedAt) return;
+
+    currentRoom.players = currentRoom.players.filter(p => p.clientId !== clientId && p.id !== clientId);
+    if (currentRoom.players.length === 0) {
+      rooms.delete(roomCode);
+    } else {
+      io.to(roomCode).emit('players-update', getPlayersInfo(currentRoom));
+      io.to(roomCode).emit('player-left', currentPlayer.name);
+    }
+  }, RECONNECT_GRACE_MS);
+}
+
+function buildPlayerState(room, player) {
+  return {
+    code: room.code,
+    grid: player.grid,
+    checked: player.checked,
+    occurrences: player.occurrences,
+    bonuses: player.bonuses,
+    pendingBonus: player.pendingBonus,
+    winner: room.winner,
+    players: getPlayersInfo(room),
+  };
 }
 
 function validateCategoriesConfig(categories) {
@@ -165,6 +209,8 @@ const BONUS_REPEAT_THRESHOLD = {
 const BONUS_REROLL_COUNT = {
   semi: 2,
 };
+
+const RECONNECT_GRACE_MS = 15 * 60 * 1000;
 
 const rooms = new Map();
 
@@ -296,7 +342,9 @@ function removePlayerFromRoom(socket) {
     return;
   }
 
-  const name = room.players.find(p => p.id === socket.id)?.name;
+  const player = room.players.find(p => p.id === socket.id);
+  const name = player?.name;
+  if (player) clearReconnectTimer(player);
   room.players = room.players.filter(p => p.id !== socket.id);
   socket.leave(socket.roomCode);
 
@@ -367,11 +415,14 @@ io.on('connection', (socket) => {
     socket.emit('error-msg', 'Edition déplacée dans /admin.');
   });
 
-  socket.on('create-room', (playerName) => {
+  socket.on('create-room', (payload) => {
+    const playerName = typeof payload === 'string' ? payload : payload?.playerName;
+    const clientId = typeof payload === 'object' && payload ? payload.clientId : null;
     const code = generateRoomCode();
     const grid = generateGrid();
     const player = {
       id: socket.id,
+      clientId,
       name: playerName,
       grid,
       checked: emptyChecked(),
@@ -391,7 +442,10 @@ io.on('connection', (socket) => {
     io.to(code).emit('players-update', getPlayersInfo(rooms.get(code)));
   });
 
-  socket.on('join-room', ({ code, playerName }) => {
+  socket.on('join-room', (payload) => {
+    const code = payload?.code;
+    const playerName = payload?.playerName;
+    const clientId = payload?.clientId || null;
     const roomCode = code.toUpperCase().trim();
     const room = rooms.get(roomCode);
     if (!room) {
@@ -409,6 +463,7 @@ io.on('connection', (socket) => {
     const grid = generateGrid();
     const player = {
       id: socket.id,
+      clientId,
       name: playerName,
       grid,
       checked: emptyChecked(),
@@ -426,6 +481,31 @@ io.on('connection', (socket) => {
 
   socket.on('leave-room', () => {
     removePlayerFromRoom(socket);
+  });
+
+  socket.on('resume-session', ({ roomCode, clientId }) => {
+    if (!roomCode || !clientId) return;
+    const normalizedRoomCode = roomCode.toUpperCase().trim();
+    const room = rooms.get(normalizedRoomCode);
+    if (!room) {
+      socket.emit('session-resume-failed', { reason: 'Salon introuvable.' });
+      return;
+    }
+
+    const player = room.players.find(p => p.clientId === clientId);
+    if (!player) {
+      socket.emit('session-resume-failed', { reason: 'Session introuvable.' });
+      return;
+    }
+
+    clearReconnectTimer(player);
+    player.id = socket.id;
+    player.disconnectedAt = null;
+    socket.join(normalizedRoomCode);
+    socket.roomCode = normalizedRoomCode;
+
+    socket.emit('session-restored', buildPlayerState(room, player));
+    io.to(normalizedRoomCode).emit('players-update', getPlayersInfo(room));
   });
 
   socket.on('toggle-cell', ({ category, index }, ack) => {
@@ -481,7 +561,7 @@ io.on('connection', (socket) => {
     reply({ ok: true });
 
     if (checkedList.length === gridItems.length) {
-      room.winner = { id: player.id, name: player.name, category: categoryKey };
+      room.winner = { id: player.id, clientId: player.clientId, name: player.name, category: categoryKey };
       io.to(socket.roomCode).emit('game-won', room.winner);
     }
 
@@ -661,7 +741,7 @@ io.on('connection', (socket) => {
     });
 
     if (player.checked[categoryKey].length === player.grid[categoryKey].length) {
-      room.winner = { id: player.id, name: player.name, category: categoryKey };
+      room.winner = { id: player.id, clientId: player.clientId, name: player.name, category: categoryKey };
       io.to(socket.roomCode).emit('game-won', room.winner);
     }
 
@@ -693,7 +773,13 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    removePlayerFromRoom(socket);
+    if (!socket.roomCode) return;
+    const room = rooms.get(socket.roomCode);
+    if (!room) return;
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player) return;
+    clearReconnectTimer(player);
+    scheduleDisconnectedRemoval(socket.roomCode, player.clientId || socket.id);
   });
 });
 
