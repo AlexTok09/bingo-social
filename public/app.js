@@ -291,7 +291,7 @@ const SFX_VOLUME = 0.8;
 const sfxCache = {};
 const SFX_FILES = [
   '/ordinaire.mp3', '/semi-ordinaire.mp3', '/rare.mp3', '/legendaire.mp3',
-  '/bonus.mp3', '/multipick.mp3', '/bingo.wav', '/socioloGenerique.wav',
+  '/bonus.mp3', '/jokersound.mp3', '/multipick.mp3', '/bingo.wav', '/socioloGenerique.wav',
   '/win-ordinaire.mp3', '/win-semi.mp3', '/win-rare.mp3', '/win-legendaire.mp3',
 ];
 
@@ -449,6 +449,10 @@ function winAnimLegendaire() {
 
 function playBonusSound() {
   playSfx('/bonus.mp3');
+}
+
+function playJokerSound() {
+  playSfx('/jokersound.mp3');
 }
 
 function playRerollSound() {
@@ -764,7 +768,7 @@ if (socket) {
   socket.on('joker-earned', ({ count }) => {
     myBonuses = { ...myBonuses, joker: count };
     updateJokerSlot();
-    playBonusSound();
+    playJokerSound();
     showToast(count > 1 ? `Joker gagné x${count} !` : 'Joker gagné !');
     if (btnJoker) {
       btnJoker.classList.remove('joker-pop');
@@ -1296,6 +1300,7 @@ btnJoker.addEventListener('click', () => {
     showToast('Pas de joker disponible');
     return;
   }
+  playJokerSound();
   emitSocket('use-joker');
 });
 
