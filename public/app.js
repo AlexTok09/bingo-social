@@ -320,8 +320,7 @@ function playSfx(src) {
 
 function playTapSound(category, wasChecked) {
   if (wasChecked) return;
-  const files = { ordinaire: '/ordinaire.mp3', semi: '/semi-ordinaire.mp3', rare: '/rare.mp3', legendaire: '/legendaire.mp3' };
-  playSfx(files[category] || files.ordinaire);
+  playSfx('/semi-ordinaire.mp3');
 }
 
 function playWinSound() {
