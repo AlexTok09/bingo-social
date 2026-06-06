@@ -6,12 +6,9 @@
 
 :root {
   --paper: #fff1bd;
-  --paper-dark: #f4cf68;
   --ink: #16120f;
-  --muted: #6b3e2a;
   --acid: #d6ff32;
   --pink: #ff4fa3;
-  --orange: #ff7a1a;
   --blue: #15a6ff;
   --green: #1fc66a;
   --purple: #7c29ff;
@@ -82,9 +79,6 @@ body::after {
 .home-container {
   width: min(100%, 520px);
   margin: 0 auto;
-}
-
-.home-container {
   min-height: 100dvh;
   min-height: 100svh;
   padding: 32px 18px 28px;
@@ -251,18 +245,15 @@ input[type="text"]::placeholder {
 
 .game-header {
   position: sticky;
-  z-index: 20;
-  background: var(--paper);
-  border-bottom: 4px solid var(--ink);
-}
-
-.game-header {
   top: 0;
+  z-index: 20;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
+  background: var(--paper);
+  border-bottom: 4px solid var(--ink);
 }
 
 .room-info {
@@ -346,8 +337,7 @@ input[type="text"]::placeholder {
 }
 
 .section-pct,
-.progress,
-.cat-count {
+.progress {
   font: 900 0.78rem var(--body-font);
   text-transform: uppercase;
 }
@@ -413,21 +403,6 @@ input[type="text"]::placeholder {
   box-shadow: 1px 1px 0 var(--shadow);
 }
 
-.drawing-wrap {
-  display: block;
-  width: 48px;
-  height: 48px;
-  flex: 0 0 48px;
-  filter: saturate(1.18) contrast(1.05);
-}
-
-.drawing {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
 .cell .emoji {
   display: block;
   font-size: 2rem;
@@ -449,12 +424,6 @@ input[type="text"]::placeholder {
 .legendaire-cell {
   min-height: 112px;
   background: linear-gradient(135deg, #ffffff 0%, var(--legendaire-soft) 45%, var(--purple) 100%);
-}
-
-.legendaire-cell .drawing-wrap {
-  width: 78px;
-  height: 78px;
-  flex-basis: 78px;
 }
 
 .legendaire-cell .emoji {
@@ -734,12 +703,6 @@ input[type="text"]::placeholder {
   place-items: center;
   font-size: 5rem;
   line-height: 1;
-}
-
-.win-drawing .drawing-wrap,
-.win-drawing .drawing {
-  width: 100%;
-  height: 100%;
 }
 
 .win-content h2 {
@@ -1103,12 +1066,6 @@ input[type="text"]::placeholder {
     font-size: 1.6rem;
   }
 
-  .drawing-wrap {
-    width: 36px;
-    height: 36px;
-    flex-basis: 36px;
-  }
-
   .cell .label {
     font-size: 0.52rem;
   }
@@ -1197,6 +1154,26 @@ input[type="text"]::placeholder {
 
   .cell .label {
     font-size: 0.78rem;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

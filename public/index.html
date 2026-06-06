@@ -2,7 +2,9 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Sociolo-Bingo — Le jeu d'observation et de jugement social en terrasse. Observer, Juger, Cocher.">
+  <meta name="theme-color" content="#fff1bd">
   <title>Sociolo-Bingo</title>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='14' fill='%23d6ff32'/><path d='M18 50 50 15 82 50 50 85Z' fill='%23ff4fa3' stroke='%2316120f' stroke-width='8'/><circle cx='50' cy='50' r='16' fill='%2315a6ff' stroke='%2316120f' stroke-width='7'/></svg>">
@@ -11,13 +13,12 @@
 
   <!-- HOME SCREEN -->
   <div id="screen-home" class="screen active">
-    <div class="home-container">
-      <pre class="ascii-title">
- Sociolo-Bingo
-</pre>
-      <pre class="ascii-sub">Le jeu du jugement social</pre>
+    <main class="home-container">
+      <h1 class="ascii-title">Sociolo-Bingo</h1>
+      <p class="ascii-sub">Le jeu du jugement social</p>
       <p class="subtitle">Observer, Juger, Cocher</p>
 
+      <label for="player-name" class="sr-only">Ton prénom</label>
       <input type="text" id="player-name" placeholder="Ton prénom" maxlength="15" autocomplete="off" spellcheck="false">
 
       <button id="btn-create" class="btn btn-primary">Créer une partie</button>
@@ -25,15 +26,16 @@
       <div class="divider"><span>- ou rejoindre -</span></div>
 
       <div class="join-row">
+        <label for="room-code" class="sr-only">Code de la partie</label>
         <input type="text" id="room-code" placeholder="CODE" maxlength="4" autocomplete="off" spellcheck="false">
         <button id="btn-join" class="btn btn-secondary">GO</button>
       </div>
 
-      <div id="error-msg" class="error"></div>
+      <div id="error-msg" class="error" role="alert"></div>
 
       <button id="btn-info" class="btn btn-link">Règles du jeu</button>
       <button id="btn-edit-cats" class="btn btn-link">Modifier les catégories</button>
-    </div>
+    </main>
   </div>
 
   <!-- GAME SCREEN -->
@@ -43,7 +45,7 @@
         <span class="room-code-display" id="display-code" title="Copier le code"></span>
         <button id="btn-joker" class="btn-icon btn-joker" type="button" title="Joker disponible" aria-label="Joker disponible">🃏 <span id="joker-count">0</span></button>
         <button id="btn-back-home" class="btn-icon" title="Nouvelle partie" aria-label="Nouvelle partie">↩</button>
-        <button id="btn-share" class="btn-icon">&gt;share</button>
+        <button id="btn-share" class="btn-icon" aria-label="Partager la partie">&gt;share</button>
       </div>
       <button id="btn-players" class="btn-icon">&gt;joueurs <span id="player-count">0</span></button>
     </div>
@@ -85,7 +87,7 @@
 
   <!-- PLAYERS PANEL -->
   <div id="panel-backdrop" class="panel-backdrop"></div>
-  <div id="players-panel" class="panel">
+  <div id="players-panel" class="panel" role="dialog" aria-modal="true" aria-label="Liste des joueurs">
     <div class="panel-header">
       <h3>Joueurs</h3>
       <button id="btn-close-panel" class="btn-close">&times;</button>
@@ -95,7 +97,7 @@
   </div>
 
   <!-- WIN OVERLAY -->
-  <div id="win-overlay" class="overlay">
+  <div id="win-overlay" class="overlay" role="dialog" aria-modal="true" aria-label="Résultat de la partie">
     <div class="win-content">
       <div class="win-drawing" id="win-drawing"></div>
       <h2 id="win-title"></h2>
@@ -105,7 +107,7 @@
   </div>
 
   <!-- BONUS CHOICE -->
-  <div id="bonus-choice-overlay" class="overlay bonus-choice-overlay">
+  <div id="bonus-choice-overlay" class="overlay bonus-choice-overlay" role="dialog" aria-modal="true" aria-label="Choix de bonus">
     <div class="bonus-choice-content">
       <div id="bonus-choice-drawing" class="win-drawing"></div>
       <h2>Bonus débloqué</h2>
