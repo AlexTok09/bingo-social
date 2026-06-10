@@ -1,4 +1,5 @@
 const express = require('express');
+const compression = require('compression');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -10,6 +11,7 @@ const io = new Server(server);
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (process.env.NODE_ENV === 'production' ? '' : 'binglou-admin');
 
+app.use(compression());
 app.use(express.json({ limit: '200kb' }));
 
 const CATEGORIES_FILE = process.env.CATEGORIES_FILE || path.join(__dirname, 'categories.json');
@@ -176,11 +178,11 @@ const GRID_CONFIG = {
 };
 
 const BONUS_REPEAT_THRESHOLD = {
-  semi: 2,
+  semi: 3,
 };
 
 const BONUS_REROLL_COUNT = {
-  semi: 2,
+  semi: 3,
 };
 
 const RECONNECT_GRACE_MS = 15 * 60 * 1000;
@@ -420,7 +422,7 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-app.use(express.static('public'));
+app.use(express.static('public', { maxAge: '1h' }));
 
 io.on('connection', (socket) => {
 
@@ -549,11 +551,14 @@ io.on('connection', (socket) => {
   });
 
   socket.on('toggle-cell', (payload = {}, ack) => {
-    if (!checkRateLimit(socket)) return;
     const { category, index } = payload;
     const reply = (payload) => {
       if (typeof ack === 'function') ack(payload);
     };
+    if (!checkRateLimit(socket)) {
+      reply({ ok: false, reason: 'Trop de requêtes, ralentis.' });
+      return;
+    }
 
     if (!socket.roomCode) return;
     const room = rooms.get(socket.roomCode);
