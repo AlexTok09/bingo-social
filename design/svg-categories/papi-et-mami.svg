@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <!-- Background - warm pastel pink -->
+  <rect width="200" height="200" rx="24" fill="#f4d2cb"/>
+
+  <!-- Small hearts floating -->
+  <path d="M25,22 Q25,16 30,16 Q35,16 35,22 Q35,16 40,16 Q45,16 45,22 Q45,30 35,36 Q25,30 25,22Z" fill="#e8606a" opacity="0.5"/>
+  <path d="M160,15 Q160,10 164,10 Q168,10 168,15 Q168,10 172,10 Q176,10 176,15 Q176,21 168,25 Q160,21 160,15Z" fill="#e8606a" opacity="0.4"/>
+
+  <!-- === PAPI (left) === -->
+  <g filter="url(#shadow)">
+    <!-- Tiny body -->
+    <path d="M48,170 L42,200 L58,200 Z" fill="#5b8c5a" stroke="#1a1a1a" stroke-width="3"/>
+    <path d="M72,170 L66,200 L82,200 Z" fill="#5b8c5a" stroke="#1a1a1a" stroke-width="3"/>
+    <path d="M35,155 Q30,148 35,140 L85,140 Q90,148 85,155 L85,200 L35,200 Z" fill="#5b8c5a" stroke="#1a1a1a" stroke-width="3"/>
+    <!-- Tiny arms -->
+    <path d="M35,150 Q18,155 15,168" fill="none" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="14" cy="170" r="5" fill="#e8a890" stroke="#1a1a1a" stroke-width="2.5"/>
+    <path d="M85,150 Q95,148 98,140" fill="none" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/>
+
+    <!-- BIG ROUND HEAD -->
+    <circle cx="60" cy="85" r="55" fill="#e8a890" stroke="#1a1a1a" stroke-width="3.5"/>
+
+    <!-- Big floppy ears -->
+    <ellipse cx="10" cy="90" rx="12" ry="16" fill="#e8a890" stroke="#1a1a1a" stroke-width="3"/>
+    <path d="M8,82 Q5,90 8,97" fill="none" stroke="#d08a72" stroke-width="2"/>
+    <ellipse cx="110" cy="88" rx="10" ry="14" fill="#e8a890" stroke="#1a1a1a" stroke-width="3"/>
+
+    <!-- Beret -->
+    <path d="M18,55 Q15,35 30,25 Q45,18 60,17 Q75,18 90,25 Q105,35 102,55" fill="#c43030" stroke="#1a1a1a" stroke-width="3.5"/>
+    <ellipse cx="60" cy="55" rx="48" ry="8" fill="#c43030" stroke="#1a1a1a" stroke-width="3"/>
+    <circle cx="60" cy="20" r="6" fill="#c43030" stroke="#1a1a1a" stroke-width="3"/>
+
+    <!-- HUGE EYES - Winshuss style -->
+    <circle cx="42" cy="82" r="16" fill="white" stroke="#1a1a1a" stroke-width="3"/>
+    <circle cx="78" cy="82" r="16" fill="white" stroke="#1a1a1a" stroke-width="3"/>
+    <!-- Big pupils -->
+    <circle cx="46" cy="85" r="8" fill="#1a1a1a"/>
+    <circle cx="82" cy="85" r="8" fill="#1a1a1a"/>
+    <!-- Highlights -->
+    <circle cx="49" cy="82" r="3" fill="white"/>
+    <circle cx="85" cy="82" r="3" fill="white"/>
+
+    <!-- Thick glasses -->
+    <circle cx="42" cy="82" r="18" fill="none" stroke="#1a1a1a" stroke-width="4"/>
+    <circle cx="78" cy="82" r="18" fill="none" stroke="#1a1a1a" stroke-width="4"/>
+    <line x1="60" y1="82" x2="60" y2="82" stroke="#1a1a1a" stroke-width="4"/>
+    <path d="M60,80 Q60,78 60,80" stroke="#1a1a1a" stroke-width="4"/>
+    <line x1="59" y1="80" x2="61" y2="80" stroke="#1a1a1a" stroke-width="4"/>
+
+    <!-- Tiny nose -->
+    <ellipse cx="60" cy="100" rx="4" ry="3" fill="#d08a72" stroke="#1a1a1a" stroke-width="2"/>
+
+    <!-- BIG TOOTHY GRIN -->
+    <path d="M30,108 Q45,104 60,106 Q75,104 90,108 Q80,130 60,132 Q40,130 30,108Z" fill="#3a0a15" stroke="#1a1a1a" stroke-width="3"/>
+    <!-- Teeth - top row, irregular, some missing -->
+    <rect x="35" y="108" width="7" height="8" rx="1.5" fill="#f0e8a0" stroke="#1a1a1a" stroke-width="1.5"/>
+    <rect x="44" y="108" width="8" height="9" rx="1.5" fill="#ede0a0" stroke="#1a1a1a" stroke-width="1.5"/>
+    <!-- Gap! -->
+    <rect x="58" y="108" width="7" height="8" rx="1.5" fill="#f0e8a0" stroke="#1a1a1a" stroke-width="1.5"/>
+    <rect x="67" y="108" width="8" height="7" rx="1.5" fill="#ede0a0" stroke="#1a1a1a" stroke-width="1.5"/>
+    <rect x="77" y="108" width="7" height="8" rx="1.5" fill="#f0e8a0" stroke="#1a1a1a" stroke-width="1.5"/>
+    <!-- Bottom teeth -->
+    <rect x="40" y="122" width="6" height="7" rx="1.5" fill="#f0e8a0" stroke="#1a1a1a" stroke-width="1.5"/>
+    <rect x="52" y="121" width="7" height="8" rx="1.5" fill="#ede0a0" stroke="#1a1a1a" stroke-width="1.5"/>
+    <rect x="65" y="122" width="6" height="7" rx="1.5" fill="#f0e8a0" stroke="#1a1a1a" stroke-width="1.5"/>
+    <rect x="74" y="123" width="6" height="6" rx="1.5" fill="#ede0a0" stroke="#1a1a1a" stroke-width="1.5"/>
+    <!-- Tongue -->
+    <ellipse cx="58" cy="126" rx="8" ry="4" fill="#d44060" opacity="0.6"/>
+
+    <!-- Blush -->
+    <ellipse cx="28" cy="105" rx="8" ry="5" fill="#e86070" opacity="0.3"/>
+    <ellipse cx="92" cy="105" rx="8" ry="5" fill="#e86070" opacity="0.3"/>
+  </g>
+
+  <!-- === MAMI (peeking from right, overlapping) === -->
+  <g filter="url(#shadow)">
+    <!-- Mami head - slightly behind/beside papi -->
+    <circle cx="148" cy="95" r="48" fill="#eda898" stroke="#1a1a1a" stroke-width="3.5"/>
+
+    <!-- Curly perm hair -->
+    <circle cx="115" cy="60" r="10" fill="#b8b0c8" stroke="#1a1a1a" stroke-width="2.5"/>
+    <circle cx="130" cy="50" r="11" fill="#b8b0c8" stroke="#1a1a1a" stroke-width="2.5"/>
+    <circle cx="148" cy="46" r="12" fill="#b8b0c8" stroke="#1a1a1a" stroke-width="2.5"/>
+    <circle cx="166" cy="50" r="11" fill="#b8b0c8" stroke="#1a1a1a" stroke-width="2.5"/>
+    <circle cx="180" cy="60" r="10" fill="#b8b0c8" stroke="#1a1a1a" stroke-width="2.5"/>
+    <circle cx="186" cy="75" r="9" fill="#b8b0c8" stroke="#1a1a1a" stroke-width="2.5"/>
+    <circle cx="110" cy="75" r="9" fill="#b8b0c8" stroke="#1a1a1a" stroke-width="2.5"/>
+    <!-- Fill under curls -->
+    <path d="M115,68 Q120,48 148,44 Q176,48 182,68 Q185,80 182,90 L115,90 Q110,80 115,68Z" fill="#b8b0c8"/>
+
+    <!-- Earring -->
+    <circle cx="190" cy="100" r="4" fill="#d4aa30" stroke="#1a1a1a" stroke-width="2"/>
+
+    <!-- HUGE EYES -->
+    <circle cx="134" cy="92" r="14" fill="white" stroke="#1a1a1a" stroke-width="3"/>
+    <circle cx="164" cy="92" r="14" fill="white" stroke="#1a1a1a" stroke-width="3"/>
+    <!-- Pupils -->
+    <circle cx="137" cy="94" r="7" fill="#1a1a1a"/>
+    <circle cx="167" cy="94" r="7" fill="#1a1a1a"/>
+    <!-- Highlights -->
+    <circle cx="140" cy="91" r="2.5" fill="white"/>
+    <circle cx="170" cy="91" r="2.5" fill="white"/>
+    <!-- Eyelashes -->
+    <line x1="122" y1="85" x2="118" y2="80" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="126" y1="82" x2="123" y2="76" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="175" y1="82" x2="178" y2="76" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="178" y1="86" x2="182" y2="81" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+
+    <!-- Tiny nose -->
+    <ellipse cx="149" cy="106" rx="3.5" ry="3" fill="#d08070" stroke="#1a1a1a" stroke-width="2"/>
+
+    <!-- Lipstick mouth - big grin -->
+    <path d="M126,114 Q135,110 148,112 Q162,110 172,114 Q164,132 148,134 Q132,132 126,114Z" fill="#d42050" stroke="#1a1a1a" stroke-width="3"/>
+    <!-- Teeth -->
+    <rect x="132" y="114" width="6" height="7" rx="1.5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+    <rect x="140" y="114" width="7" height="8" rx="1.5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+    <rect x="149" y="114" width="7" height="7" rx="1.5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+    <rect x="158" y="114" width="6" height="7" rx="1.5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+
+    <!-- Blush -->
+    <ellipse cx="122" cy="110" rx="7" ry="4" fill="#e86070" opacity="0.35"/>
+    <ellipse cx="176" cy="110" rx="7" ry="4" fill="#e86070" opacity="0.35"/>
+
+    <!-- Tiny body hint -->
+    <path d="M120,140 Q125,135 148,134 Q172,135 178,140 L182,200 L116,200 Z" fill="#9060a8" stroke="#1a1a1a" stroke-width="3"/>
+    <!-- Pearl necklace -->
+    <circle cx="130" cy="140" r="3" fill="#fff8d0" stroke="#1a1a1a" stroke-width="1.5"/>
+    <circle cx="138" cy="142" r="3" fill="#fff8d0" stroke="#1a1a1a" stroke-width="1.5"/>
+    <circle cx="148" cy="143" r="3.5" fill="#fff8d0" stroke="#1a1a1a" stroke-width="1.5"/>
+    <circle cx="158" cy="142" r="3" fill="#fff8d0" stroke="#1a1a1a" stroke-width="1.5"/>
+    <circle cx="166" cy="140" r="3" fill="#fff8d0" stroke="#1a1a1a" stroke-width="1.5"/>
+  </g>
+
+  <!-- Cane leaning -->
+  <path d="M8,200 L5,170 Q4,162 8,158 Q14,155 16,160" fill="none" stroke="#6a4a2a" stroke-width="4" stroke-linecap="round"/>
+</svg>
