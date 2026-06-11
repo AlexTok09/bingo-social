@@ -40,6 +40,7 @@ body {
   overflow-y: auto;
   overscroll-behavior-y: auto;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 body::before {
@@ -63,7 +64,6 @@ body::after {
   z-index: 400;
   opacity: 0.09;
   background: repeating-linear-gradient(0deg, var(--ink), var(--ink) 1px, transparent 1px, transparent 5px);
-  mix-blend-mode: multiply;
 }
 
 .screen {
