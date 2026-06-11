@@ -185,6 +185,9 @@ const BONUS_REROLL_COUNT = {
   semi: 3,
 };
 
+// Cocher une de ces catégories offre une case gratis, toutes grilles confondues
+const POESIE_BONUS_IDS = new Set(['heureux-comme-tout', 'regarde-le-ciel']);
+
 const RECONNECT_GRACE_MS = 15 * 60 * 1000;
 
 const rooms = new Map();
@@ -618,6 +621,11 @@ io.on('connection', (socket) => {
       io.to(socket.roomCode).emit('game-won', room.winner);
     }
 
+    if (idx === -1 && !room.winner && !player.pendingBonus && POESIE_BONUS_IDS.has(gridItems[indexNumber]?.id)) {
+      player.pendingBonus = { type: 'free-check', category: null, source: 'poesie' };
+      socket.emit('free-check-start', { category: null, source: 'poesie' });
+    }
+
     io.to(socket.roomCode).emit('cell-activity', {
       playerId: player.id,
       name: player.name,
@@ -652,15 +660,18 @@ io.on('connection', (socket) => {
 
     const currentCount = player.occurrences[categoryKey][indexNumber] || 1;
     const nextCount = currentCount + 1;
-    const bonusThreshold = BONUS_REPEAT_THRESHOLD[categoryKey] || 3;
+    const baseThreshold = BONUS_REPEAT_THRESHOLD[categoryKey] || 3;
     const rerollCount = BONUS_REROLL_COUNT[categoryKey] || 3;
 
-    if (nextCount >= bonusThreshold) {
-      player.occurrences[categoryKey][indexNumber] = 1;
+    // Seuils de bonus doublés à chaque palier : 3, 6, 12, 24, ...
+    let bonusThreshold = baseThreshold;
+    while (bonusThreshold < nextCount) bonusThreshold *= 2;
+
+    player.occurrences[categoryKey][indexNumber] = nextCount;
+    if (nextCount === bonusThreshold) {
       player.pendingBonus = { type: 'bonus-choice', category: categoryKey, rerollCount };
       socket.emit('bonus-choice-start', { category: categoryKey, rerollCount });
     } else {
-      player.occurrences[categoryKey][indexNumber] = nextCount;
       socket.emit('occurrence-update', {
         category: categoryKey,
         index: indexNumber,
@@ -767,7 +778,7 @@ io.on('connection', (socket) => {
     if (!player || player.pendingBonus?.type !== 'free-check') return;
     const categoryKey = typeof category === 'string' ? category : '';
     const indexNumber = Number(index);
-    if (categoryKey !== player.pendingBonus.category) return;
+    if (player.pendingBonus.category && categoryKey !== player.pendingBonus.category) return;
     if (!isValidTier(categoryKey) || !Array.isArray(player.grid[categoryKey]) || !Number.isInteger(indexNumber) || indexNumber < 0 || indexNumber >= player.grid[categoryKey].length) return;
     if (player.checked[categoryKey].includes(indexNumber)) return;
 

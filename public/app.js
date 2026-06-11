@@ -209,7 +209,7 @@ function applyPendingBonusState(pendingBonus) {
     btnBonusReroll.textContent = `Rejouer ${bonusRerollCount} cases`;
     bonusChoiceOverlay.classList.add('active');
   } else if (pendingBonus.type === 'free-check') {
-    freeCheckCategory = pendingBonus.category;
+    freeCheckCategory = pendingBonus.category || '*';
   } else if (pendingBonus.type === 'reroll-picks') {
     rerollRemaining = pendingBonus.remaining || 0;
   }
@@ -716,9 +716,15 @@ if (socket) {
     renderGrid();
   });
 
-  socket.on('free-check-start', ({ category }) => {
-    freeCheckCategory = category;
-    showToast(`Coche une case gratis dans ${TIER_NAMES[category]}`);
+  socket.on('free-check-start', ({ category, source }) => {
+    freeCheckCategory = category || '*';
+    if (source === 'poesie') {
+      playBonusChoiceSound();
+      showBonusFlash('Poésie !');
+      showToast('Bonus poésie : coche une case en plus, où tu veux !');
+    } else {
+      showToast(`Coche une case gratis dans ${TIER_NAMES[category]}`);
+    }
     renderGrid();
   });
 
@@ -831,6 +837,9 @@ function categoryEmoji(item) {
   if (key.includes('papi') && key.includes('mami')) return '👴';
   if (key.includes('doudoune')) return '🧥';
   if (key.includes('vieux bourgeois')) return '🎩';
+  if (key.includes('bataille') && key.includes('chien')) return '🐺';
+  if (key.includes('double') && key.includes('chien')) return '🐶';
+  if (key.includes('traineau')) return '🛷';
   if (key.includes('chien') && !key.includes('accouplement')) return '🐩';
   if (key.includes('clodo')) return '🛒';
   if (key.includes('vieille bourgeoise')) return '👒';
@@ -871,14 +880,18 @@ function categoryEmoji(item) {
 
   if (key.includes('panama')) return '🏝️';
   if (key.includes('bob')) return '🪣';
+  if (key.includes('air instrument')) return '🎷';
   if (key.includes('instrument')) return '🎸';
   if (key.includes('militaire')) return '🪖';
   if (key.includes('kit main libre')) return '🎧';
   if (key.includes('son a donf')) return '🔊';
   if (key.includes('canne')) return '🦯';
   if (key.includes('enfant relou')) return '🧒';
+  if (key.includes('shirt')) return '👾';
   if (key.includes('geek')) return '🤓';
   if (key.includes('cheveux') && key.includes('fesses')) return '💇';
+  if (key.includes('poivre')) return '🧂';
+  if (key.includes('livre')) return '📖';
   if (key.includes('ivre')) return '🍺';
   if (key.includes('rasta blanc')) return '🌿';
   if (key.includes('decathlon')) return '🏋️';
@@ -927,6 +940,121 @@ function categoryEmoji(item) {
   if (key.includes('cape')) return '🦸';
   if (key.includes('coupure') && key.includes('electricite')) return '⚡';
   if (key.includes('enterrement') && key.includes('garcon')) return '🎉';
+
+  if (key.includes('chelou')) return '🤨';
+  if (key.includes('mallette')) return '💼';
+  if (key.includes('leche')) return '🪟';
+  if (key.includes('shopping')) return '🛍️';
+  if (key.includes('casque')) return '🎧';
+  if (key.includes('canette')) return '🥤';
+  if (key.includes('deux') && key.includes('velo')) return '🚴';
+  if (key.includes('debout') && key.includes('velo')) return '🚵';
+  if (key.includes('bonnet')) return '🥶';
+  if (key.includes('banane')) return '👝';
+  if (key.includes('beret')) return '🧑‍🎨';
+  if (key.includes('baguette')) return '🥖';
+  if (key.includes('flegmatique')) return '😐';
+  if (key.includes('stockos')) return '💪';
+  if (key.includes('cataracte')) return '🥽';
+  if (key.includes('lunette') && key.includes('tete')) return '🕶️';
+  if (key.includes('mal assortie')) return '🎨';
+  if (key.includes('ecouteur')) return '🔌';
+  if (key.includes('valise')) return '🧳';
+  if (key.includes('roller')) return '🛼';
+  if (key.includes('psycho')) return '🔪';
+  if (key.includes('leopard')) return '🐆';
+  if (key.includes('bouquet')) return '💐';
+  if (key.includes('fast food')) return '🍟';
+  if (key.includes('rase sur')) return '💈';
+  if (key.includes('velo a main')) return '🦽';
+  if (key.includes('traverse')) return '🚸';
+  if (key.includes('tennis')) return '🎾';
+  if (key.includes('porte bebe')) return '🍼';
+  if (key.includes('chemise rose')) return '👚';
+  if (key.includes('integrale')) return '👖';
+  if (key.includes('thune')) return '🪙';
+  if (key.includes('gaz')) return '⛽';
+  if (key.includes('barbe') && key.includes('chauve')) return '🧔';
+  if (key.includes('chauve')) return '🥚';
+  if (key.includes('vitre')) return '🪞';
+  if (key.includes('arrogant') || key.includes('prince')) return '🤴';
+  if (key.includes('pliant')) return '🪗';
+  if (key.includes('chantier')) return '👷';
+  if (key.includes('sosie')) return '👤';
+  if (key.includes('passee')) return '🔁';
+  if (key.includes('detendu')) return '😌';
+  if (key.includes('ciel')) return '☁️';
+  if (key.includes('crache')) return '🦙';
+  if (key.includes('sueur')) return '💧';
+  if (key.includes('auto ecole')) return '🚗';
+  if (key.includes('dakar')) return '🏜️';
+  if (key.includes('peluche')) return '🧸';
+  if (key.includes('escarpin')) return '👠';
+  if (key.includes('gilet jaune')) return '🦺';
+  if (key.includes('vapot')) return '💨';
+  if (key.includes('cherche')) return '🔍';
+  if (key.includes('fier')) return '🦚';
+  if (key.includes('plombier')) return '🍑';
+  if (key.includes('bise')) return '😘';
+  if (key.includes('capuche')) return '🥷';
+  if (key.includes('malaise') || key.includes('dead')) return '🚑';
+  if (key.includes('pressing')) return '🧺';
+  if (key.includes('presse')) return '⏱️';
+  if (key.includes('chantent') || key.includes('chante')) return '🎤';
+  if (key.includes('visio')) return '📹';
+  if (key.includes('samourai')) return '🗡️';
+  if (key.includes('corbillard')) return '🚐';
+  if (key.includes('moustache')) return '🥸';
+  if (key.includes('cercueil')) return '⚰️';
+  if (key.includes('tresse')) return '🪢';
+  if (key.includes('tatouage')) return '🐉';
+  if (key.includes('mouche')) return '🤧';
+  if (key.includes('caisse')) return '🚘';
+  if (key.includes('chewing')) return '🫧';
+  if (key.includes('je connais')) return '👋';
+  if (key.includes('ramasse')) return '🫳';
+  if (key.includes('gratter')) return '🎫';
+  if (key.includes('wheeling')) return '🏍️';
+  if (key.includes('sans les mains')) return '🙌';
+  if (key.includes('circassien')) return '🤹';
+  if (key.includes('beauf')) return '🛻';
+  if (key.includes('tient la main')) return '👫';
+  if (key.includes('meuf')) return '💑';
+  if (key.includes('ouvre les portes')) return '🚪';
+  if (key.includes('pere et fils')) return '👨‍👦';
+  if (key.includes('mere et fille')) return '👩‍👧';
+  if (key.includes('crocs')) return '🐊';
+  if (key.includes('2 metres')) return '🦒';
+  if (key.includes('caniche')) return '💅';
+  if (key.includes('platre')) return '🩼';
+  if (key.includes('toutounette')) return '🐕';
+  if (key.includes('pigeon solo')) return '🕊️';
+  if (key.includes('doublage')) return '🏎️';
+  if (key.includes('hesite')) return '🤷';
+  if (key.includes('mono color')) return '⬛';
+  if (key.includes('mains dans le dos')) return '🚶';
+  if (key.includes('trop grand')) return '🦣';
+  if (key.includes('meditatif')) return '🧘';
+  if (key.includes('string')) return '🩲';
+  if (key.includes('haut parleur')) return '📢';
+  if (key.includes('emo dark')) return '🖤';
+  if (key.includes('fleur')) return '🌺';
+  if (key.includes('vomi')) return '🤮';
+  if (key.includes('portiere')) return '🫨';
+  if (key.includes('mains dans les poches')) return '🦘';
+  if (key.includes('lacet')) return '👟';
+  if (key.includes('pecheur')) return '🎣';
+  if (key.includes('treillis')) return '🪖';
+  if (key.includes('aveugle')) return '🦮';
+  if (key.includes('chat des rues')) return '🐈';
+  if (key.startsWith('rat ')) return '🐀';
+  if (key.includes('groupe')) return '🎼';
+  if (key.includes('maillot')) return '⚽';
+  if (key.includes('chariot')) return '🛒';
+  if (key.includes('pull')) return '⛵';
+  if (key.includes('relation')) return '😻';
+  if (key.includes('autre joueur')) return '🎯';
+  if (key.includes('clown')) return '🤡';
 
   return '🎲';
 }
@@ -987,7 +1115,7 @@ function buildGrid() {
         }
         const checked = myChecked[category] || [];
         if (freeCheckCategory) {
-          if (category !== freeCheckCategory) {
+          if (freeCheckCategory !== '*' && category !== freeCheckCategory) {
             showToast(`Choisis dans ${TIER_NAMES[freeCheckCategory]}`);
             return;
           }
@@ -1050,7 +1178,7 @@ function renderGrid() {
 
       cell.classList.toggle('checked', isChecked);
       cell.classList.toggle('reroll-target', !isChecked && rerollRemaining > 0);
-      cell.classList.toggle('freecheck-target', !isChecked && freeCheckCategory === category);
+      cell.classList.toggle('freecheck-target', !isChecked && (freeCheckCategory === category || freeCheckCategory === '*'));
 
       const count = occurrences[index] || (isChecked ? 1 : 0);
       let badge = cell.querySelector('.occurrence-badge');
@@ -1070,7 +1198,7 @@ function renderGrid() {
     progress.textContent = `${checked.length}/${items.length}`;
     const bonus = $(`#bonus-${category}`);
     if (bonus) {
-      bonus.textContent = rerollRemaining > 0 ? `rejouer x${rerollRemaining}` : (freeCheckCategory === category ? 'gratis !' : (bonuses > 0 ? `bonus x${bonuses}` : ''));
+      bonus.textContent = rerollRemaining > 0 ? `rejouer x${rerollRemaining}` : ((freeCheckCategory === category || freeCheckCategory === '*') ? 'gratis !' : (bonuses > 0 ? `bonus x${bonuses}` : ''));
     }
 
     if (checked.length === items.length) {

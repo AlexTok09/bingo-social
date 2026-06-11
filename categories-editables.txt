@@ -18,16 +18,13 @@ Caillra
 Fait la gueule
 Heureux comme tout
 Triste à souhait
-Il/elle ultra frais/fraîche
 Scotché au tel
 Costard
 Shlagos
 Deliveroo (ultra)
 Taxi
 Deux amis
-Calvitie 
-Couple Lesbien
-Couple Gay
+Calvitie
 Hipster
 Velib (ultra)
 Zara girl
@@ -35,11 +32,55 @@ Drague de rue
 Créneau
 Rasta
 Trotinette Eclectrique (ultra)
-Jogger 
+Jogger
 Tricot superbe
 Mange
 Rire
 Dock martins
+Shopping human
+Casque
+Canette
+Bonnet
+Banane
+Béret
+Flegmatique
+Stockos
+Lunette sur la tête
+Écouteur filaire
+Valise
+Motif léopard
+Porte fast food
+Rasé sur le côté
+Vélo à main
+Porte bébé
+Chemise rose pour homme
+Chauve
+Arrogant - prince des villes
+Vélo pliant
+Humain de chantier
+Détendu
+Crache
+Tache de sueur
+Auto école
+Peluche
+Escarpins
+Vapote
+Fier
+Bises
+Capuche
+Monsieur ou madame pressée
+Poivre et sel
+Moustache
+Tresse
+Tatouage
+Père et fils
+Mère et fille
+Pigeon solo
+Haut parleur
+Vêtement à fleur
+Beauf
+Méditatif
+Mains dans les poches
 
 
 Semi-ordinaire:
@@ -63,7 +104,7 @@ Ivre
 Rasta blanc
 Couple décathlon
 Auto-selfie
-Danse 
+Danse
 Fouille dans l'horodateur
 Lit un livre
 Gens qui s'embrassent
@@ -78,8 +119,40 @@ Gros FAF
 Col roulé
 Embrouille de couple
 Jette mégot par terre
-Punk à chien
 Pull sur les épaules
+Chelou
+Mallette
+Lèche vitrine
+À deux sur le vélo
+Debout sur vélo
+Couleur mal assortie
+Roller
+Looks like a psycho (Talking Heads en zic)
+Bouquet de fleurs
+Traverse sans regarder
+Truc de tennis
+Intégrale jean
+Demande de la thunes
+T-shirt de geek
+Est passée 4 fois
+Regarde le ciel
+Gilet jaune
+Cherche un truc
+Chante
+Visio de rue
+En mode samouraï
+Se mouche
+Sort du pressing
+Mâche un chewing-gum
+Je connais
+Jeu à gratter
+Se tient la main
+Crocs
+Barbe chauve
+Plâtrée
+Doublage de rue
+Habits trop grand
+Emo dark
 
 
 
@@ -96,11 +169,39 @@ Accident de la circulation
 Pied nus
 Crète de punk
 Porte un meuble
-Enregistre danse tiktok 
+Enregistre danse tiktok
 Fou rire
 Voiture mariage
 Distribue des flyers
-Ballon de baudrucheapparaît et 
+Ballon de baudrucheapparaît et
+Lunette de cataractes
+Urgence gaz
+Se regarde dans vitre
+Paris - Dakar
+Rai du plombier
+Air instrument
+Corbillard
+Zone dans sa caisse
+Ramasse un truc
+Wheeling
+Sans les mains vélo
+Circassien
+Tient une meuf par le cou
++ 2 mètres
+Caniche toiletté
+Toutounette actif
+On se croise on hésite
+Mono color tête pied
+Mains dans le dos
+String visible
+Vomito
+Fait ses lacets
+Pêcheur
+Treillis
+Aveugle
+Chat des rues
+Rat
+Double chien
 
 Légendaire:
 Se fait chier dessus par oiseau
@@ -113,6 +214,13 @@ Jumeaux
 Fume la piple
 Cape
 Coupure d'électricité
-Enterrement de vie de garçon. 
+Enterrement de vie de garçon.
 Voir un autre joueur de sociologie-bingo.
 Clown
+Sosie
+Malaise ou dead
+Cercueil
+Ouvre les portes
+Se prend une portière
+Bataille chiens de chiens
+Chien de traîneau
