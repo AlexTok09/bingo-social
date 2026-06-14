@@ -27,7 +27,6 @@ Deux amis
 Calvitie
 Hipster
 Velib (ultra)
-Zara girl
 Drague de rue
 Créneau
 Rasta
@@ -81,6 +80,12 @@ Vêtement à fleur
 Beauf
 Méditatif
 Mains dans les poches
+Kit main libre
+Groupe de pote
+Multiples sacs
+Salopette
+Bandana
+Moustache de mousquetaire
 
 
 Semi-ordinaire:
@@ -94,7 +99,6 @@ Panama
 Bob
 Porte un instrument
 Militaire
-Kit main libre
 Son a donf
 Canne
 Enfant relou
@@ -153,6 +157,12 @@ Plâtrée
 Doublage de rue
 Habits trop grand
 Emo dark
+En colère
+Mami à vélo
+Cheveux bleu ou vert
+Cheveux rose
+Black roux
+Backpacker
 
 
 
@@ -202,6 +212,9 @@ Aveugle
 Chat des rues
 Rat
 Double chien
+Noeud papillon
+Pull sans t-shirt
+Chirurgie esthétique
 
 Légendaire:
 Se fait chier dessus par oiseau

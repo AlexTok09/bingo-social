@@ -112,6 +112,7 @@ let pendingBonusCategory = null;
 let rerollRemaining = 0;
 let freeCheckCategory = null;
 let bonusRerollCount = 3;
+let jokerRerollActive = false;
 const btnBonusFreecheck = $('#btn-bonus-freecheck');
 
 function showScreen(screen) {
@@ -140,6 +141,7 @@ function resetGameState() {
   myBonuses = emptyBonuses();
   rerollRemaining = 0;
   bonusRerollCount = 3;
+  jokerRerollActive = false;
   freeCheckCategory = null;
   pendingBonusCategory = null;
   closeBonusChoice();
@@ -185,11 +187,13 @@ function applyLocalToggle(category, index) {
 function updateJokerSlot() {
   if (!btnJoker || !jokerCountEl) return;
   const count = myBonuses.joker || 0;
+  const bonusRerollActive = rerollRemaining > 0 && !jokerRerollActive;
   jokerCountEl.textContent = count;
-  btnJoker.classList.toggle('has-bonus', count > 0);
-  btnJoker.disabled = count <= 0;
-  btnJoker.title = count > 0 ? `Joker disponible x${count}` : 'Aucun joker disponible';
-  btnJoker.setAttribute('aria-label', count > 0 ? `Joker disponible x${count}` : 'Aucun joker disponible');
+  btnJoker.classList.toggle('has-bonus', count > 0 || jokerRerollActive || bonusRerollActive);
+  btnJoker.disabled = count <= 0 && !jokerRerollActive && !bonusRerollActive;
+  const label = jokerRerollActive ? 'Annuler le joker' : bonusRerollActive ? 'Annuler le reroll' : (count > 0 ? `Joker disponible x${count}` : 'Aucun joker disponible');
+  btnJoker.title = label;
+  btnJoker.setAttribute('aria-label', label);
 }
 
 function applyPendingBonusState(pendingBonus) {
@@ -197,6 +201,7 @@ function applyPendingBonusState(pendingBonus) {
   freeCheckCategory = null;
   rerollRemaining = 0;
   bonusRerollCount = 3;
+  jokerRerollActive = false;
   closeBonusChoice();
 
   if (!pendingBonus) return;
@@ -212,6 +217,7 @@ function applyPendingBonusState(pendingBonus) {
     freeCheckCategory = pendingBonus.category || '*';
   } else if (pendingBonus.type === 'reroll-picks') {
     rerollRemaining = pendingBonus.remaining || 0;
+    jokerRerollActive = pendingBonus.source === 'joker';
   }
 }
 
@@ -710,9 +716,22 @@ if (socket) {
     renderGrid();
   });
 
-  socket.on('reroll-bonus-start', ({ remaining }) => {
+  socket.on('reroll-bonus-start', ({ remaining, source }) => {
     rerollRemaining = remaining;
-    showToast(`Choisis ${remaining} case${remaining > 1 ? 's' : ''} à rejouer !`);
+    jokerRerollActive = source === 'joker';
+    showToast(jokerRerollActive
+      ? 'Choisis 1 case à rejouer (re-clique le joker pour annuler)'
+      : `Choisis ${remaining} case${remaining > 1 ? 's' : ''} à rejouer ! (re-clique 🃏 pour annuler)`);
+    updateJokerSlot();
+    renderGrid();
+  });
+
+  socket.on('joker-cancelled', ({ count }) => {
+    jokerRerollActive = false;
+    rerollRemaining = 0;
+    myBonuses = { ...myBonuses, joker: count };
+    updateJokerSlot();
+    showToast('Joker annulé, remis en stock');
     renderGrid();
   });
 
@@ -769,6 +788,8 @@ if (socket) {
     myBonuses = { ...emptyBonuses(), ...(bonuses || {}) };
     updateJokerSlot();
     rerollRemaining = remaining || 0;
+    if (rerollRemaining <= 0) jokerRerollActive = false;
+    updateJokerSlot();
     playRerollSound();
     showToast(rerollRemaining > 0 ? `Encore ${rerollRemaining} à rejouer` : 'Rejeu terminé !');
     renderGrid();
@@ -803,6 +824,7 @@ if (socket) {
     updateJokerSlot();
     rerollRemaining = 0;
     bonusRerollCount = 3;
+    jokerRerollActive = false;
     freeCheckCategory = null;
     pendingBonusCategory = null;
     closeBonusChoice();
@@ -874,22 +896,28 @@ function categoryEmoji(item) {
   if (key.includes('trotinette') || key.includes('electrique')) return '🛴';
   if (key.includes('jogger') || key.includes('jogg')) return '🏃';
   if (key.includes('tricot')) return '🧶';
+  if (key.includes('pigeon') && key.includes('mange')) return '🍞';
   if (key.includes('mange')) return '🍔';
   if (key.includes('rire') && !key.includes('fou')) return '😂';
   if (key.includes('dock') || key.includes('martins')) return '👢';
 
   if (key.includes('panama')) return '🏝️';
-  if (key.includes('bob')) return '🪣';
+  if (key.includes('bob')) return '🤠';
   if (key.includes('air instrument')) return '🎷';
   if (key.includes('instrument')) return '🎸';
   if (key.includes('militaire')) return '🪖';
-  if (key.includes('kit main libre')) return '🎧';
+  if (key.includes('kit main libre')) return '🎙️';
   if (key.includes('son a donf')) return '🔊';
   if (key.includes('canne')) return '🦯';
   if (key.includes('enfant relou')) return '🧒';
+  if (key.includes('pull') && key.includes('sans')) return '🐻';
   if (key.includes('shirt')) return '👾';
   if (key.includes('geek')) return '🤓';
   if (key.includes('cheveux') && key.includes('fesses')) return '💇';
+  if (key.includes('cheveux') && (key.includes('bleu') || key.includes('vert'))) return '💙';
+  if (key.includes('cheveux') && key.includes('rose')) return '🌸';
+  if (key.includes('black') && key.includes('roux')) return '🦊';
+  if (key.includes('mami') && key.includes('velo')) return '👵';
   if (key.includes('poivre')) return '🧂';
   if (key.includes('livre')) return '📖';
   if (key.includes('ivre')) return '🍺';
@@ -936,7 +964,7 @@ function categoryEmoji(item) {
   if (key.includes('accouplement')) return '🫦';
   if (key.includes('merde')) return '💩';
   if (key.includes('jumeaux')) return '👯';
-  if (key.includes('pipe') || key.includes('piple')) return '🪈';
+  if (key.includes('pipe') || key.includes('piple')) return '🚬';
   if (key.includes('cape')) return '🦸';
   if (key.includes('coupure') && key.includes('electricite')) return '⚡';
   if (key.includes('enterrement') && key.includes('garcon')) return '🎉';
@@ -972,7 +1000,7 @@ function categoryEmoji(item) {
   if (key.includes('porte bebe')) return '🍼';
   if (key.includes('chemise rose')) return '👚';
   if (key.includes('integrale')) return '👖';
-  if (key.includes('thune')) return '🪙';
+  if (key.includes('thune')) return '🤲';
   if (key.includes('gaz')) return '⛽';
   if (key.includes('barbe') && key.includes('chauve')) return '🧔';
   if (key.includes('chauve')) return '🥚';
@@ -985,7 +1013,7 @@ function categoryEmoji(item) {
   if (key.includes('detendu')) return '😌';
   if (key.includes('ciel')) return '☁️';
   if (key.includes('crache')) return '🦙';
-  if (key.includes('sueur')) return '💧';
+  if (key.includes('sueur')) return '🥵';
   if (key.includes('auto ecole')) return '🚗';
   if (key.includes('dakar')) return '🏜️';
   if (key.includes('peluche')) return '🧸';
@@ -1004,6 +1032,7 @@ function categoryEmoji(item) {
   if (key.includes('visio')) return '📹';
   if (key.includes('samourai')) return '🗡️';
   if (key.includes('corbillard')) return '🚐';
+  if (key.includes('mousquetaire')) return '⚔️';
   if (key.includes('moustache')) return '🥸';
   if (key.includes('cercueil')) return '⚰️';
   if (key.includes('tresse')) return '🪢';
@@ -1048,6 +1077,7 @@ function categoryEmoji(item) {
   if (key.includes('aveugle')) return '🦮';
   if (key.includes('chat des rues')) return '🐈';
   if (key.startsWith('rat ')) return '🐀';
+  if (key.includes('groupe') && key.includes('pote')) return '👥';
   if (key.includes('groupe')) return '🎼';
   if (key.includes('maillot')) return '⚽';
   if (key.includes('chariot')) return '🛒';
@@ -1055,6 +1085,13 @@ function categoryEmoji(item) {
   if (key.includes('relation')) return '😻';
   if (key.includes('autre joueur')) return '🎯';
   if (key.includes('clown')) return '🤡';
+  if (key.includes('colere')) return '😡';
+  if (key.includes('salopette')) return '🧑‍🌾';
+  if (key.includes('bandana')) return '🏴‍☠️';
+  if (key.includes('backpacker')) return '🎒';
+  if (key.includes('chirurgie') || key.includes('esthetique')) return '💉';
+  if (key.includes('noeud') && key.includes('papillon')) return '🦋';
+  if (key.includes('multiples sacs') || (key.includes('multiple') && key.includes('sac'))) return '🛍️';
 
   return '🎲';
 }
@@ -1299,6 +1336,14 @@ btnShare.addEventListener('click', () => {
 });
 
 btnJoker.addEventListener('click', () => {
+  if (jokerRerollActive) {
+    emitSocket('use-joker');
+    return;
+  }
+  if (rerollRemaining > 0) {
+    emitSocket('use-joker');
+    return;
+  }
   if ((myBonuses.joker || 0) <= 0) {
     showToast('Pas de joker disponible');
     return;

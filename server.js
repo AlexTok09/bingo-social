@@ -663,9 +663,10 @@ io.on('connection', (socket) => {
     const baseThreshold = BONUS_REPEAT_THRESHOLD[categoryKey] || 3;
     const rerollCount = BONUS_REROLL_COUNT[categoryKey] || 3;
 
-    // Seuils de bonus doublés à chaque palier : 3, 6, 12, 24, ...
+    // Seuils cumulatifs, gap doublé à chaque palier : 3, 9, 21, 45, ...
     let bonusThreshold = baseThreshold;
-    while (bonusThreshold < nextCount) bonusThreshold *= 2;
+    let bonusGap = baseThreshold;
+    while (bonusThreshold < nextCount) { bonusGap *= 2; bonusThreshold += bonusGap; }
 
     player.occurrences[categoryKey][indexNumber] = nextCount;
     if (nextCount === bonusThreshold) {
@@ -732,14 +733,38 @@ io.on('connection', (socket) => {
     const room = rooms.get(socket.roomCode);
     if (!room || room.winner) return;
     const player = room.players.find(p => p.id === socket.id);
-    if (!player || player.pendingBonus) return;
+    if (!player) return;
 
     player.bonuses ||= emptyBonuses();
+
+    // Re-clic joker pendant reroll bonus repeat : retour au choix
+    if (player.pendingBonus?.type === 'reroll-picks' && player.pendingBonus.source !== 'joker' && player.pendingBonus.picked.length === 0) {
+      const { category, rerollCount } = player.pendingBonus;
+      player.pendingBonus = { type: 'bonus-choice', category, rerollCount };
+      socket.emit('bonus-choice-start', { category, rerollCount });
+      socket.emit('grid-update', { checked: player.checked, occurrences: player.occurrences, bonuses: player.bonuses });
+      return;
+    }
+
+    // Re-clic joker avant d'avoir relancé une case : annulation et remboursement
+    if (player.pendingBonus?.type === 'reroll-picks' && player.pendingBonus.source === 'joker' && player.pendingBonus.picked.length === 0) {
+      player.pendingBonus = emptyPendingBonus();
+      player.bonuses.joker = (player.bonuses.joker || 0) + 1;
+      socket.emit('joker-cancelled', { count: player.bonuses.joker });
+      socket.emit('grid-update', {
+        checked: player.checked,
+        occurrences: player.occurrences,
+        bonuses: player.bonuses,
+      });
+      return;
+    }
+
+    if (player.pendingBonus) return;
     if ((player.bonuses.joker || 0) <= 0) return;
 
     player.bonuses.joker -= 1;
     player.pendingBonus = { type: 'reroll-picks', remaining: 1, picked: [], source: 'joker' };
-    socket.emit('reroll-bonus-start', { remaining: 1 });
+    socket.emit('reroll-bonus-start', { remaining: 1, source: 'joker' });
     socket.emit('grid-update', {
       checked: player.checked,
       occurrences: player.occurrences,
