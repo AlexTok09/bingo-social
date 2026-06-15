@@ -866,6 +866,13 @@ const EMOJI_BY_ID = {
   'enregistre-danse-tiktok': '📲💃', 'voiture-mariage': '💒🚗', 'vehicule-paris-dakar': '🏜️🏍️',
   'toutounette-actif': '🐕💩', 'on-se-croise-on-hesite': '🤷↔️', 'string-visible': '🍑🩲',
   'poil-de-carotte': '🧑‍🦰🥕', 'full-piercing': '💍🧷',
+  'pantalon-vert': '👖🟢', 'chemise-dans-pantalon': '👔👖', 'coupe-afro': '🪮',
+  'treilli': '🪖', 'marcel': '🎽', 'bide-a-biere': '🍺🫃', 'homme-et-chien': '🧍‍♂️🐕',
+  'corbeau-solo': '🐦‍⬛', 'goeland-solo': '🦅', 'demarche-bizarre': '🚶‍♂️💫',
+  'double-mami': '👵👵', 'double-papi': '👴👴',
+  'sort-les-poubelles': '🗑️', 'suspect': '🕵️', 'malade': '🤒', 'tache-de-rousseur': '🧑‍🦰',
+  'femme-enceinte': '🤰', 'antifa': '🏴', 'deprime': '😔', 'attache-lunette': '👓',
+  'gratte-bourse': '🥜', 'decrotte-le-nez': '👃',
 };
 
 function categoryEmoji(item) {
@@ -1088,7 +1095,6 @@ function categoryEmoji(item) {
   if (key.includes('mains dans les poches')) return '🦘';
   if (key.includes('lacet')) return '👟';
   if (key.includes('pecheur')) return '🎣';
-  if (key.includes('treillis')) return '🪖';
   if (key.includes('aveugle')) return '🦮';
   if (key.includes('chat des rues')) return '🐈';
   if (key.startsWith('rat ')) return '🐀';

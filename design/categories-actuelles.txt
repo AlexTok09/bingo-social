@@ -87,6 +87,18 @@ Ordinaire:
 🏴‍☠️ Bandana
 ⚔️ Moustache de mousquetaire
 🚬 Fume une cigarette
+👖🟢 Pantalon vert
+👔👖 Chemise dans pantalon
+🪮 Coupe Afro
+🪖 Treilli
+🎽 Marcel
+🍺🫃 Bide à bière
+🧍‍♂️🐕 Homme et chien
+🐦‍⬛ Corbeau solo
+🦅 Goéland solo
+🚶‍♂️💫 Démarche bizarre
+👵👵 Double mami
+👴👴 Double papi
 
 
 Semi-ordinaire:
@@ -164,6 +176,16 @@ Semi-ordinaire:
 🎒 Backpacker
 🧑‍🦰🥕 Poil de carotte
 💍🧷 Full piercing
+🗑️ Sort les poubelles
+🕵️ Suspect
+🤒 Malade
+🧑‍🦰 Tache de rousseur
+🤰 Femme enceinte
+🏴 Antifa
+😔 Déprimé
+👓 Attache lunette
+🥜 Gratte bourse
+👃 Décrotte le nez
 
 
 
@@ -208,7 +230,6 @@ Rare:
 🤮 Vomito
 👟 Fait ses lacets
 🎣 Pêcheur
-🪖 Treillis
 🦮 Aveugle
 🐈 Chat des rues
 🐀 Rat
