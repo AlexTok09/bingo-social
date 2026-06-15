@@ -198,7 +198,6 @@ Relation avec chat
 Contrôle police
 Bagarre de rue
 Pipi dans la rue
-Accident de la circulation
 Pied nus
 Crète de punk
 Porte un meuble
@@ -239,6 +238,7 @@ Pull sans t-shirt
 Chirurgie esthétique
 
 Légendaire:
+Accident de la circulation
 Se fait chier dessus par oiseau
 Vol de rue
 Nudité
