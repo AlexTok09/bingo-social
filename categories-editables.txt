@@ -9,7 +9,7 @@ Jean Charles marinière
 Étudiant (ultra)
 Hippie
 Mr ou Mme méchant
-Gros touriste
+Touriste
 Poussette
 Vélo cargo
 Casquette
@@ -36,11 +36,11 @@ Tricot superbe
 Mange
 Rire
 Dock martins
-Shopping human
+Shopper
 Casque
-Canette
+Bois une canette
 Bonnet
-Banane
+Sac Banane
 Béret
 Flegmatique
 Stockos
@@ -48,10 +48,10 @@ Lunette sur la tête
 Écouteur filaire
 Valise
 Motif léopard
-Porte fast food
+Porte un fast food
 Rasé sur le côté
 Vélo à main
-Porte bébé
+Porte un bébé
 Chemise rose pour homme
 Chauve
 Arrogant - prince des villes
@@ -86,6 +86,7 @@ Multiples sacs
 Salopette
 Bandana
 Moustache de mousquetaire
+Fume une cigarette
 
 
 Semi-ordinaire:
@@ -138,13 +139,12 @@ Truc de tennis
 Intégrale jean
 Demande de la thunes
 T-shirt de geek
-Est passée 4 fois
+Est passée 3 fois
 Regarde le ciel
 Gilet jaune
 Cherche un truc
 Chante
 Visio de rue
-En mode samouraï
 Se mouche
 Sort du pressing
 Mâche un chewing-gum
@@ -161,8 +161,9 @@ En colère
 Mami à vélo
 Cheveux bleu ou vert
 Cheveux rose
-Black roux
 Backpacker
+Poil de carotte
+Full piercing
 
 
 
@@ -183,11 +184,11 @@ Enregistre danse tiktok
 Fou rire
 Voiture mariage
 Distribue des flyers
-Ballon de baudrucheapparaît et
+Ballon de baudruche
 Lunette de cataractes
 Urgence gaz
 Se regarde dans vitre
-Paris - Dakar
+Véhicule Paris-Dakar
 Rai du plombier
 Air instrument
 Corbillard

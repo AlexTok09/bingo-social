@@ -853,7 +853,23 @@ function enterGame() {
   renderGrid();
 }
 
+const EMOJI_BY_ID = {
+  'papi-et-mami': '👵👴', 'doudoune-sans-manche': '🥶🎽', 'femme-et-chien': '🧍‍♀️🐩',
+  'vieille-bourgeoise': '👵💎', 'jean-charles-mariniere': '⚓👕', 'poussette': '👶🛒',
+  'velo-cargo': '🚲📦', 'caillra': '😈💸', 'deux-amis': '👭', 'drague-de-rue': '😏👀',
+  'rasta': '🧔🇯🇲', 'shopper': '🛍️', 'bonnet': '🎅', 'sac-banane': '👝🍌',
+  'velo-a-main': '🚶‍♂️🚲', 'porte-un-bebe': '👩‍🍼', 'velo-pliant': '🚲🪗', 'fume-une-cigarette': '🚬',
+  'habit-de-groupe-musique': '👕', 'porte-un-maillot-d-une-equipe-de-sport': '👕⚽',
+  'punk-a-chien': '🧷🐕', 'panama': '👒🌴', 'cheveux-jusqu-au-fesses': '💇‍♀️',
+  'fouille-dans-l-horodateur': '🅿️🔍', 'il-elle-court': '🏃‍♀️', 'trebuche': '💥🤸',
+  'jette-megot-par-terre': '🚬👇', 'pull-sur-les-epaules': '👔⛵', 'a-deux-sur-le-velo': '🚲👫',
+  'enregistre-danse-tiktok': '📲💃', 'voiture-mariage': '💒🚗', 'vehicule-paris-dakar': '🏜️🏍️',
+  'toutounette-actif': '🐕💩', 'on-se-croise-on-hesite': '🤷↔️', 'string-visible': '🍑🩲',
+  'poil-de-carotte': '🧑‍🦰🥕', 'full-piercing': '💍🧷',
+};
+
 function categoryEmoji(item) {
+  if (item && EMOJI_BY_ID[item.id]) return EMOJI_BY_ID[item.id];
   const key = `${item.id || ''} ${item.label || ''}`.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
   if (key.includes('papi') && key.includes('mami')) return '👴';
@@ -1030,7 +1046,6 @@ function categoryEmoji(item) {
   if (key.includes('presse')) return '⏱️';
   if (key.includes('chantent') || key.includes('chante')) return '🎤';
   if (key.includes('visio')) return '📹';
-  if (key.includes('samourai')) return '🗡️';
   if (key.includes('corbillard')) return '🚐';
   if (key.includes('mousquetaire')) return '⚔️';
   if (key.includes('moustache')) return '🥸';
