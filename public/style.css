@@ -56,18 +56,8 @@ body::before {
     linear-gradient(90deg, var(--ink) 1px, transparent 1px),
     linear-gradient(var(--ink) 1px, transparent 1px);
   background-size: 17px 19px;
-  transform: rotate(-1.5deg) scale(1.05);
-  will-change: transform;
-}
-
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 400;
-  opacity: 0.09;
-  background: repeating-linear-gradient(0deg, var(--ink), var(--ink) 1px, transparent 1px, transparent 5px);
+  transform: rotate(-1.5deg) scale(1.05) translateZ(0);
+  backface-visibility: hidden;
 }
 
 .screen {
@@ -258,6 +248,7 @@ input[type="text"]::placeholder {
   padding: 10px 12px;
   background: var(--paper);
   border-bottom: 4px solid var(--ink);
+  transform: translateZ(0);
 }
 
 .room-info {
@@ -440,7 +431,6 @@ input[type="text"]::placeholder {
   display: block;
   font-size: 2rem;
   line-height: 1;
-  filter: saturate(1.25) contrast(1.08);
 }
 
 .cell .label {
