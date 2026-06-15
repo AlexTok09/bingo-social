@@ -298,12 +298,41 @@ input[type="text"]::placeholder {
 }
 
 .btn-joker {
-  background: var(--legendaire-soft);
-  color: #26005a;
+  position: relative;
+  min-height: 38px;
+  padding: 2px 6px;
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  font-size: 1.9rem;
+  line-height: 1;
+}
+
+.btn-joker:active {
+  transform: scale(0.9);
+  box-shadow: none;
 }
 
 .btn-joker.has-bonus {
-  background: var(--acid);
+  filter: drop-shadow(0 0 4px var(--purple));
+}
+
+.btn-joker:disabled {
+  opacity: 0.4;
+  filter: grayscale(0.7);
+}
+
+.btn-joker #joker-count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  min-height: 18px;
+  margin: 0;
+  font: 900 0.62rem var(--font);
 }
 
 .btn-joker.joker-pop {
