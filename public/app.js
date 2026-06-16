@@ -270,6 +270,15 @@ function startBgMusic() {
   bgMusic.play().catch(() => {});
 }
 
+function playSocioloIntro() {
+  if (!bgMusic) {
+    startBgMusic();
+    return;
+  }
+  bgMusic.currentTime = 0;
+  bgMusic.play().catch(() => {});
+}
+
 const SFX_VOLUME = 0.8;
 const sfxCache = {};
 const SFX_FILES = [
@@ -1428,9 +1437,18 @@ document.addEventListener('visibilitychange', () => {
 
 // --- NEW GAME ---
 
-btnNewGame.addEventListener('click', () => emitSocket('new-game', { difficulty: 'normal' }));
-btnNewGame2.addEventListener('click', () => emitSocket('new-game', { difficulty: 'normal' }));
-if (btnContinueHard) btnContinueHard.addEventListener('click', () => emitSocket('new-game', { difficulty: 'hard' }));
+btnNewGame.addEventListener('click', () => {
+  playSocioloIntro();
+  emitSocket('new-game', { difficulty: 'normal' });
+});
+btnNewGame2.addEventListener('click', () => {
+  playSocioloIntro();
+  emitSocket('new-game', { difficulty: 'normal' });
+});
+if (btnContinueHard) btnContinueHard.addEventListener('click', () => {
+  playSocioloIntro();
+  emitSocket('new-game', { difficulty: 'hard' });
+});
 
 btnBonusFreecheck.addEventListener('click', () => {
   closeBonusChoice();
