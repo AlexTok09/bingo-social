@@ -220,7 +220,7 @@ Rare:
 🤹 Circassien
 💑 Tient une meuf par le cou
 🦒 + 2 mètres
-💅 Caniche toiletté
+💅🐩 Caniche toiletté
 🐕💩 Toutounette actif
 🤷↔️ On se croise on hésite
 ⬛ Mono color tête pied
@@ -257,5 +257,5 @@ Légendaire:
 ⚰️ Cercueil
 🚪 Ouvre les portes
 🫨 Se prend une portière
-🐺 Bataille chiens de chiens
+🐺 Bataille de chiens
 🛷 Chien de traîneau

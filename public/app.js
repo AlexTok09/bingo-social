@@ -1115,7 +1115,7 @@ function categoryEmoji(item) {
   if (key.includes('mere et fille')) return '👩‍👧';
   if (key.includes('crocs')) return '🐊';
   if (key.includes('2 metres')) return '🦒';
-  if (key.includes('caniche')) return '💅';
+  if (key.includes('caniche')) return '💅🐩';
   if (key.includes('platre')) return '🩼';
   if (key.includes('toutounette')) return '🐕';
   if (key.includes('pigeon solo')) return '🕊️';
