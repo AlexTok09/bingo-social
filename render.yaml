@@ -2,7 +2,7 @@ services:
   - type: keyvalue
     name: bingo-social-redis
     plan: starter
-    region: frankfurt
+    region: oregon
     ipAllowList: []
     maxmemoryPolicy: noeviction
 
@@ -10,7 +10,7 @@ services:
     name: bingo-social
     runtime: node
     plan: standard
-    region: frankfurt
+    region: oregon
     buildCommand: npm ci
     startCommand: npm start
     healthCheckPath: /healthz
