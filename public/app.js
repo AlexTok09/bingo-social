@@ -756,7 +756,7 @@ if (socket) {
     if (source === 'poesie') {
       playBonusChoiceSound();
       showBonusFlash('Poésie !');
-      showToast('Bonus poésie : coche une case en plus, où tu veux !');
+      showToast(`Bonus poésie : coche une case en plus dans ${TIER_NAMES[category]} !`);
     } else {
       showToast(`Coche une case gratis dans ${TIER_NAMES[category]}`);
     }

@@ -645,8 +645,8 @@ io.on('connection', (socket) => {
     }
 
     if (idx === -1 && !room.winner && !player.pendingBonus && POESIE_BONUS_IDS.has(gridItems[indexNumber]?.id)) {
-      player.pendingBonus = { type: 'free-check', category: null, source: 'poesie' };
-      socket.emit('free-check-start', { category: null, source: 'poesie' });
+      player.pendingBonus = { type: 'free-check', category: categoryKey, source: 'poesie' };
+      socket.emit('free-check-start', { category: categoryKey, source: 'poesie' });
     }
 
     io.to(socket.roomCode).emit('cell-activity', {
