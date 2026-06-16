@@ -61,6 +61,26 @@ function totalCheckedCount(player) {
   return Object.values(player.checked || {}).reduce((sum, checked) => sum + (checked?.length || 0), 0);
 }
 
+function getCompletedTiers(player) {
+  return Object.keys(GRID_CONFIG).filter(tier =>
+    Array.isArray(player.checked?.[tier]) &&
+    Array.isArray(player.grid?.[tier]) &&
+    player.grid[tier].length > 0 &&
+    player.checked[tier].length === player.grid[tier].length
+  );
+}
+
+// La légendaire fait gagner instantanément (tous modes). Sinon il faut
+// room.tiersToWin grilles complétées (1 = normal, 2 = difficile).
+function evaluateWinner(room, player, justCategory) {
+  const completed = getCompletedTiers(player);
+  if (completed.includes('legendaire')) return 'legendaire';
+  if (completed.length >= (room.tiersToWin || 1)) {
+    return justCategory && completed.includes(justCategory) ? justCategory : completed[completed.length - 1];
+  }
+  return null;
+}
+
 function clearReconnectTimer(player) {
   if (player.reconnectTimeout) {
     clearTimeout(player.reconnectTimeout);
@@ -117,6 +137,7 @@ function buildPlayerState(room, player) {
     bonuses: player.bonuses,
     pendingBonus: player.pendingBonus,
     winner: room.winner,
+    tiersToWin: room.tiersToWin || 1,
     players: getPlayersInfo(room),
   };
 }
@@ -268,7 +289,7 @@ function applyCategories(categories, options = {}) {
     room.players.forEach(p => {
       const s = io.sockets.sockets.get(p.id);
       if (s) {
-        s.emit('new-game-started', { grid: p.grid });
+        s.emit('new-game-started', { grid: p.grid, tiersToWin: room.tiersToWin || 1 });
       }
     });
 
@@ -467,11 +488,12 @@ io.on('connection', (socket) => {
       code,
       players: [player],
       winner: null,
+      tiersToWin: 1,
       createdAt: Date.now(),
     });
     socket.join(code);
     socket.roomCode = code;
-    socket.emit('room-created', { code, grid });
+    socket.emit('room-created', { code, grid, tiersToWin: 1 });
     io.to(code).emit('players-update', getPlayersInfo(rooms.get(code)));
   });
 
@@ -518,7 +540,7 @@ io.on('connection', (socket) => {
     room.players.push(player);
     socket.join(roomCode);
     socket.roomCode = roomCode;
-    socket.emit('room-joined', { code: roomCode, grid });
+    socket.emit('room-joined', { code: roomCode, grid, tiersToWin: room.tiersToWin || 1 });
     io.to(roomCode).emit('players-update', getPlayersInfo(room));
     io.to(roomCode).emit('player-joined', normalizedName);
   });
@@ -616,8 +638,9 @@ io.on('connection', (socket) => {
       socket.emit('joker-earned', { count: player.bonuses.joker });
     }
 
-    if (checkedList.length === gridItems.length) {
-      room.winner = { id: player.id, clientId: player.clientId, name: player.name, category: categoryKey };
+    const winCategory = evaluateWinner(room, player, categoryKey);
+    if (winCategory && !room.winner) {
+      room.winner = { id: player.id, clientId: player.clientId, name: player.name, category: winCategory, hard: (room.tiersToWin || 1) > 1 };
       io.to(socket.roomCode).emit('game-won', room.winner);
     }
 
@@ -832,20 +855,22 @@ io.on('connection', (socket) => {
       checked: true,
     });
 
-    if (player.checked[categoryKey].length === player.grid[categoryKey].length) {
-      room.winner = { id: player.id, clientId: player.clientId, name: player.name, category: categoryKey };
+    const winCategory = evaluateWinner(room, player, categoryKey);
+    if (winCategory && !room.winner) {
+      room.winner = { id: player.id, clientId: player.clientId, name: player.name, category: winCategory, hard: (room.tiersToWin || 1) > 1 };
       io.to(socket.roomCode).emit('game-won', room.winner);
     }
 
     io.to(socket.roomCode).emit('players-update', getPlayersInfo(room));
   });
 
-  socket.on('new-game', () => {
+  socket.on('new-game', (payload = {}) => {
     if (!checkRateLimit(socket)) return;
     if (!socket.roomCode) return;
     const room = rooms.get(socket.roomCode);
     if (!room) return;
 
+    room.tiersToWin = payload && payload.difficulty === 'hard' ? 2 : 1;
     room.winner = null;
     room.players.forEach(p => {
       clearReconnectTimer(p);
@@ -859,7 +884,7 @@ io.on('connection', (socket) => {
     room.players.forEach(p => {
       const s = io.sockets.sockets.get(p.id);
       if (s) {
-        s.emit('new-game-started', { grid: p.grid });
+        s.emit('new-game-started', { grid: p.grid, tiersToWin: room.tiersToWin });
       }
     });
 

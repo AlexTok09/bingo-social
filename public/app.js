@@ -99,6 +99,8 @@ const winTitle = $('#win-title');
 const winDetail = $('#win-detail');
 const btnNewGame = $('#btn-new-game');
 const btnNewGame2 = $('#btn-new-game-2');
+const btnContinueHard = $('#btn-continue-hard');
+const modeBanner = $('#mode-banner');
 const toastEl = $('#toast');
 const bonusFlash = $('#bonus-flash');
 const bonusChoiceOverlay = $('#bonus-choice-overlay');
@@ -113,6 +115,11 @@ let rerollRemaining = 0;
 let freeCheckCategory = null;
 let bonusRerollCount = 3;
 let jokerRerollActive = false;
+let tiersToWin = 1;
+
+function updateModeBanner() {
+  if (modeBanner) modeBanner.hidden = tiersToWin <= 1;
+}
 const btnBonusFreecheck = $('#btn-bonus-freecheck');
 
 function showScreen(screen) {
@@ -144,6 +151,8 @@ function resetGameState() {
   jokerRerollActive = false;
   freeCheckCategory = null;
   pendingBonusCategory = null;
+  tiersToWin = 1;
+  updateModeBanner();
   closeBonusChoice();
   closePanel();
   updateJokerSlot();
@@ -228,7 +237,9 @@ function showWinnerState(winner, { playEffects = true } = {}) {
   winTitle.textContent = winner.name === playerName ? 'Tu as gagné !' : `${winner.name} a gagné !`;
   winDetail.textContent = winner.category === 'legendaire'
     ? 'Case légendaire cochée : victoire instantanée'
-    : `Grille "${TIER_NAMES[winner.category] || winner.category}" complétée`;
+    : winner.hard
+      ? '2 grilles complétées en difficile !'
+      : `Grille "${TIER_NAMES[winner.category] || winner.category}" complétée`;
   btnNewGame.style.display = 'block';
   if (playEffects) {
     playWinCasinoSound(winner.category);
@@ -626,7 +637,7 @@ if (socket) {
     showError('Connexion temps réel impossible : serveur Socket.IO requis.');
   });
 
-  socket.on('room-created', ({ code, grid }) => {
+  socket.on('room-created', ({ code, grid, tiersToWin: t }) => {
     roomCode = code;
     setStoredSessionValue(SESSION_ROOM_KEY, roomCode);
     myGrid = grid;
@@ -637,10 +648,12 @@ if (socket) {
     updateJokerSlot();
     rerollRemaining = 0;
     bonusRerollCount = 3;
+    tiersToWin = t || 1;
+    updateModeBanner();
     enterGame();
   });
 
-  socket.on('room-joined', ({ code, grid }) => {
+  socket.on('room-joined', ({ code, grid, tiersToWin: t }) => {
     roomCode = code;
     setStoredSessionValue(SESSION_ROOM_KEY, roomCode);
     myGrid = grid;
@@ -651,6 +664,8 @@ if (socket) {
     updateJokerSlot();
     rerollRemaining = 0;
     bonusRerollCount = 3;
+    tiersToWin = t || 1;
+    updateModeBanner();
     enterGame();
   });
 
@@ -677,6 +692,8 @@ if (socket) {
     myOccurrences = { ...emptyOccurrences(), ...(state.occurrences || {}) };
     myBonuses = { ...emptyBonuses(), ...(state.bonuses || {}) };
     updateJokerSlot();
+    tiersToWin = state.tiersToWin || 1;
+    updateModeBanner();
     applyPendingBonusState(state.pendingBonus);
     showScreen(screenGame);
     displayCode.textContent = roomCode;
@@ -815,7 +832,7 @@ if (socket) {
     showWinnerState({ name, category }, { playEffects: true });
   });
 
-  socket.on('new-game-started', ({ grid }) => {
+  socket.on('new-game-started', ({ grid, tiersToWin: t }) => {
     myGrid = grid;
     gridBuilt = false;
     myChecked = emptyChecked();
@@ -827,6 +844,8 @@ if (socket) {
     jokerRerollActive = false;
     freeCheckCategory = null;
     pendingBonusCategory = null;
+    tiersToWin = t || 1;
+    updateModeBanner();
     closeBonusChoice();
     winOverlay.className = 'overlay';
     btnNewGame.style.display = 'none';
@@ -836,7 +855,7 @@ if (socket) {
     const oldChaos = document.getElementById('legendaire-chaos');
     if (oldChaos) oldChaos.remove();
     renderGrid();
-    showToast('Nouvelle partie !');
+    showToast(tiersToWin > 1 ? '🔥 Mode difficile : 2 grilles à compléter !' : 'Nouvelle partie !');
   });
 
   socket.on('categories-updated', () => {
@@ -1398,8 +1417,9 @@ document.addEventListener('visibilitychange', () => {
 
 // --- NEW GAME ---
 
-btnNewGame.addEventListener('click', () => emitSocket('new-game'));
-btnNewGame2.addEventListener('click', () => emitSocket('new-game'));
+btnNewGame.addEventListener('click', () => emitSocket('new-game', { difficulty: 'normal' }));
+btnNewGame2.addEventListener('click', () => emitSocket('new-game', { difficulty: 'normal' }));
+if (btnContinueHard) btnContinueHard.addEventListener('click', () => emitSocket('new-game', { difficulty: 'hard' }));
 
 btnBonusFreecheck.addEventListener('click', () => {
   closeBonusChoice();
