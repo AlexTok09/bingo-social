@@ -4,12 +4,17 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { Server } = require('socket.io');
+const { createAdapter } = require('@socket.io/redis-adapter');
+const Redis = require('ioredis');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (process.env.NODE_ENV === 'production' ? '' : 'binglou-admin');
+const REDIS_URL = process.env.REDIS_URL || process.env.VALKEY_URL || process.env.KEY_VALUE_URL || '';
+const ROOM_KEY_PREFIX = 'bingo:room:';
+const ROOM_TTL_SECONDS = 4 * 60 * 60;
 
 app.use(compression());
 app.use(express.json({ limit: '200kb' }));
@@ -104,16 +109,44 @@ function syncPlayerState(socket, player) {
   socket.emit('grid-update', snapshotPlayerState(player));
 }
 
-function scheduleDisconnectedRemoval(roomCode, clientId) {
-  const room = rooms.get(roomCode);
+async function getActionContext(socket, payload = {}) {
+  const payloadRoomCode = typeof payload?.roomCode === 'string' ? payload.roomCode.toUpperCase().trim() : '';
+  const roomCode = socket.roomCode || payloadRoomCode;
+  if (!roomCode) return {};
+
+  const room = await getRoom(roomCode);
+  if (!room) return { roomCode };
+
+  const actionClientId = payload?.clientId || socket.clientId || null;
+  let player = room.players.find(p => p.id === socket.id);
+  if (!player && actionClientId) {
+    player = room.players.find(p => p.clientId === actionClientId);
+  }
+
+  if (player) {
+    clearReconnectTimer(player);
+    player.id = socket.id;
+    if (actionClientId && !player.clientId) player.clientId = actionClientId;
+    socket.clientId = player.clientId || actionClientId;
+    socket.roomCode = roomCode;
+    socket.join(roomCode);
+    player.disconnectedAt = null;
+  }
+
+  return { roomCode, room, player };
+}
+
+async function scheduleDisconnectedRemoval(roomCode, clientId) {
+  const room = await getRoom(roomCode);
   if (!room) return;
   const player = room.players.find(p => p.clientId === clientId || (!p.clientId && p.id === clientId));
   if (!player) return;
 
   clearReconnectTimer(player);
   player.disconnectedAt = Date.now();
-  player.reconnectTimeout = setTimeout(() => {
-    const currentRoom = rooms.get(roomCode);
+  await persistRoom(room);
+  player.reconnectTimeout = setTimeout(async () => {
+    const currentRoom = await getRoom(roomCode);
     if (!currentRoom) return;
     const currentPlayer = currentRoom.players.find(p => p.clientId === clientId || (!p.clientId && p.id === clientId));
     if (!currentPlayer || !currentPlayer.disconnectedAt) return;
@@ -121,7 +154,9 @@ function scheduleDisconnectedRemoval(roomCode, clientId) {
     currentRoom.players = currentRoom.players.filter(p => p.clientId !== clientId && p.id !== clientId);
     if (currentRoom.players.length === 0) {
       rooms.delete(roomCode);
+      await deletePersistedRoom(roomCode);
     } else {
+      await persistRoom(currentRoom);
       io.to(roomCode).emit('players-update', getPlayersInfo(currentRoom));
       io.to(roomCode).emit('player-left', currentPlayer.name);
     }
@@ -212,6 +247,108 @@ const POESIE_BONUS_IDS = new Set(['heureux-comme-tout', 'regarde-le-ciel', 'fou-
 const RECONNECT_GRACE_MS = 15 * 60 * 1000;
 
 const rooms = new Map();
+let roomStore = null;
+
+function roomKey(roomCode) {
+  return `${ROOM_KEY_PREFIX}${roomCode}`;
+}
+
+function serializeRoom(room) {
+  return {
+    ...room,
+    players: room.players.map(({ reconnectTimeout, ...player }) => ({
+      ...player,
+      reconnectTimeout: null,
+    })),
+  };
+}
+
+function hydrateRoom(room) {
+  if (!room || typeof room !== 'object' || !room.code || !Array.isArray(room.players)) return null;
+  room.players.forEach(player => {
+    player.reconnectTimeout = null;
+    player.checked ||= emptyChecked();
+    player.occurrences ||= emptyOccurrences();
+    player.bonuses ||= emptyBonuses();
+    player.pendingBonus ??= emptyPendingBonus();
+  });
+  return room;
+}
+
+async function persistRoom(room) {
+  if (!roomStore || !room?.code) return;
+  try {
+    await roomStore.set(roomKey(room.code), JSON.stringify(serializeRoom(room)), 'EX', ROOM_TTL_SECONDS);
+  } catch (error) {
+    console.error('Room persistence failed:', error.message);
+  }
+}
+
+async function deletePersistedRoom(roomCode) {
+  if (!roomStore || !roomCode) return;
+  try {
+    await roomStore.del(roomKey(roomCode));
+  } catch (error) {
+    console.error('Room deletion failed:', error.message);
+  }
+}
+
+async function loadRoom(roomCode) {
+  if (!roomStore || !roomCode) return null;
+  try {
+    const raw = await roomStore.get(roomKey(roomCode));
+    if (!raw) return null;
+    const room = hydrateRoom(JSON.parse(raw));
+    if (!room) return null;
+    rooms.set(room.code, room);
+    return room;
+  } catch (error) {
+    console.error('Room load failed:', error.message);
+    return null;
+  }
+}
+
+async function getRoom(roomCode) {
+  return rooms.get(roomCode) || await loadRoom(roomCode);
+}
+
+async function loadPersistedRooms() {
+  if (!roomStore) return;
+  try {
+    const keys = await roomStore.keys(`${ROOM_KEY_PREFIX}*`);
+    if (!keys.length) return;
+    const values = await roomStore.mget(keys);
+    values.forEach(raw => {
+      if (!raw) return;
+      try {
+        const room = hydrateRoom(JSON.parse(raw));
+        if (room) rooms.set(room.code, room);
+      } catch {}
+    });
+    console.log(`Loaded ${rooms.size} persisted room(s)`);
+  } catch (error) {
+    console.error('Persisted room bootstrap failed:', error.message);
+  }
+}
+
+async function initRealtimeStore() {
+  if (!REDIS_URL) return;
+  const redisOptions = { lazyConnect: true, maxRetriesPerRequest: null };
+  const pubClient = new Redis(REDIS_URL, redisOptions);
+  const subClient = pubClient.duplicate();
+  const dataClient = pubClient.duplicate();
+
+  await Promise.all([
+    pubClient.connect(),
+    subClient.connect(),
+    dataClient.connect(),
+  ]);
+
+  io.adapter(createAdapter(pubClient, subClient));
+  roomStore = dataClient;
+  await loadPersistedRooms();
+  console.log('Redis/Valkey realtime store enabled');
+}
 
 const RATE_LIMIT_WINDOW_MS = 2000;
 const RATE_LIMIT_MAX = 15;
@@ -267,7 +404,7 @@ function publicCategories() {
   return JSON.parse(JSON.stringify(CATEGORIES));
 }
 
-function applyCategories(categories, options = {}) {
+async function applyCategories(categories, options = {}) {
   CATEGORIES = normalizeCategories(categories);
   saveCategories(CATEGORIES);
   io.emit('categories-updated', publicCategories());
@@ -294,6 +431,7 @@ function applyCategories(categories, options = {}) {
     });
 
     io.to(room.code).emit('players-update', getPlayersInfo(room));
+    await persistRoom(room);
   }
 }
 
@@ -381,23 +519,25 @@ function getPlayersInfo(room) {
   }));
 }
 
-function removePlayerFromRoom(socket) {
+async function removePlayerFromRoom(socket) {
   if (!socket.roomCode) return;
-  const room = rooms.get(socket.roomCode);
+  const room = await getRoom(socket.roomCode);
   if (!room) {
     socket.roomCode = null;
     return;
   }
 
-  const player = room.players.find(p => p.id === socket.id);
+  const player = room.players.find(p => p.id === socket.id || (socket.clientId && p.clientId === socket.clientId));
   const name = player?.name;
   if (player) clearReconnectTimer(player);
-  room.players = room.players.filter(p => p.id !== socket.id);
+  room.players = room.players.filter(p => p.id !== socket.id && (!socket.clientId || p.clientId !== socket.clientId));
   socket.leave(socket.roomCode);
 
   if (room.players.length === 0) {
     rooms.delete(socket.roomCode);
+    await deletePersistedRoom(socket.roomCode);
   } else {
+    await persistRoom(room);
     io.to(socket.roomCode).emit('players-update', getPlayersInfo(room));
     if (name) io.to(socket.roomCode).emit('player-left', name);
   }
@@ -413,7 +553,7 @@ app.get('/api/admin/categories', (req, res) => {
   res.json(publicCategories());
 });
 
-app.put('/api/admin/categories', (req, res) => {
+app.put('/api/admin/categories', async (req, res) => {
   if (!isAdminRequest(req)) {
     res.status(401).json({ error: 'Mot de passe invalide.' });
     return;
@@ -427,19 +567,23 @@ app.put('/api/admin/categories', (req, res) => {
     return;
   }
 
-  applyCategories(categories, { resetRooms });
+  await applyCategories(categories, { resetRooms });
   res.json({ ok: true, categories: publicCategories(), resetRooms });
 });
 
-app.post('/api/admin/reset-categories', (req, res) => {
+app.post('/api/admin/reset-categories', async (req, res) => {
   if (!isAdminRequest(req)) {
     res.status(401).json({ error: 'Mot de passe invalide.' });
     return;
   }
 
   const resetRooms = req.body?.resetRooms !== false;
-  applyCategories(DEFAULT_CATEGORIES, { resetRooms });
+  await applyCategories(DEFAULT_CATEGORIES, { resetRooms });
   res.json({ ok: true, categories: publicCategories(), resetRooms });
+});
+
+app.get('/healthz', (req, res) => {
+  res.json({ ok: true });
 });
 
 app.get('/admin', (req, res) => {
@@ -473,7 +617,7 @@ io.on('connection', (socket) => {
     socket.emit('error-msg', 'Edition déplacée dans /admin.');
   });
 
-  socket.on('create-room', (payload) => {
+  socket.on('create-room', async (payload) => {
     if (!checkRateLimit(socket)) return;
     const playerName = typeof payload === 'string' ? payload : payload?.playerName;
     const clientId = typeof payload === 'object' && payload ? payload.clientId : null;
@@ -502,13 +646,15 @@ io.on('connection', (socket) => {
       tiersToWin: 1,
       createdAt: Date.now(),
     });
+    await persistRoom(rooms.get(code));
     socket.join(code);
     socket.roomCode = code;
+    socket.clientId = clientId;
     socket.emit('room-created', { code, grid, tiersToWin: 1 });
     io.to(code).emit('players-update', getPlayersInfo(rooms.get(code)));
   });
 
-  socket.on('join-room', (payload) => {
+  socket.on('join-room', async (payload) => {
     if (!checkRateLimit(socket)) return;
     const code = payload?.code;
     const playerName = payload?.playerName;
@@ -523,7 +669,7 @@ io.on('connection', (socket) => {
       socket.emit('error-msg', 'Code à 4 caractères !');
       return;
     }
-    const room = rooms.get(roomCode);
+    const room = await getRoom(roomCode);
     if (!room) {
       socket.emit('error-msg', 'Salon introuvable !');
       return;
@@ -549,22 +695,24 @@ io.on('connection', (socket) => {
       disconnectedAt: null,
     };
     room.players.push(player);
+    await persistRoom(room);
     socket.join(roomCode);
     socket.roomCode = roomCode;
+    socket.clientId = clientId;
     socket.emit('room-joined', { code: roomCode, grid, tiersToWin: room.tiersToWin || 1 });
     io.to(roomCode).emit('players-update', getPlayersInfo(room));
     io.to(roomCode).emit('player-joined', normalizedName);
   });
 
-  socket.on('leave-room', () => {
-    removePlayerFromRoom(socket);
+  socket.on('leave-room', async () => {
+    await removePlayerFromRoom(socket);
   });
 
-  socket.on('resume-session', (payload = {}) => {
+  socket.on('resume-session', async (payload = {}) => {
     const { roomCode, clientId } = payload;
     if (!roomCode || !clientId) return;
     const normalizedRoomCode = roomCode.toUpperCase().trim();
-    const room = rooms.get(normalizedRoomCode);
+    const room = await getRoom(normalizedRoomCode);
     if (!room) {
       socket.emit('session-resume-failed', { reason: 'Salon introuvable.' });
       return;
@@ -579,14 +727,16 @@ io.on('connection', (socket) => {
     clearReconnectTimer(player);
     player.id = socket.id;
     player.disconnectedAt = null;
+    socket.clientId = player.clientId || clientId;
     socket.join(normalizedRoomCode);
     socket.roomCode = normalizedRoomCode;
+    await persistRoom(room);
 
     socket.emit('session-restored', buildPlayerState(room, player));
     io.to(normalizedRoomCode).emit('players-update', getPlayersInfo(room));
   });
 
-  socket.on('toggle-cell', (payload = {}, ack) => {
+  socket.on('toggle-cell', async (payload = {}, ack) => {
     const { category, index } = payload;
     const reply = (payload) => {
       if (typeof ack === 'function') ack(payload);
@@ -596,13 +746,12 @@ io.on('connection', (socket) => {
       return;
     }
 
-    if (!socket.roomCode) return;
-    const room = rooms.get(socket.roomCode);
+    const { roomCode, room, player } = await getActionContext(socket, payload);
+    if (!roomCode) return;
     if (!room) {
       reply({ ok: false, reason: 'Salon introuvable.' });
       return;
     }
-    const player = room.players.find(p => p.id === socket.id);
     if (room.winner) {
       if (player) syncPlayerState(socket, player);
       reply({ ok: false, reason: 'La partie est déjà terminée.' });
@@ -652,7 +801,7 @@ io.on('connection', (socket) => {
     const winCategory = evaluateWinner(room, player, categoryKey);
     if (winCategory && !room.winner) {
       room.winner = { id: player.id, clientId: player.clientId, name: player.name, category: winCategory, hard: (room.tiersToWin || 1) > 1 };
-      io.to(socket.roomCode).emit('game-won', room.winner);
+      io.to(roomCode).emit('game-won', room.winner);
     }
 
     if (idx === -1 && !room.winner && !player.pendingBonus && POESIE_BONUS_IDS.has(gridItems[indexNumber]?.id)) {
@@ -660,7 +809,9 @@ io.on('connection', (socket) => {
       socket.emit('free-check-start', { category: categoryKey, source: 'poesie' });
     }
 
-    io.to(socket.roomCode).emit('cell-activity', {
+    await persistRoom(room);
+
+    io.to(roomCode).emit('cell-activity', {
       playerId: player.id,
       name: player.name,
       category: categoryKey,
@@ -669,16 +820,14 @@ io.on('connection', (socket) => {
       checked: idx === -1,
     });
 
-    io.to(socket.roomCode).emit('players-update', getPlayersInfo(room));
+    io.to(roomCode).emit('players-update', getPlayersInfo(room));
   });
 
-  socket.on('repeat-cell', (payload = {}) => {
+  socket.on('repeat-cell', async (payload = {}) => {
     if (!checkRateLimit(socket)) return;
     const { category, index } = payload;
-    if (!socket.roomCode) return;
-    const room = rooms.get(socket.roomCode);
+    const { room, player } = await getActionContext(socket, payload);
     if (!room || room.winner) return;
-    const player = room.players.find(p => p.id === socket.id);
     if (!player) return;
     if (player.pendingBonus) return;
 
@@ -721,15 +870,14 @@ io.on('connection', (socket) => {
       occurrences: player.occurrences,
       bonuses: player.bonuses,
     });
+    await persistRoom(room);
   });
 
-  socket.on('reroll-cell', (payload = {}) => {
+  socket.on('reroll-cell', async (payload = {}) => {
     if (!checkRateLimit(socket)) return;
     const { category, index } = payload;
-    if (!socket.roomCode) return;
-    const room = rooms.get(socket.roomCode);
+    const { room, player } = await getActionContext(socket, payload);
     if (!room || room.winner) return;
-    const player = room.players.find(p => p.id === socket.id);
     if (!player || player.pendingBonus?.type !== 'reroll-picks') return;
     const categoryKey = typeof category === 'string' ? category : '';
     const indexNumber = Number(index);
@@ -758,15 +906,14 @@ io.on('connection', (socket) => {
       category: categoryKey,
       index: indexNumber,
     });
+    await persistRoom(room);
     io.to(socket.roomCode).emit('players-update', getPlayersInfo(room));
   });
 
-  socket.on('use-joker', () => {
+  socket.on('use-joker', async (payload = {}) => {
     if (!checkRateLimit(socket)) return;
-    if (!socket.roomCode) return;
-    const room = rooms.get(socket.roomCode);
+    const { room, player } = await getActionContext(socket, payload);
     if (!room || room.winner) return;
-    const player = room.players.find(p => p.id === socket.id);
     if (!player) return;
 
     player.bonuses ||= emptyBonuses();
@@ -777,6 +924,7 @@ io.on('connection', (socket) => {
       player.pendingBonus = { type: 'bonus-choice', category, rerollCount };
       socket.emit('bonus-choice-start', { category, rerollCount });
       socket.emit('grid-update', { checked: player.checked, occurrences: player.occurrences, bonuses: player.bonuses });
+      await persistRoom(room);
       return;
     }
 
@@ -790,6 +938,7 @@ io.on('connection', (socket) => {
         occurrences: player.occurrences,
         bonuses: player.bonuses,
       });
+      await persistRoom(room);
       return;
     }
 
@@ -804,15 +953,14 @@ io.on('connection', (socket) => {
       occurrences: player.occurrences,
       bonuses: player.bonuses,
     });
+    await persistRoom(room);
   });
 
-  socket.on('choose-bonus', (payload = {}) => {
+  socket.on('choose-bonus', async (payload = {}) => {
     if (!checkRateLimit(socket)) return;
     const { choice } = payload;
-    if (!socket.roomCode) return;
-    const room = rooms.get(socket.roomCode);
+    const { room, player } = await getActionContext(socket, payload);
     if (!room || room.winner) return;
-    const player = room.players.find(p => p.id === socket.id);
     if (!player || player.pendingBonus?.type !== 'bonus-choice') return;
 
     const category = player.pendingBonus.category;
@@ -825,15 +973,14 @@ io.on('connection', (socket) => {
       player.pendingBonus = { type: 'reroll-picks', remaining: rerollCount, picked: [] };
       socket.emit('reroll-bonus-start', { remaining: rerollCount });
     }
+    await persistRoom(room);
   });
 
-  socket.on('free-check-cell', (payload = {}) => {
+  socket.on('free-check-cell', async (payload = {}) => {
     if (!checkRateLimit(socket)) return;
     const { category, index } = payload;
-    if (!socket.roomCode) return;
-    const room = rooms.get(socket.roomCode);
+    const { room, player, roomCode } = await getActionContext(socket, payload);
     if (!room || room.winner) return;
-    const player = room.players.find(p => p.id === socket.id);
     if (!player || player.pendingBonus?.type !== 'free-check') return;
     const categoryKey = typeof category === 'string' ? category : '';
     const indexNumber = Number(index);
@@ -857,7 +1004,7 @@ io.on('connection', (socket) => {
       occurrences: player.occurrences,
       bonuses: player.bonuses,
     });
-    io.to(socket.roomCode).emit('cell-activity', {
+    io.to(roomCode).emit('cell-activity', {
       playerId: player.id,
       name: player.name,
       category: categoryKey,
@@ -869,17 +1016,17 @@ io.on('connection', (socket) => {
     const winCategory = evaluateWinner(room, player, categoryKey);
     if (winCategory && !room.winner) {
       room.winner = { id: player.id, clientId: player.clientId, name: player.name, category: winCategory, hard: (room.tiersToWin || 1) > 1 };
-      io.to(socket.roomCode).emit('game-won', room.winner);
+      io.to(roomCode).emit('game-won', room.winner);
     }
 
-    io.to(socket.roomCode).emit('players-update', getPlayersInfo(room));
+    await persistRoom(room);
+    io.to(roomCode).emit('players-update', getPlayersInfo(room));
   });
 
-  socket.on('new-game', (payload = {}) => {
+  socket.on('new-game', async (payload = {}) => {
     if (!checkRateLimit(socket)) return;
-    if (!socket.roomCode) return;
-    const room = rooms.get(socket.roomCode);
-    if (!room) return;
+    const { room, roomCode, player } = await getActionContext(socket, payload);
+    if (!room || !player) return;
 
     room.tiersToWin = payload && payload.difficulty === 'hard' ? 2 : 1;
     room.winner = null;
@@ -899,30 +1046,39 @@ io.on('connection', (socket) => {
       }
     });
 
-    io.to(socket.roomCode).emit('players-update', getPlayersInfo(room));
+    await persistRoom(room);
+    io.to(roomCode).emit('players-update', getPlayersInfo(room));
   });
 
-  socket.on('disconnect', () => {
+  socket.on('disconnect', async () => {
     if (!socket.roomCode) return;
-    const room = rooms.get(socket.roomCode);
+    const room = await getRoom(socket.roomCode);
     if (!room) return;
-    const player = room.players.find(p => p.id === socket.id);
+    const player = room.players.find(p => p.id === socket.id || (socket.clientId && p.clientId === socket.clientId));
     if (!player) return;
     clearReconnectTimer(player);
-    scheduleDisconnectedRemoval(socket.roomCode, player.clientId || socket.id);
+    await scheduleDisconnectedRemoval(socket.roomCode, player.clientId || socket.id);
   });
 });
 
-setInterval(() => {
+setInterval(async () => {
   const now = Date.now();
   for (const [code, room] of rooms) {
     if (now - room.createdAt > 4 * 60 * 60 * 1000) {
       rooms.delete(code);
+      await deletePersistedRoom(code);
     }
   }
 }, 60 * 60 * 1000);
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Bingo Social sur http://localhost:${PORT}`);
-});
+initRealtimeStore()
+  .then(() => {
+    server.listen(PORT, () => {
+      console.log(`Bingo Social sur http://localhost:${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error('Startup failed:', error);
+    process.exit(1);
+  });

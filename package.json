@@ -7,11 +7,18 @@
     "node": ">=20"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "load:test": "node scripts/load-test-socketio.js",
+    "load:test:1k": "PLAYERS=1000 ROOMS=50 DURATION_MS=120000 node scripts/load-test-socketio.js"
   },
   "dependencies": {
+    "@socket.io/redis-adapter": "^8.3.0",
     "compression": "^1.8.1",
     "express": "^4.21.0",
+    "ioredis": "^5.11.1",
     "socket.io": "^4.8.0"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.3"
   }
 }

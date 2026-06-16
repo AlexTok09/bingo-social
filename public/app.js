@@ -562,7 +562,19 @@ function emitSocket(eventName, payload, ack) {
     showError('Multijoueur indisponible : il faut lancer le serveur Node/Socket.IO.');
     return false;
   }
-  socket.emit(eventName, payload, ack);
+  const sessionEvents = new Set([
+    'toggle-cell',
+    'repeat-cell',
+    'free-check-cell',
+    'reroll-cell',
+    'use-joker',
+    'choose-bonus',
+    'new-game',
+  ]);
+  const payloadWithSession = sessionEvents.has(eventName) && payload && typeof payload === 'object'
+    ? { ...payload, roomCode, clientId }
+    : payload;
+  socket.emit(eventName, payloadWithSession, ack);
   return true;
 }
 
@@ -1376,11 +1388,11 @@ btnShare.addEventListener('click', () => {
 
 btnJoker.addEventListener('click', () => {
   if (jokerRerollActive) {
-    emitSocket('use-joker');
+    emitSocket('use-joker', {});
     return;
   }
   if (rerollRemaining > 0) {
-    emitSocket('use-joker');
+    emitSocket('use-joker', {});
     return;
   }
   if ((myBonuses.joker || 0) <= 0) {
@@ -1388,7 +1400,7 @@ btnJoker.addEventListener('click', () => {
     return;
   }
   playJokerSound();
-  emitSocket('use-joker');
+  emitSocket('use-joker', {});
 });
 
 btnBackHome.addEventListener('click', () => {
@@ -1429,4 +1441,3 @@ btnBonusReroll.addEventListener('click', () => {
   closeBonusChoice();
   emitSocket('choose-bonus', { choice: 'reroll' });
 });
-
