@@ -546,6 +546,11 @@ input[type="text"]::placeholder {
   text-shadow: 2px 2px 0 var(--ink);
 }
 
+.legendaire-cell.legendary-confirm {
+  outline: 4px solid var(--pink);
+  box-shadow: 0 0 0 4px var(--acid), 7px 7px 0 var(--ink);
+}
+
 .cell.checked {
   background: var(--checked);
   filter: saturate(1.2);

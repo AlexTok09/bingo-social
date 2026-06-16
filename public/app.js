@@ -115,6 +115,8 @@ let freeCheckCategory = null;
 let bonusRerollCount = 3;
 let jokerRerollActive = false;
 let tiersToWin = 1;
+let pendingLegendaryConfirm = null;
+let pendingLegendaryConfirmTimeout = null;
 
 function updateModeBanner() {
   if (modeBanner) modeBanner.hidden = tiersToWin <= 1;
@@ -151,6 +153,7 @@ function resetGameState() {
   freeCheckCategory = null;
   pendingBonusCategory = null;
   tiersToWin = 1;
+  clearLegendaryConfirm();
   updateModeBanner();
   closeBonusChoice();
   closePanel();
@@ -190,6 +193,21 @@ function applyLocalToggle(category, index) {
   };
 
   return wasChecked;
+}
+
+function clearLegendaryConfirm() {
+  pendingLegendaryConfirm = null;
+  window.clearTimeout(pendingLegendaryConfirmTimeout);
+  pendingLegendaryConfirmTimeout = null;
+  document.querySelectorAll('.legendary-confirm').forEach(cell => cell.classList.remove('legendary-confirm'));
+}
+
+function requestLegendaryConfirm(cell, index) {
+  clearLegendaryConfirm();
+  pendingLegendaryConfirm = index;
+  cell.classList.add('legendary-confirm');
+  showToast('Légendaire : retape pour confirmer');
+  pendingLegendaryConfirmTimeout = window.setTimeout(clearLegendaryConfirm, 3500);
 }
 
 function updateJokerSlot() {
@@ -1233,6 +1251,15 @@ function buildGrid() {
           return;
         }
         const wasChecked = checked.includes(index);
+        if (category === 'legendaire' && !wasChecked) {
+          if (pendingLegendaryConfirm !== index) {
+            requestLegendaryConfirm(cell, index);
+            return;
+          }
+          clearLegendaryConfirm();
+        } else {
+          clearLegendaryConfirm();
+        }
         playTapSound(category, wasChecked);
         applyLocalToggle(category, index);
         renderGrid();
