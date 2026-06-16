@@ -207,7 +207,7 @@ const BONUS_REROLL_COUNT = {
 };
 
 // Cocher une de ces catégories offre une case gratis, toutes grilles confondues
-const POESIE_BONUS_IDS = new Set(['heureux-comme-tout', 'regarde-le-ciel']);
+const POESIE_BONUS_IDS = new Set(['heureux-comme-tout', 'regarde-le-ciel', 'fou-rire']);
 
 const RECONNECT_GRACE_MS = 15 * 60 * 1000;
 
@@ -446,7 +446,18 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-app.use(express.static('public', { maxAge: '1h' }));
+app.use(express.static('public', {
+  etag: true,
+  setHeaders(res, filePath) {
+    // Médias volumineux qui changent rarement : cache long.
+    // HTML/CSS/JS : revalidation à chaque chargement (mises à jour immédiates).
+    if (/\.(mp3|png|jpe?g|svg|ico|webp|mp4|woff2?)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+    } else {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  },
+}));
 
 io.on('connection', (socket) => {
 
