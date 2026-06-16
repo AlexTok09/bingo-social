@@ -237,7 +237,7 @@ function showWinnerState(winner, { playEffects = true } = {}) {
   winDetail.textContent = winner.category === 'legendaire'
     ? 'Case légendaire cochée : victoire instantanée'
     : winner.hard
-      ? '2 grilles complétées en difficile !'
+      ? '2 grilles complétées en mode hardcore !'
       : `Grille "${TIER_NAMES[winner.category] || winner.category}" complétée`;
   btnNewGame.style.display = 'block';
   if (playEffects) {
@@ -854,7 +854,7 @@ if (socket) {
     const oldChaos = document.getElementById('legendaire-chaos');
     if (oldChaos) oldChaos.remove();
     renderGrid();
-    showToast(tiersToWin > 1 ? '🔥 Mode difficile : 2 grilles à compléter !' : 'Nouvelle partie !');
+    showToast(tiersToWin > 1 ? '🔥 Mode hardcore : 2 grilles à compléter !' : 'Nouvelle partie !');
   });
 
   socket.on('categories-updated', () => {
