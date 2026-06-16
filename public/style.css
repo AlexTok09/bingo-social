@@ -95,6 +95,34 @@ body::before {
   .mami-peek { display: none; }
 }
 
+.discord-link {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  z-index: 2;
+  display: inline-grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  background: #5865f2;
+  box-shadow: 4px 4px 0 var(--shadow);
+  transform: translateX(-50%) rotate(-2deg);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.discord-link svg {
+  width: 30px;
+  height: 30px;
+  fill: #fff;
+}
+
+.discord-link:active {
+  transform: translateX(-50%) rotate(-2deg) scale(0.93);
+  box-shadow: 2px 2px 0 var(--shadow);
+}
+
 .home-container {
   width: min(100%, 520px);
   margin: 0 auto;

@@ -80,7 +80,6 @@ const inputCode = $('#room-code');
 const btnCreate = $('#btn-create');
 const btnJoin = $('#btn-join');
 const btnInfo = $('#btn-info');
-const btnEditCats = $('#btn-edit-cats');
 const errorMsg = $('#error-msg');
 const displayCode = $('#display-code');
 const playerCount = $('#player-count');
@@ -579,7 +578,7 @@ function requestSessionResume() {
 
 if (!socket) {
   showError('GitHub Pages seul ne peut pas lancer les parties multijoueurs.');
-  [btnCreate, btnJoin, btnEditCats].forEach(btn => {
+  [btnCreate, btnJoin].forEach(btn => {
     btn.disabled = true;
     btn.title = 'Serveur temps réel requis';
   });
@@ -1431,6 +1430,3 @@ btnBonusReroll.addEventListener('click', () => {
   emitSocket('choose-bonus', { choice: 'reroll' });
 });
 
-btnEditCats.addEventListener('click', () => {
-  window.location.href = '/admin';
-});
