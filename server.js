@@ -333,21 +333,26 @@ async function loadPersistedRooms() {
 
 async function initRealtimeStore() {
   if (!REDIS_URL) return;
-  const redisOptions = { lazyConnect: true, maxRetriesPerRequest: null };
-  const pubClient = new Redis(REDIS_URL, redisOptions);
-  const subClient = pubClient.duplicate();
-  const dataClient = pubClient.duplicate();
+  try {
+    const redisOptions = { lazyConnect: true, maxRetriesPerRequest: null };
+    const pubClient = new Redis(REDIS_URL, redisOptions);
+    const subClient = pubClient.duplicate();
+    const dataClient = pubClient.duplicate();
 
-  await Promise.all([
-    pubClient.connect(),
-    subClient.connect(),
-    dataClient.connect(),
-  ]);
+    await Promise.all([
+      pubClient.connect(),
+      subClient.connect(),
+      dataClient.connect(),
+    ]);
 
-  io.adapter(createAdapter(pubClient, subClient));
-  roomStore = dataClient;
-  await loadPersistedRooms();
-  console.log('Redis/Valkey realtime store enabled');
+    io.adapter(createAdapter(pubClient, subClient));
+    roomStore = dataClient;
+    await loadPersistedRooms();
+    console.log('Redis/Valkey realtime store enabled');
+  } catch (error) {
+    roomStore = null;
+    console.error(`Redis/Valkey unavailable, using in-memory rooms only: ${error.message}`);
+  }
 }
 
 const RATE_LIMIT_WINDOW_MS = 2000;

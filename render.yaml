@@ -1,11 +1,4 @@
 services:
-  - type: keyvalue
-    name: bingo-social-redis
-    plan: starter
-    region: oregon
-    ipAllowList: []
-    maxmemoryPolicy: noeviction
-
   - type: web
     name: bingo-social
     runtime: node
@@ -21,10 +14,5 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: bingo-social-redis
-          property: connectionString
       - key: ADMIN_PASSWORD
         sync: false
