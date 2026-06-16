@@ -127,6 +127,36 @@ body::before {
   transform: rotate(-3deg);
 }
 
+/* Le petit curieux qui épie depuis le dernier "o" de Bingo */
+.peek-o {
+  position: relative;
+}
+
+.peek-o .peeker {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  z-index: -1;
+  font-size: 0.6em;
+  line-height: 1;
+  pointer-events: none;
+  transform: translate(-50%, 55%);
+  opacity: 0;
+  animation: peekFromO 6.5s ease-in-out infinite;
+}
+
+@keyframes peekFromO {
+  0%, 68% { transform: translate(-50%, 55%); opacity: 0; }
+  76% { transform: translate(-50%, -72%); opacity: 1; }
+  82% { transform: translate(-46%, -68%); opacity: 1; }
+  88% { transform: translate(-54%, -72%); opacity: 1; }
+  94%, 100% { transform: translate(-50%, 55%); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .peek-o .peeker { display: none; }
+}
+
 .ascii-sub {
   align-self: flex-start;
   max-width: 340px;
