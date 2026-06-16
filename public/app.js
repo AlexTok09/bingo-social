@@ -889,7 +889,7 @@ const EMOJI_BY_ID = {
   'velo-cargo': '🚲📦', 'caillra': '😈💸', 'deux-amis': '👭', 'drague-de-rue': '😏👀',
   'rasta': '🧔🇯🇲', 'shopper': '🛍️', 'bonnet': '🎅', 'sac-banane': '👝🍌',
   'velo-a-main': '🚶‍♂️🚲', 'porte-un-bebe': '👩‍🍼', 'velo-pliant': '🚲🪗', 'fume-une-cigarette': '🚬',
-  'habit-de-groupe-musique': '👕', 'porte-un-maillot-d-une-equipe-de-sport': '👕⚽',
+  'habit-de-groupe-musique': '👕🎸', 'porte-un-maillot-d-une-equipe-de-sport': '👕⚽',
   'punk-a-chien': '🧷🐕', 'panama': '👒🌴', 'cheveux-jusqu-au-fesses': '💇‍♀️',
   'fouille-dans-l-horodateur': '🅿️🔍', 'il-elle-court': '🏃‍♀️', 'trebuche': '💥🤸',
   'jette-megot-par-terre': '🚬👇', 'pull-sur-les-epaules': '👔⛵', 'a-deux-sur-le-velo': '🚲👫',
@@ -901,7 +901,7 @@ const EMOJI_BY_ID = {
   'corbeau-solo': '🐦‍⬛', 'goeland-solo': '🦅', 'demarche-bizarre': '🚶‍♂️💫',
   'double-mami': '👵👵', 'double-papi': '👴👴',
   'sort-les-poubelles': '🗑️', 'suspect': '🕵️', 'malade': '🤒', 'tache-de-rousseur': '🧑‍🦰',
-  'femme-enceinte': '🤰', 'antifa': '🏴', 'deprime': '😔', 'attache-lunette': '👓',
+  'femme-enceinte': '🤰', 'antifa': '🏴', 'deprime': '😔', 'attache-lunette': '👓🪢',
   'gratte-bourse': '🥜', 'decrotte-le-nez': '👃',
 };
 
