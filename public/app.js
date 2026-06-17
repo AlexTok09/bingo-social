@@ -724,6 +724,10 @@ function customItemRow(tier, item = {}) {
   emojiInput.maxLength = 8;
   emojiInput.placeholder = '🎲';
   emojiInput.value = Array.isArray(item.emojis) ? item.emojis.join('') : '';
+  // Un émoji pré-rempli (ex. catégories rennaises) est considéré comme
+  // auto-suggéré : il reste donc réactif aux changements de texte. Dès que
+  // l'utilisateur édite l'émoji à la main, on le fige (autoEmoji vidé).
+  if (emojiInput.value.trim()) emojiInput.dataset.autoEmoji = emojiInput.value.trim();
   emojiInput.addEventListener('input', () => {
     emojiInput.dataset.autoEmoji = '';
   });

@@ -28,12 +28,23 @@ app.use(compression({
 }));
 app.use(express.json({ limit: '200kb' }));
 
+// En-têtes de sécurité de base (pas de CSP pour ne pas casser les inline
+// styles / Socket.IO ; ces trois-là sont sans effet de bord).
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  next();
+});
+
 const PERSISTENT_DATA_DIR = fs.existsSync('/var/data') ? '/var/data' : __dirname;
 const CATEGORIES_FILE = process.env.CATEGORIES_FILE || path.join(PERSISTENT_DATA_DIR, 'categories.json');
 const CUSTOM_GRIDS_FILE = process.env.CUSTOM_GRIDS_FILE || path.join(PERSISTENT_DATA_DIR, 'custom-grids.json');
 const STATS_FILE = process.env.STATS_FILE || path.join(PERSISTENT_DATA_DIR, 'stats.json');
 const CUSTOM_GRID_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const MAX_CUSTOM_GRIDS = 500;
+const MAX_GRIDS_PER_OWNER = 50;
+const MAX_QR_EVENTS = 5000;
 const CUSTOM_LABEL_MAX = 38;
 const CUSTOM_NAME_MAX = 48;
 const CUSTOM_SUBJECT_MAX = 60;
@@ -47,6 +58,14 @@ const TIER_HEADINGS = {
   'legendaire': 'legendaire',
   'légendaire': 'legendaire',
 };
+
+// Comparaison à temps constant (anti timing-attack) pour les secrets.
+function safeEqual(a, b) {
+  const bufA = Buffer.from(String(a ?? ''));
+  const bufB = Buffer.from(String(b ?? ''));
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
 
 function slugifyLabel(label) {
   return label
@@ -334,7 +353,14 @@ async function getRoom(roomCode) {
 async function loadPersistedRooms() {
   if (!roomStore) return;
   try {
-    const keys = await roomStore.keys(`${ROOM_KEY_PREFIX}*`);
+    // SCAN plutôt que KEYS : non bloquant côté Redis même si beaucoup de clés.
+    const keys = [];
+    let cursor = '0';
+    do {
+      const [next, batch] = await roomStore.scan(cursor, 'MATCH', `${ROOM_KEY_PREFIX}*`, 'COUNT', 200);
+      cursor = next;
+      keys.push(...batch);
+    } while (cursor !== '0');
     if (!keys.length) return;
     const values = await roomStore.mget(keys);
     values.forEach(raw => {
@@ -557,7 +583,7 @@ function normalizeStats(raw = {}) {
     firstAt: Number(raw.firstAt) || Date.now(),
     qrScans: {
       total: Number(qrScans.total || 0),
-      events: Array.isArray(qrScans.events) ? qrScans.events.filter(Boolean) : [],
+      events: Array.isArray(qrScans.events) ? qrScans.events.filter(Boolean).slice(-MAX_QR_EVENTS) : [],
     },
   };
 }
@@ -630,6 +656,11 @@ function recordQrScan(payload = {}, req) {
   STATS.qrScans ||= { total: 0, events: [] };
   STATS.qrScans.total += 1;
   STATS.qrScans.events.push(event);
+  // Borne la rétention : seul `total` est cumulatif, on ne garde que les
+  // derniers events pour les stats détaillées (sinon croissance disque/CPU).
+  if (STATS.qrScans.events.length > MAX_QR_EVENTS) {
+    STATS.qrScans.events = STATS.qrScans.events.slice(-MAX_QR_EVENTS);
+  }
   saveStats();
   return event;
 }
@@ -696,6 +727,17 @@ function findPublicGridByName(name = '', excludeCode = null) {
   ) || null;
 }
 
+// Cap global atteint : libère une place en supprimant la grille la plus
+// ancienne jamais jouée (0 partie). Renvoie true si une place a été libérée.
+function evictOldestUnusedGrid() {
+  const candidate = Object.values(CUSTOM_GRIDS)
+    .filter(grid => (grid.plays || 0) === 0)
+    .sort((a, b) => (a.updatedAt || 0) - (b.updatedAt || 0))[0];
+  if (!candidate) return false;
+  delete CUSTOM_GRIDS[candidate.code];
+  return true;
+}
+
 function generateCustomGridCode(name = '') {
   const prefix = slugifyLabel(name).replace(/-/g, '').slice(0, 3).toUpperCase() || 'SOC';
   let code = '';
@@ -713,7 +755,7 @@ function generateEditToken() {
 }
 
 function isAdminRequest(req) {
-  return Boolean(ADMIN_PASSWORD) && req.get('x-admin-password') === ADMIN_PASSWORD;
+  return Boolean(ADMIN_PASSWORD) && safeEqual(req.get('x-admin-password'), ADMIN_PASSWORD);
 }
 
 function publicCategories() {
@@ -968,7 +1010,7 @@ app.get('/api/custom-grids/:code/edit/:token', (req, res) => {
   const code = String(req.params.code || '').toUpperCase().trim();
   const token = String(req.params.token || '');
   const grid = CUSTOM_GRIDS[code];
-  if (!grid || grid.editToken !== token) {
+  if (!grid || !safeEqual(grid.editToken, token)) {
     res.status(404).json({ error: 'Lien d’édition invalide.' });
     return;
   }
@@ -977,11 +1019,6 @@ app.get('/api/custom-grids/:code/edit/:token', (req, res) => {
 
 app.post('/api/custom-grids', (req, res) => {
   if (!checkHttpGridRateLimit(req, res)) return;
-
-  if (Object.keys(CUSTOM_GRIDS).length >= MAX_CUSTOM_GRIDS) {
-    res.status(429).json({ error: 'Trop de grilles créées pour le moment.' });
-    return;
-  }
 
   const error = validateCustomGridPayload(req.body);
   if (error) {
@@ -994,12 +1031,26 @@ app.post('/api/custom-grids', (req, res) => {
     return;
   }
 
+  const ownerClientId = typeof req.body.clientId === 'string' ? req.body.clientId.slice(0, 100) : null;
+  if (ownerClientId) {
+    const ownedCount = Object.values(CUSTOM_GRIDS).filter(grid => grid.ownerClientId === ownerClientId).length;
+    if (ownedCount >= MAX_GRIDS_PER_OWNER) {
+      res.status(429).json({ error: 'Tu as atteint le maximum de grilles. Supprime-en une avant d’en créer une autre.' });
+      return;
+    }
+  }
+
+  if (Object.keys(CUSTOM_GRIDS).length >= MAX_CUSTOM_GRIDS && !evictOldestUnusedGrid()) {
+    res.status(429).json({ error: 'Trop de grilles créées pour le moment.' });
+    return;
+  }
+
   const now = Date.now();
   const code = generateCustomGridCode(req.body.name);
   const grid = {
     code,
     editToken: generateEditToken(),
-    ownerClientId: typeof req.body.clientId === 'string' ? req.body.clientId.slice(0, 100) : null,
+    ownerClientId,
     name: req.body.name.trim().slice(0, CUSTOM_NAME_MAX),
     subject: req.body.subject.trim().slice(0, CUSTOM_SUBJECT_MAX),
     isPublic: req.body.isPublic !== false,
@@ -1020,7 +1071,7 @@ app.put('/api/custom-grids/:code/edit/:token', (req, res) => {
   const code = String(req.params.code || '').toUpperCase().trim();
   const token = String(req.params.token || '');
   const existing = CUSTOM_GRIDS[code];
-  if (!existing || existing.editToken !== token) {
+  if (!existing || !safeEqual(existing.editToken, token)) {
     res.status(404).json({ error: 'Lien d’édition invalide.' });
     return;
   }
@@ -1199,6 +1250,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('resume-session', async (payload = {}) => {
+    if (!checkRateLimit(socket)) return;
     const { roomCode, clientId } = payload;
     if (!roomCode || !clientId) return;
     const normalizedRoomCode = roomCode.toUpperCase().trim();
@@ -1570,6 +1622,9 @@ io.on('connection', (socket) => {
     if (!checkRateLimit(socket)) return;
     const { room, roomCode, player } = await getActionContext(socket, payload);
     if (!room || !player) return;
+    // Relance autorisée uniquement une fois la partie terminée : empêche un
+    // joueur de réinitialiser les grilles de tout le monde en pleine partie.
+    if (!room.winner) return;
 
     room.tiersToWin = payload && payload.difficulty === 'hard' ? 2 : 1;
     room.winner = null;
