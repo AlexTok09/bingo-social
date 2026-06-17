@@ -13,6 +13,7 @@ const loginError = document.querySelector('#admin-login-error');
 const rowsEl = document.querySelector('#admin-category-rows');
 const statusEl = document.querySelector('#admin-status');
 const statsEl = document.querySelector('#admin-stats');
+const gridsListEl = document.querySelector('#admin-grids-list');
 const applyActiveInput = document.querySelector('#apply-active');
 const btnLogin = document.querySelector('#btn-login');
 const btnAddRow = document.querySelector('#btn-add-row');
@@ -66,6 +67,7 @@ async function loadCategories() {
     renderRows();
     setStatus('Connecté.');
     loadStats();
+    loadAdminGrids();
   } catch (error) {
     loginError.textContent = error.message;
   }
@@ -84,6 +86,49 @@ async function loadStats() {
     statsEl.hidden = false;
   } catch {
     statsEl.hidden = true;
+  }
+}
+
+async function loadAdminGrids() {
+  if (!gridsListEl) return;
+  gridsListEl.innerHTML = '<p class="muted">Chargement...</p>';
+  try {
+    const data = await fetch('/api/custom-grids').then(r => r.json());
+    const grids = data.grids || [];
+    if (!grids.length) {
+      gridsListEl.innerHTML = '<p class="muted">Aucune grille publique.</p>';
+      return;
+    }
+    gridsListEl.innerHTML = '';
+    grids.forEach(grid => {
+      const card = document.createElement('div');
+      card.className = 'admin-grid-card';
+      const info = document.createElement('div');
+      const name = document.createElement('strong');
+      name.textContent = grid.name; // textContent: noms fournis par les joueurs
+      const meta = document.createElement('span');
+      meta.textContent = `${grid.subject} · ${grid.code} · ${grid.plays || 0} parties`;
+      info.append(name, meta);
+      const del = document.createElement('button');
+      del.className = 'btn btn-secondary';
+      del.textContent = 'Supprimer';
+      del.addEventListener('click', () => deleteGrid(grid));
+      card.append(info, del);
+      gridsListEl.appendChild(card);
+    });
+  } catch {
+    gridsListEl.innerHTML = '<p class="muted">Impossible de charger les grilles.</p>';
+  }
+}
+
+async function deleteGrid(grid) {
+  if (!confirm(`Supprimer la grille « ${grid.name} » (${grid.code}) ?`)) return;
+  try {
+    await adminFetch(`/api/admin/custom-grids/${encodeURIComponent(grid.code)}`, { method: 'DELETE' });
+    setStatus(`Grille ${grid.code} supprimée.`);
+    loadAdminGrids();
+  } catch (error) {
+    setStatus(error.message);
   }
 }
 

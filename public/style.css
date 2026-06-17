@@ -1566,6 +1566,54 @@ input[type="text"]::placeholder {
   font-size: 1rem;
 }
 
+.admin-grids-section {
+  margin-top: 22px;
+}
+
+.admin-grids-section h2 {
+  font-family: var(--font);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.admin-grids-list {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-grid-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.admin-grid-card div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.admin-grid-card strong {
+  overflow-wrap: anywhere;
+}
+
+.admin-grid-card span {
+  font-size: 0.72rem;
+  font-weight: 900;
+  opacity: 0.7;
+  overflow-wrap: anywhere;
+}
+
+.admin-grid-card button {
+  flex-shrink: 0;
+}
+
 .admin-toggle {
   display: flex;
   align-items: center;

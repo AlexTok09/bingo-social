@@ -701,6 +701,21 @@ app.get('/api/admin/categories', (req, res) => {
   res.json(publicCategories());
 });
 
+app.delete('/api/admin/custom-grids/:code', (req, res) => {
+  if (!isAdminRequest(req)) {
+    res.status(401).json({ error: 'Mot de passe invalide.' });
+    return;
+  }
+  const code = String(req.params.code || '').toUpperCase().trim();
+  if (!CUSTOM_GRIDS[code]) {
+    res.status(404).json({ error: 'Grille introuvable.' });
+    return;
+  }
+  delete CUSTOM_GRIDS[code];
+  saveCustomGrids();
+  res.json({ ok: true });
+});
+
 app.get('/api/admin/stats', (req, res) => {
   if (!isAdminRequest(req)) {
     res.status(401).json({ error: 'Mot de passe invalide.' });
