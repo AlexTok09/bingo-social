@@ -798,9 +798,7 @@ function showEditorResult(grid) {
     showToast('Lien d’édition copié');
   });
   editorResult.querySelector('[data-play]').addEventListener('click', () => {
-    inputCode.value = grid.code;
-    showScreen(screenHome);
-    showToast(`Code grille ${grid.code} prêt`);
+    startCustomGridGame(grid.code);
   });
 }
 
@@ -841,10 +839,23 @@ function openGridEditor(grid = null) {
   showScreen(screenGridEditor);
 }
 
-function selectGridToPlay(code) {
-  inputCode.value = code;
+function startCustomGridGame(code) {
+  const customGridCode = String(code || '').trim().toUpperCase();
+  const name = inputName.value.trim();
+  if (!customGridCode) return;
+  if (!name) {
+    closeCustomGridPanel();
+    showScreen(screenHome);
+    showError('Entre ton prénom !');
+    inputName.focus();
+    return;
+  }
+  playerName = name;
+  setStoredSessionValue(SESSION_NAME_KEY, playerName);
+  pendingJoinFallback = null;
   closeCustomGridPanel();
-  showToast(`Grille ${code} sélectionnée`);
+  startBgMusic();
+  emitSocket('create-room', { playerName: name, clientId, customGridCode });
 }
 
 async function editMyGrid(code, token) {
@@ -889,7 +900,7 @@ function renderMyGridsSection(mine) {
       </div>
     `;
     card.querySelector('[data-edit]').addEventListener('click', () => editMyGrid(code, entry.token));
-    card.querySelector('[data-play]').addEventListener('click', () => selectGridToPlay(code));
+    card.querySelector('[data-play]').addEventListener('click', () => startCustomGridGame(code));
     section.appendChild(card);
   });
   customGridsList.appendChild(section);
@@ -935,7 +946,7 @@ async function loadCustomGrids() {
         </div>
         <button class="btn-mini" type="button">Jouer</button>
       `;
-      card.querySelector('button').addEventListener('click', () => selectGridToPlay(grid.code));
+      card.querySelector('button').addEventListener('click', () => startCustomGridGame(grid.code));
       publicWrap.appendChild(card);
     });
   } catch {
