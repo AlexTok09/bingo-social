@@ -14,6 +14,7 @@ const io = new Server(server);
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (process.env.NODE_ENV === 'production' ? '' : 'binglou-admin');
 const REDIS_URL = process.env.REDIS_URL || process.env.VALKEY_URL || process.env.KEY_VALUE_URL || '';
+const QR_REDIRECT_TARGET = process.env.QR_REDIRECT_TARGET || '/';
 const ROOM_KEY_PREFIX = 'bingo:room:';
 const ROOM_TTL_SECONDS = 4 * 60 * 60;
 
@@ -378,6 +379,9 @@ const RATE_LIMIT_MAX = 15;
 const HTTP_GRID_RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const HTTP_GRID_RATE_LIMIT_MAX = 12;
 const httpGridRateLimits = new Map();
+const QR_SCAN_RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const QR_SCAN_RATE_LIMIT_MAX = 30;
+const qrScanRateLimits = new Map();
 
 function checkRateLimit(socket) {
   const now = Date.now();
@@ -415,6 +419,22 @@ function checkHttpGridRateLimit(req, res) {
   return true;
 }
 
+function checkQrScanRateLimit(req, res) {
+  const now = Date.now();
+  const key = req.ip || req.socket.remoteAddress || 'unknown';
+  const current = qrScanRateLimits.get(key);
+  if (!current || now - current.windowStart > QR_SCAN_RATE_LIMIT_WINDOW_MS) {
+    qrScanRateLimits.set(key, { windowStart: now, count: 1 });
+    return true;
+  }
+  current.count += 1;
+  if (current.count > QR_SCAN_RATE_LIMIT_MAX) {
+    res.status(429).json({ error: 'Trop de scans, ralentis.' });
+    return false;
+  }
+  return true;
+}
+
 setInterval(() => {
   const now = Date.now();
   for (const [key, entry] of httpGridRateLimits) {
@@ -423,6 +443,15 @@ setInterval(() => {
     }
   }
 }, HTTP_GRID_RATE_LIMIT_WINDOW_MS).unref();
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of qrScanRateLimits) {
+    if (now - entry.windowStart > QR_SCAN_RATE_LIMIT_WINDOW_MS * 2) {
+      qrScanRateLimits.delete(key);
+    }
+  }
+}, QR_SCAN_RATE_LIMIT_WINDOW_MS).unref();
 
 function loadCategories() {
   const defaults = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
@@ -521,14 +550,26 @@ function saveCustomGrids() {
 }
 
 // Compteur privé : nombre total de parties lancées (création de salon + rejeu).
+function normalizeStats(raw = {}) {
+  const qrScans = raw.qrScans && typeof raw.qrScans === 'object' ? raw.qrScans : {};
+  return {
+    gamesPlayed: Number(raw.gamesPlayed || 0),
+    firstAt: Number(raw.firstAt) || Date.now(),
+    qrScans: {
+      total: Number(qrScans.total || 0),
+      events: Array.isArray(qrScans.events) ? qrScans.events.filter(Boolean) : [],
+    },
+  };
+}
+
 function loadStats() {
   try {
-    if (!fs.existsSync(STATS_FILE)) return { gamesPlayed: 0, firstAt: Date.now() };
+    if (!fs.existsSync(STATS_FILE)) return normalizeStats();
     const parsed = JSON.parse(fs.readFileSync(STATS_FILE, 'utf-8'));
-    return { gamesPlayed: Number(parsed?.gamesPlayed || 0), firstAt: Number(parsed?.firstAt) || Date.now() };
+    return normalizeStats(parsed);
   } catch (error) {
     console.error('Stats load failed:', error.message);
-    return { gamesPlayed: 0, firstAt: Date.now() };
+    return normalizeStats();
   }
 }
 
@@ -544,6 +585,75 @@ function saveStats() {
 function bumpGamesPlayed() {
   STATS.gamesPlayed += 1;
   saveStats();
+}
+
+function classifyUserAgent(userAgent = '') {
+  const ua = String(userAgent || '');
+  const likelyBot = /\b(bot|crawler|spider|ahrefs|semrush|googlebot|bingbot)\b/i.test(ua);
+  const likelyHuman = !likelyBot && /(iphone|android|mobile safari|crios|chrome mobile)/i.test(ua);
+  return { likelyHuman, likelyBot };
+}
+
+function countBy(items, keyFn, limit = 8) {
+  const counts = new Map();
+  items.forEach(item => {
+    const key = keyFn(item);
+    if (!key) return;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([value, count]) => ({ value, count }));
+}
+
+function recordQrScan(payload = {}, req) {
+  const now = Date.now();
+  const userAgent = String(payload.userAgent || req.get('user-agent') || '').slice(0, 300);
+  const referrer = String(payload.referrer || req.get('referer') || '').slice(0, 500);
+  const pathname = String(payload.pathname || '/qr').slice(0, 200);
+  const timestampMs = Number(Date.parse(payload.timestamp)) || now;
+  const classification = classifyUserAgent(userAgent);
+  const event = {
+    event: 'qr_scan',
+    timestamp: new Date(timestampMs).toISOString(),
+    timestampMs,
+    userAgent,
+    referrer,
+    pathname,
+    source: 'sticker',
+    campaign: 'stickers_rennes',
+    likelyHuman: classification.likelyHuman,
+    likelyBot: classification.likelyBot,
+  };
+
+  STATS.qrScans ||= { total: 0, events: [] };
+  STATS.qrScans.total += 1;
+  STATS.qrScans.events.push(event);
+  saveStats();
+  return event;
+}
+
+function qrScanStats() {
+  const events = STATS.qrScans?.events || [];
+  const now = Date.now();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+  const eventTime = event => Number(event.timestampMs || Date.parse(event.timestamp) || 0);
+  const todayEvents = events.filter(event => eventTime(event) >= today.getTime());
+  const weekEvents = events.filter(event => eventTime(event) >= sevenDaysAgo);
+  const mobileHumanEvents = events.filter(event => event.likelyHuman);
+
+  return {
+    total: Number(STATS.qrScans?.total || 0),
+    today: todayEvents.length,
+    last7Days: weekEvents.length,
+    likelyHuman: events.filter(event => event.likelyHuman).length,
+    likelyBot: events.filter(event => event.likelyBot).length,
+    topMobileUserAgents: countBy(mobileHumanEvents, event => event.userAgent || 'Inconnu', 6),
+    referrers: countBy(events, event => event.referrer || '', 8),
+  };
 }
 
 function publicCustomGrid(grid) {
@@ -738,6 +848,16 @@ app.get('/api/original-categories', (req, res) => {
   res.json({ categories: DEFAULT_CATEGORIES });
 });
 
+app.get('/api/qr-config', (req, res) => {
+  res.json({ redirectTarget: QR_REDIRECT_TARGET });
+});
+
+app.post('/api/qr-scan', (req, res) => {
+  if (!checkQrScanRateLimit(req, res)) return;
+  const event = recordQrScan(req.body || {}, req);
+  res.status(201).json({ ok: true, event: 'qr_scan', timestamp: event.timestamp });
+});
+
 app.delete('/api/admin/custom-grids/:code', (req, res) => {
   if (!isAdminRequest(req)) {
     res.status(401).json({ error: 'Mot de passe invalide.' });
@@ -765,6 +885,7 @@ app.get('/api/admin/stats', (req, res) => {
     activeRooms: rooms.size,
     customGrids: grids.length,
     customGridPlays: grids.reduce((sum, grid) => sum + (grid.plays || 0), 0),
+    qr: qrScanStats(),
   });
 });
 
@@ -896,6 +1017,10 @@ app.get('/healthz', (req, res) => {
 
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+app.get('/qr', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'qr.html'));
 });
 
 app.use(express.static('public', {

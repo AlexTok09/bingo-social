@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SocioloBingo - Sticker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="qr-body">
+  <main class="qr-shell">
+    <h1>SocioloBingo</h1>
+    <p>Chargement du jeu...</p>
+  </main>
+
+  <script>
+    (async () => {
+      const source = 'sticker';
+      const campaign = 'stickers_rennes';
+      const now = new Date().toISOString();
+
+      try {
+        localStorage.setItem('source', source);
+        localStorage.setItem('campaign', campaign);
+        if (!localStorage.getItem('first_scan_at')) {
+          localStorage.setItem('first_scan_at', now);
+        }
+      } catch {}
+
+      const scanPayload = {
+        timestamp: now,
+        userAgent: navigator.userAgent || '',
+        referrer: document.referrer || '',
+        pathname: window.location.pathname || '/qr',
+        source,
+        campaign,
+      };
+
+      const fetchWithTimeout = (url, options = {}, timeoutMs = 1800) => Promise.race([
+        fetch(url, options),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs)),
+      ]);
+
+      let redirectTarget = '/';
+      try {
+        const config = await fetchWithTimeout('/api/qr-config');
+        const data = await config.json();
+        if (typeof data.redirectTarget === 'string' && data.redirectTarget.startsWith('/')) {
+          redirectTarget = data.redirectTarget;
+        }
+      } catch {}
+
+      try {
+        await fetchWithTimeout('/api/qr-scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(scanPayload),
+          keepalive: true,
+        });
+      } catch {}
+
+      window.location.replace(redirectTarget);
+    })();
+  </script>
+</body>
+</html>

@@ -13,6 +13,7 @@ const loginError = document.querySelector('#admin-login-error');
 const rowsEl = document.querySelector('#admin-category-rows');
 const statusEl = document.querySelector('#admin-status');
 const statsEl = document.querySelector('#admin-stats');
+const qrStatsEl = document.querySelector('#admin-qr-stats');
 const gridsListEl = document.querySelector('#admin-grids-list');
 const applyActiveInput = document.querySelector('#apply-active');
 const btnLogin = document.querySelector('#btn-login');
@@ -84,9 +85,67 @@ async function loadStats() {
       · ${s.customGrids} grille(s) custom (${s.customGridPlays} parties)
     `;
     statsEl.hidden = false;
+    renderQrStats(s.qr);
   } catch {
     statsEl.hidden = true;
+    if (qrStatsEl) qrStatsEl.hidden = true;
   }
+}
+
+function appendMetric(parent, label, value) {
+  const item = document.createElement('div');
+  const strong = document.createElement('strong');
+  strong.textContent = value;
+  const span = document.createElement('span');
+  span.textContent = label;
+  item.append(strong, span);
+  parent.appendChild(item);
+}
+
+function appendRanking(parent, title, rows) {
+  const block = document.createElement('div');
+  block.className = 'admin-qr-ranking';
+  const heading = document.createElement('h3');
+  heading.textContent = title;
+  block.appendChild(heading);
+
+  if (!rows?.length) {
+    const empty = document.createElement('p');
+    empty.className = 'muted';
+    empty.textContent = 'Aucune donnée.';
+    block.appendChild(empty);
+    parent.appendChild(block);
+    return;
+  }
+
+  rows.forEach(row => {
+    const line = document.createElement('p');
+    line.textContent = `${row.count} · ${row.value}`;
+    block.appendChild(line);
+  });
+  parent.appendChild(block);
+}
+
+function renderQrStats(qr = {}) {
+  if (!qrStatsEl) return;
+  qrStatsEl.innerHTML = '';
+
+  const title = document.createElement('h2');
+  title.textContent = 'QR / Stickers';
+  qrStatsEl.appendChild(title);
+
+  const metrics = document.createElement('div');
+  metrics.className = 'admin-qr-metrics';
+  appendMetric(metrics, 'scans total', qr.total || 0);
+  appendMetric(metrics, 'aujourd’hui', qr.today || 0);
+  appendMetric(metrics, 'sur 7 jours', qr.last7Days || 0);
+  appendMetric(metrics, 'humains probables', qr.likelyHuman || 0);
+  appendMetric(metrics, 'bots probables', qr.likelyBot || 0);
+  qrStatsEl.appendChild(metrics);
+
+  appendRanking(qrStatsEl, 'Mobiles fréquents', qr.topMobileUserAgents || []);
+  appendRanking(qrStatsEl, 'Referrers', qr.referrers || []);
+  qrStatsEl.hidden = false;
 }
 
 async function loadAdminGrids() {
