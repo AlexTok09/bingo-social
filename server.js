@@ -375,6 +375,9 @@ async function initRealtimeStore() {
 
 const RATE_LIMIT_WINDOW_MS = 2000;
 const RATE_LIMIT_MAX = 15;
+const HTTP_GRID_RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const HTTP_GRID_RATE_LIMIT_MAX = 12;
+const httpGridRateLimits = new Map();
 
 function checkRateLimit(socket) {
   const now = Date.now();
@@ -390,6 +393,36 @@ function checkRateLimit(socket) {
   }
   return true;
 }
+
+function httpRateLimitKey(req) {
+  const clientId = typeof req.body?.clientId === 'string' ? req.body.clientId.slice(0, 100) : '';
+  return `${req.ip || req.socket.remoteAddress || 'unknown'}:${clientId}`;
+}
+
+function checkHttpGridRateLimit(req, res) {
+  const now = Date.now();
+  const key = httpRateLimitKey(req);
+  const current = httpGridRateLimits.get(key);
+  if (!current || now - current.windowStart > HTTP_GRID_RATE_LIMIT_WINDOW_MS) {
+    httpGridRateLimits.set(key, { windowStart: now, count: 1 });
+    return true;
+  }
+  current.count += 1;
+  if (current.count > HTTP_GRID_RATE_LIMIT_MAX) {
+    res.status(429).json({ error: 'Trop de requêtes, ralentis.' });
+    return false;
+  }
+  return true;
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of httpGridRateLimits) {
+    if (now - entry.windowStart > HTTP_GRID_RATE_LIMIT_WINDOW_MS * 2) {
+      httpGridRateLimits.delete(key);
+    }
+  }
+}, HTTP_GRID_RATE_LIMIT_WINDOW_MS).unref();
 
 function loadCategories() {
   const defaults = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
@@ -795,6 +828,8 @@ app.get('/api/custom-grids/:code/edit/:token', (req, res) => {
 });
 
 app.post('/api/custom-grids', (req, res) => {
+  if (!checkHttpGridRateLimit(req, res)) return;
+
   if (Object.keys(CUSTOM_GRIDS).length >= MAX_CUSTOM_GRIDS) {
     res.status(429).json({ error: 'Trop de grilles créées pour le moment.' });
     return;
@@ -827,6 +862,8 @@ app.post('/api/custom-grids', (req, res) => {
 });
 
 app.put('/api/custom-grids/:code/edit/:token', (req, res) => {
+  if (!checkHttpGridRateLimit(req, res)) return;
+
   const code = String(req.params.code || '').toUpperCase().trim();
   const token = String(req.params.token || '');
   const existing = CUSTOM_GRIDS[code];

@@ -696,7 +696,7 @@ function originalCategoriesToCustomCategories(categories) {
   return TIERS.reduce((acc, tier) => {
     const items = Array.isArray(categories?.[tier]) ? categories[tier] : [];
     acc[tier] = items.map(item => ({
-      label: item?.label || '',
+      label: String(item?.label || '').replace(/\s*\([^)]*\)/g, '').trim(),
       emojis: [categoryEmoji(item)].filter(Boolean),
     }));
     return acc;
