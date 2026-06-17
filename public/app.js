@@ -1331,6 +1331,162 @@ function normalizeEmojiText(value) {
     .trim();
 }
 
+const EMOJI_COLOR_MODIFIERS = [
+  { emoji: '🔵', roots: ['bleu', 'azur', 'cyan'] },
+  { emoji: '🔴', roots: ['rouge', 'red'] },
+  { emoji: '🟢', roots: ['vert', 'green'] },
+  { emoji: '🟡', roots: ['jaune', 'yellow'] },
+  { emoji: '⚫', roots: ['noir', 'black'] },
+  { emoji: '⚪', roots: ['blanc', 'white'] },
+  { emoji: '🟣', roots: ['violet', 'mauve', 'purple'] },
+  { emoji: '🟠', roots: ['orange'] },
+  { emoji: '🌸', roots: ['rose', 'pink'] },
+  { emoji: '🌈', roots: ['multicolore', 'arcenciel', 'rainbow'] },
+];
+
+const SEMANTIC_EMOJI_CONCEPTS = [
+  { emoji: '🚗', kind: 'colorable', roots: ['voitur', 'auto', 'bagnol', 'caisse', 'vehicul', 'car'] },
+  { emoji: '🚲', kind: 'colorable', roots: ['velo', 'bike', 'bicyclet', 'velib'] },
+  { emoji: '🛴', kind: 'colorable', roots: ['trottinett', 'trotinett', 'scooter'] },
+  { emoji: '🛵', kind: 'colorable', roots: ['moto', 'scooter', 'livreur', 'deliveroo'] },
+  { emoji: '🚕', kind: 'colorable', roots: ['taxi', 'uber'] },
+  { emoji: '🚉', roots: ['gare', 'train', 'metro', 'rer', 'quai'] },
+  { emoji: '🏖️', roots: ['plage', 'sable', 'serviett', 'mer'] },
+  { emoji: '🏙️', roots: ['ville', 'quartier', 'rue', 'place'] },
+
+  { emoji: '🐕', kind: 'colorable', roots: ['chien', 'chiot', 'toutou', 'clebs', 'dog'] },
+  { emoji: '🐩', kind: 'colorable', roots: ['canich', 'toilett'] },
+  { emoji: '🐈', kind: 'colorable', roots: ['chat', 'cat'] },
+  { emoji: '🐀', roots: ['rat', 'souris'] },
+  { emoji: '🐦', roots: ['oiseau', 'piaf'] },
+  { emoji: '🦅', roots: ['mouett', 'goeland'] },
+  { emoji: '🕊️', roots: ['pigeon', 'colomb'] },
+
+  { emoji: '⌨️', roots: ['clavier', 'keyboard'] },
+  { emoji: '📱', roots: ['telephone', 'tel', 'portable', 'smartphon'] },
+  { emoji: '💻', roots: ['ordinat', 'laptop', 'computer'] },
+  { emoji: '🎧', roots: ['casqu', 'ecouteur', 'headphon'] },
+  { emoji: '🎤', roots: ['micro', 'chant', 'karaok'] },
+  { emoji: '🎸', roots: ['guitar', 'guitare', 'bass', 'instrument'] },
+  { emoji: '🔊', roots: ['enceint', 'speaker', 'son', 'bruit'] },
+  { emoji: '📸', roots: ['photo', 'camera', 'appareil'] },
+  { emoji: '📖', roots: ['livr', 'lectur', 'bouquin'] },
+  { emoji: '💼', roots: ['mallet', 'cartabl', 'briefcas'] },
+  { emoji: '🛍️', roots: ['shopping', 'sac', 'shopper'] },
+
+  { emoji: '👕', kind: 'colorable', roots: ['tshirt', 'tee', 'maillot', 'habit', 'vetement'] },
+  { emoji: '👔', kind: 'colorable', roots: ['costard', 'chemise', 'cravate', 'suit'] },
+  { emoji: '🧥', kind: 'colorable', roots: ['manteau', 'doudoun', 'vest', 'jacket'] },
+  { emoji: '👗', kind: 'colorable', roots: ['robe', 'jupe'] },
+  { emoji: '👟', kind: 'colorable', roots: ['chaussur', 'basket', 'lacet'] },
+  { emoji: '👓', roots: ['lunett', 'glass'] },
+  { emoji: '🧢', kind: 'colorable', roots: ['casquett', 'cap'] },
+  { emoji: '👒', roots: ['chapeau', 'panama'] },
+
+  { emoji: '🫃', roots: ['gros', 'gross', 'obes', 'corpulent', 'ventr', 'bide'] },
+  { emoji: '💪', roots: ['muscl', 'baraqu', 'stockos', 'fort'] },
+  { emoji: '🎩💎', roots: ['bourgeois', 'bourgeoisie', 'riche', 'mondain', 'chic'] },
+  { emoji: '💋👠', roots: ['pute', 'prostitu', 'escort', 'tapin', 'sexy'] },
+  { emoji: '😏👀', roots: ['dragu', 'charo', 'flirt'] },
+  { emoji: '👶', roots: ['bebe', 'baby', 'poussett'] },
+  { emoji: '🤰', roots: ['enceint', 'grossess'] },
+  { emoji: '👵', roots: ['mamie', 'mami', 'vieill'] },
+  { emoji: '👴', roots: ['papi', 'vieux'] },
+  { emoji: '👨‍🦲', roots: ['chauv', 'calviti'] },
+  { emoji: '🧔', roots: ['barb', 'hipster'] },
+  { emoji: '💇', kind: 'colorable', roots: ['cheveu', 'coiffur'] },
+
+  { emoji: '😎', roots: ['cool', 'styl', 'frais'] },
+  { emoji: '🤨', roots: ['chelou', 'bizarre', 'suspect'] },
+  { emoji: '🔪', roots: ['psycho', 'flipp', 'tueur', 'dangereux'] },
+  { emoji: '😡', roots: ['coler', 'enerve', 'rage'] },
+  { emoji: '😭', roots: ['pleur', 'trist'] },
+  { emoji: '😁', roots: ['heureux', 'sourir', 'happy'] },
+  { emoji: '🤣', roots: ['rire', 'rigol'] },
+  { emoji: '🥵', roots: ['sueur', 'transpir', 'chaud'] },
+  { emoji: '🤮', roots: ['vomi', 'vomit'] },
+  { emoji: '💩', roots: ['merd', 'caca', 'crotte'] },
+
+  { emoji: '🚬', roots: ['cigarett', 'clop', 'megot', 'smok'] },
+  { emoji: '🍺', roots: ['biere', 'alcool', 'ivre', 'bourr'] },
+  { emoji: '🍔', roots: ['mang', 'burger', 'food', 'sandwich'] },
+  { emoji: '🥖', roots: ['pain', 'baguett'] },
+  { emoji: '🥤', roots: ['canett', 'soda', 'boisson'] },
+
+  { emoji: '🏃', roots: ['cour', 'jog', 'running'] },
+  { emoji: '🛹', roots: ['skate'] },
+  { emoji: '💃', roots: ['dans'] },
+  { emoji: '🤸', roots: ['tomb', 'trebuch'] },
+  { emoji: '🎭', roots: ['deguis', 'costum'] },
+  { emoji: '🦸', roots: ['cape', 'superhero', 'superher'] },
+  { emoji: '🗑️', roots: ['poubell', 'dechet'] },
+  { emoji: '🚪', roots: ['porte'] },
+  { emoji: '⚰️', roots: ['cercueil', 'mort'] },
+  { emoji: '🚑', roots: ['malaise', 'malad', 'dead'] },
+];
+
+function emojiTokens(text) {
+  return normalizeEmojiText(text)
+    .split(' ')
+    .filter(token => token.length > 1)
+    .map(token => token.replace(/(es|s)$/g, ''));
+}
+
+function editDistance(a, b) {
+  if (Math.abs(a.length - b.length) > 2) return 3;
+  const dp = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j += 1) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i += 1) {
+    for (let j = 1; j <= b.length; j += 1) {
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+function semanticRootScore(token, root) {
+  const normalizedRoot = normalizeEmojiText(root);
+  if (token === normalizedRoot) return 12 + normalizedRoot.length;
+  if (token.startsWith(normalizedRoot) || normalizedRoot.startsWith(token)) return 8 + Math.min(token.length, normalizedRoot.length);
+  if (token.length >= 5 && normalizedRoot.length >= 5 && editDistance(token, normalizedRoot) <= 1) return 6;
+  return 0;
+}
+
+function findSemanticColor(tokens) {
+  let best = null;
+  for (const color of EMOJI_COLOR_MODIFIERS) {
+    const score = Math.max(...tokens.flatMap(token => color.roots.map(root => semanticRootScore(token, root))));
+    if (score > 0 && (!best || score > best.score)) best = { ...color, score };
+  }
+  return best;
+}
+
+function suggestSemanticEmoji(label) {
+  const tokens = emojiTokens(label);
+  if (!tokens.length) return '';
+
+  const color = findSemanticColor(tokens);
+  let best = null;
+  for (const concept of SEMANTIC_EMOJI_CONCEPTS) {
+    const score = Math.max(...tokens.flatMap(token => concept.roots.map(root => semanticRootScore(token, root))));
+    if (score > 0 && (!best || score > best.score)) best = { ...concept, score };
+  }
+
+  const hasRoot = (...roots) => tokens.some(token => roots.some(root => semanticRootScore(token, root) > 0));
+  if (hasRoot('canich', 'chien') && hasRoot('toilett', 'coiff', 'groom')) return '💅🐩';
+  if (hasRoot('lunett') && hasRoot('attach', 'cord', 'chain')) return '👓🪢';
+  if (hasRoot('habit', 'vetement', 'tshirt', 'maillot') && hasRoot('groupe', 'music', 'concert', 'rock', 'metal')) return '👕🎸';
+  if (hasRoot('bataill', 'bagarr') && hasRoot('chien', 'dog', 'clebs')) return '🐺';
+
+  if (!best) return color?.emoji || '';
+  if (color && best.kind === 'colorable') return `${best.emoji}${color.emoji}`;
+  return best.emoji;
+}
+
 function phraseMatches(text, phrase) {
   return text.includes(normalizeEmojiText(phrase));
 }
@@ -1338,6 +1494,9 @@ function phraseMatches(text, phrase) {
 function suggestEmojiForText(label) {
   const text = normalizeEmojiText(label);
   if (text.length < 2) return '';
+
+  const semanticEmoji = suggestSemanticEmoji(label);
+  if (semanticEmoji) return semanticEmoji;
 
   let best = null;
   for (const rule of EMOJI_SUGGESTION_RULES) {
