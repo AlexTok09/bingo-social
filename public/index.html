@@ -87,6 +87,22 @@
     </main>
   </div>
 
+  <!-- CUSTOM GRID START -->
+  <div id="screen-custom-grid-start" class="screen">
+    <main class="custom-start-container">
+      <button id="btn-custom-start-back" class="btn-icon" type="button" aria-label="Retour">↩</button>
+      <div>
+        <p class="custom-start-kicker">Grille custom</p>
+        <h1 id="custom-start-title">Jouer</h1>
+      </div>
+      <label>
+        <span>Rentre ton prénom</span>
+        <input type="text" id="custom-start-name" maxlength="15" autocomplete="off" spellcheck="false" placeholder="Ton prénom">
+      </label>
+      <button id="btn-custom-start-play" class="btn btn-primary" type="button">Entrer</button>
+    </main>
+  </div>
+
   <!-- GAME SCREEN -->
   <div id="screen-game" class="screen">
     <div class="game-header">
@@ -165,6 +181,17 @@
       <p id="bonus-choice-detail"></p>
       <button id="btn-bonus-freecheck" class="btn btn-primary">Cocher une case gratis</button>
       <button id="btn-bonus-reroll" class="btn btn-secondary">Rejouer 3 cases</button>
+    </div>
+  </div>
+
+  <!-- EDIT LINK REMINDER -->
+  <div id="edit-link-reminder" class="overlay edit-link-reminder" role="dialog" aria-modal="true" aria-label="Lien d’édition">
+    <div class="edit-link-content">
+      <h2>Sauvegarde ton lien d’édition</h2>
+      <p>Ce lien secret te permet de revenir modifier ta grille plus tard.</p>
+      <input id="edit-link-url" type="text" readonly>
+      <button id="btn-copy-edit-link" class="btn btn-primary" type="button">Copier le lien</button>
+      <button id="btn-close-edit-link" class="btn btn-secondary" type="button">J’ai sauvegardé</button>
     </div>
   </div>
 

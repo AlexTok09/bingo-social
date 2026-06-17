@@ -112,6 +112,7 @@ function forgetMyGrid(code) {
 const screenHome = $('#screen-home');
 const screenGame = $('#screen-game');
 const screenGridEditor = $('#screen-grid-editor');
+const screenCustomGridStart = $('#screen-custom-grid-start');
 const inputName = $('#player-name');
 const inputCode = $('#room-code');
 const btnCreate = $('#btn-create');
@@ -132,6 +133,14 @@ const gridSubjectInput = $('#grid-subject');
 const gridPublicInput = $('#grid-public');
 const btnSaveCustomGrid = $('#btn-save-custom-grid');
 const editorResult = $('#editor-result');
+const customStartTitle = $('#custom-start-title');
+const customStartNameInput = $('#custom-start-name');
+const btnCustomStartBack = $('#btn-custom-start-back');
+const btnCustomStartPlay = $('#btn-custom-start-play');
+const editLinkReminder = $('#edit-link-reminder');
+const editLinkUrlInput = $('#edit-link-url');
+const btnCopyEditLink = $('#btn-copy-edit-link');
+const btnCloseEditLink = $('#btn-close-edit-link');
 const errorMsg = $('#error-msg');
 const displayCode = $('#display-code');
 const playerCount = $('#player-count');
@@ -169,6 +178,7 @@ let jokerRerollActive = false;
 let tiersToWin = 1;
 let pendingLegendaryConfirm = null;
 let pendingLegendaryConfirmTimeout = null;
+let pendingCustomGridCode = null;
 let editingGridCode = null;
 let editingGridToken = null;
 let pendingJoinFallback = null;
@@ -823,11 +833,12 @@ function showEditorResult(grid) {
     showToast('Lien d’édition copié');
   });
   editorResult.querySelector('[data-play]').addEventListener('click', () => {
-    startCustomGridGame(grid.code);
+    openCustomGridPlayTab(grid.code, grid.name);
   });
 }
 
 async function saveCustomGrid() {
+  const wasCreating = !(editingGridCode && editingGridToken);
   const payload = collectCustomGridPayload();
   const url = editingGridCode && editingGridToken
     ? `/api/custom-grids/${encodeURIComponent(editingGridCode)}/edit/${encodeURIComponent(editingGridToken)}`
@@ -847,6 +858,7 @@ async function saveCustomGrid() {
   rememberMyGrid(data.grid);
   btnSaveCustomGrid.textContent = 'Sauvegarder la grille';
   showEditorResult(data.grid);
+  if (wasCreating) showEditLinkReminder(data.grid);
   loadCustomGrids();
 }
 
@@ -897,23 +909,80 @@ async function openGridEditorFromOriginalCategories() {
   if (!categories) showToast('Catégories d’origine indisponibles, grille vide chargée');
 }
 
-function startCustomGridGame(code) {
-  const customGridCode = String(code || '').trim().toUpperCase();
-  const name = inputName.value.trim();
-  if (!customGridCode) return;
-  if (!name) {
-    closeCustomGridPanel();
-    showScreen(screenHome);
-    showError('Entre ton prénom !');
-    inputName.focus();
-    return;
+function showEditLinkReminder(grid) {
+  if (!editLinkReminder || !grid?.code || !grid?.editToken) return;
+  const editUrl = `${window.location.origin}${window.location.pathname}?editGrid=${encodeURIComponent(grid.code)}&token=${encodeURIComponent(grid.editToken)}`;
+  editLinkUrlInput.value = editUrl;
+  editLinkReminder.classList.add('active');
+  window.setTimeout(() => editLinkUrlInput.select(), 0);
+}
+
+function closeEditLinkReminder() {
+  if (!editLinkReminder) return;
+  editLinkReminder.classList.remove('active');
+}
+
+async function copyEditLinkReminder() {
+  const value = editLinkUrlInput.value;
+  try {
+    await navigator.clipboard?.writeText(value);
+    showToast('Lien d’édition copié');
+  } catch {
+    editLinkUrlInput.select();
+    showToast('Copie le lien sélectionné');
   }
-  playerName = name;
+}
+
+function openCustomGridStart(code, gridName = '') {
+  pendingCustomGridCode = String(code || '').trim().toUpperCase();
+  if (!pendingCustomGridCode) return;
+  closeCustomGridPanel();
+  closeEditLinkReminder();
+  customStartTitle.textContent = gridName ? `Jouer à ${gridName}` : 'Jouer';
+  customStartNameInput.value = playerName || inputName.value.trim() || getStoredSessionValue(SESSION_NAME_KEY) || '';
+  showScreen(screenCustomGridStart);
+  window.setTimeout(() => {
+    customStartNameInput.focus();
+    customStartNameInput.select();
+  }, 0);
+}
+
+function openCustomGridPlayTab(code, gridName = '') {
+  const customGridCode = String(code || '').trim().toUpperCase();
+  if (!customGridCode) return;
+  const params = new URLSearchParams();
+  params.set('playGrid', customGridCode);
+  if (gridName) params.set('gridName', gridName);
+  const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+  const opened = window.open(url, '_blank');
+  if (opened) {
+    opened.opener = null;
+  } else {
+    openCustomGridStart(customGridCode, gridName);
+  }
+}
+
+function launchCustomGridGame(code, name) {
+  const customGridCode = String(code || '').trim().toUpperCase();
+  const normalizedName = String(name || '').trim();
+  if (!customGridCode || !normalizedName) return false;
+  playerName = normalizedName;
+  inputName.value = normalizedName;
   setStoredSessionValue(SESSION_NAME_KEY, playerName);
   pendingJoinFallback = null;
-  closeCustomGridPanel();
   startBgMusic();
-  emitSocket('create-room', { playerName: name, clientId, customGridCode });
+  emitSocket('create-room', { playerName: normalizedName, clientId, customGridCode });
+  return true;
+}
+
+function submitCustomGridStart() {
+  const name = customStartNameInput.value.trim();
+  if (!name) {
+    showToast('Entre ton prénom !');
+    customStartNameInput.focus();
+    return;
+  }
+  launchCustomGridGame(pendingCustomGridCode, name);
 }
 
 async function editMyGrid(code, token) {
@@ -958,7 +1027,7 @@ function renderMyGridsSection(mine) {
       </div>
     `;
     card.querySelector('[data-edit]').addEventListener('click', () => editMyGrid(code, entry.token));
-    card.querySelector('[data-play]').addEventListener('click', () => startCustomGridGame(code));
+    card.querySelector('[data-play]').addEventListener('click', () => openCustomGridPlayTab(code, entry.name || code));
     section.appendChild(card);
   });
   customGridsList.appendChild(section);
@@ -1004,7 +1073,7 @@ async function loadCustomGrids() {
         </div>
         <button class="btn-mini" type="button">Jouer</button>
       `;
-      card.querySelector('button').addEventListener('click', () => startCustomGridGame(grid.code));
+      card.querySelector('button').addEventListener('click', () => openCustomGridPlayTab(grid.code, grid.name));
       publicWrap.appendChild(card);
     });
   } catch {
@@ -1016,15 +1085,25 @@ async function openEditorFromQuery() {
   const params = new URLSearchParams(window.location.search);
   const code = params.get('editGrid');
   const token = params.get('token');
-  if (!code || !token) return;
+  if (!code || !token) return false;
   try {
     const response = await fetch(`/api/custom-grids/${encodeURIComponent(code.toUpperCase())}/edit/${encodeURIComponent(token)}`);
     const data = await response.json();
     if (response.ok) {
       rememberMyGrid(data.grid);
       openGridEditor(data.grid);
+      return true;
     }
   } catch {}
+  return false;
+}
+
+function openCustomGridStartFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('playGrid');
+  if (!code) return false;
+  openCustomGridStart(code, params.get('gridName') || '');
+  return true;
 }
 
 // --- HOME ACTIONS ---
@@ -1058,6 +1137,16 @@ btnInfo.addEventListener('click', () => {
 btnOpenGridEditor.addEventListener('click', () => openGridEditor());
 btnLoadOriginalCategories.addEventListener('click', () => openGridEditorFromOriginalCategories());
 btnEditorBack.addEventListener('click', () => showScreen(screenHome));
+btnCustomStartBack.addEventListener('click', () => {
+  pendingCustomGridCode = null;
+  showScreen(screenHome);
+});
+btnCustomStartPlay.addEventListener('click', submitCustomGridStart);
+customStartNameInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') submitCustomGridStart();
+});
+btnCopyEditLink.addEventListener('click', () => copyEditLinkReminder());
+btnCloseEditLink.addEventListener('click', closeEditLinkReminder);
 btnRefreshCustomGrids.addEventListener('click', loadCustomGrids);
 btnSaveCustomGrid.addEventListener('click', () => {
   saveCustomGrid().catch(() => showToast('Erreur de sauvegarde'));
@@ -2524,4 +2613,4 @@ btnBonusReroll.addEventListener('click', () => {
 });
 
 loadCustomGrids();
-openEditorFromQuery();
+if (!openCustomGridStartFromQuery()) openEditorFromQuery();
