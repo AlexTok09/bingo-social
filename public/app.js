@@ -82,8 +82,12 @@ const btnCreate = $('#btn-create');
 const btnJoin = $('#btn-join');
 const btnInfo = $('#btn-info');
 const btnOpenGridEditor = $('#btn-open-grid-editor');
+const btnOpenCustomGrids = $('#btn-open-custom-grids');
 const btnEditorBack = $('#btn-editor-back');
 const btnRefreshCustomGrids = $('#btn-refresh-custom-grids');
+const btnCloseCustomGrids = $('#btn-close-custom-grids');
+const customGridPanel = $('#custom-grid-panel');
+const customGridPanelBackdrop = $('#custom-grid-panel-backdrop');
 const customGridsList = $('#custom-grids-list');
 const customGridEditor = $('#custom-grid-editor');
 const gridNameInput = $('#grid-name');
@@ -812,6 +816,7 @@ async function loadCustomGrids() {
       `;
       card.querySelector('button').addEventListener('click', () => {
         inputCode.value = grid.code;
+        closeCustomGridPanel();
         showToast(`Grille ${grid.code} sélectionnée`);
       });
       customGridsList.appendChild(card);
@@ -1631,8 +1636,22 @@ function closePanel() {
   panelBackdrop.classList.remove('active');
 }
 
+function openCustomGridPanel() {
+  loadCustomGrids();
+  customGridPanel.classList.add('open');
+  customGridPanelBackdrop.classList.add('active');
+}
+
+function closeCustomGridPanel() {
+  customGridPanel.classList.remove('open');
+  customGridPanelBackdrop.classList.remove('active');
+}
+
 btnClosePanel.addEventListener('click', closePanel);
 panelBackdrop.addEventListener('click', closePanel);
+btnOpenCustomGrids.addEventListener('click', openCustomGridPanel);
+btnCloseCustomGrids.addEventListener('click', closeCustomGridPanel);
+customGridPanelBackdrop.addEventListener('click', closeCustomGridPanel);
 
 // --- SHARE ---
 

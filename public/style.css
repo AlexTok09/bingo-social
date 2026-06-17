@@ -293,22 +293,10 @@ input[type="text"]::placeholder {
 .join-row input {
   text-align: center;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 1.3rem;
+  letter-spacing: 0.04em;
+  font-size: 0.9rem;
 }
 
-.custom-grid-list {
-  display: grid;
-  gap: 6px;
-  margin-top: 2px;
-  padding: 8px;
-  border: 2px dashed var(--ink);
-  border-radius: 7px;
-  background: rgba(255, 249, 221, 0.46);
-  box-shadow: none;
-}
-
-.custom-grid-list-header,
 .editor-topbar,
 .custom-editor-header,
 .custom-grid-card {
@@ -318,7 +306,6 @@ input[type="text"]::placeholder {
   gap: 10px;
 }
 
-.custom-grid-list h2,
 .editor-topbar h1,
 .custom-editor-header h2 {
   font-family: var(--font);
@@ -357,6 +344,14 @@ input[type="text"]::placeholder {
   font-size: 0.72rem;
   font-weight: 900;
   opacity: 0.72;
+}
+
+.custom-grid-panel {
+  max-height: min(70dvh, 520px);
+}
+
+.custom-grid-panel .custom-grids-list {
+  max-height: none;
 }
 
 .editor-container {
