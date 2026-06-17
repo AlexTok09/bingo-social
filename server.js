@@ -686,6 +686,16 @@ function resolveCustomGrid(lookup = '', clientId = null) {
   return matches[0] || null;
 }
 
+function findPublicGridByName(name = '', excludeCode = null) {
+  const slug = slugifyLabel(name);
+  if (!slug) return null;
+  return Object.values(CUSTOM_GRIDS).find(grid =>
+    grid.code !== excludeCode &&
+    grid.isPublic !== false &&
+    slugifyLabel(grid.name) === slug
+  ) || null;
+}
+
 function generateCustomGridCode(name = '') {
   const prefix = slugifyLabel(name).replace(/-/g, '').slice(0, 3).toUpperCase() || 'SOC';
   let code = '';
@@ -979,6 +989,11 @@ app.post('/api/custom-grids', (req, res) => {
     return;
   }
 
+  if (req.body.isPublic !== false && findPublicGridByName(req.body.name)) {
+    res.status(409).json({ error: 'Ce nom de grille est déjà pris. Choisis-en un autre.' });
+    return;
+  }
+
   const now = Date.now();
   const code = generateCustomGridCode(req.body.name);
   const grid = {
@@ -1013,6 +1028,11 @@ app.put('/api/custom-grids/:code/edit/:token', (req, res) => {
   const error = validateCustomGridPayload(req.body);
   if (error) {
     res.status(400).json({ error });
+    return;
+  }
+
+  if (req.body.isPublic !== false && findPublicGridByName(req.body.name, code)) {
+    res.status(409).json({ error: 'Ce nom de grille est déjà pris. Choisis-en un autre.' });
     return;
   }
 
