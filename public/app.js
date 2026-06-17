@@ -78,7 +78,6 @@ const screenGame = $('#screen-game');
 const screenGridEditor = $('#screen-grid-editor');
 const inputName = $('#player-name');
 const inputCode = $('#room-code');
-const inputCustomGridCode = $('#custom-grid-code');
 const btnCreate = $('#btn-create');
 const btnJoin = $('#btn-join');
 const btnInfo = $('#btn-info');
@@ -131,6 +130,7 @@ let pendingLegendaryConfirm = null;
 let pendingLegendaryConfirmTimeout = null;
 let editingGridCode = null;
 let editingGridToken = null;
+let pendingJoinFallback = null;
 
 const CUSTOM_LABEL_MAX = 38;
 const CUSTOM_GRID_COUNTS = { ordinaire: 12, semi: 6, rare: 2, legendaire: 1 };
@@ -747,7 +747,7 @@ function showEditorResult(grid) {
     showToast('Lien d’édition copié');
   });
   editorResult.querySelector('[data-play]').addEventListener('click', () => {
-    inputCustomGridCode.value = grid.code;
+    inputCode.value = grid.code;
     showScreen(screenHome);
     showToast(`Code grille ${grid.code} prêt`);
   });
@@ -811,7 +811,7 @@ async function loadCustomGrids() {
         <button class="btn-mini" type="button">Jouer</button>
       `;
       card.querySelector('button').addEventListener('click', () => {
-        inputCustomGridCode.value = grid.code;
+        inputCode.value = grid.code;
         showToast(`Grille ${grid.code} sélectionnée`);
       });
       customGridsList.appendChild(card);
@@ -837,7 +837,7 @@ async function openEditorFromQuery() {
 
 btnCreate.addEventListener('click', () => {
   const name = inputName.value.trim();
-  const customGridCode = inputCustomGridCode.value.trim().toUpperCase();
+  const customGridCode = inputCode.value.trim().toUpperCase();
   if (!name) { showError('Entre ton prénom !'); return; }
   playerName = name;
   setStoredSessionValue(SESSION_NAME_KEY, playerName);
@@ -853,6 +853,7 @@ btnJoin.addEventListener('click', () => {
   playerName = name;
   setStoredSessionValue(SESSION_NAME_KEY, playerName);
   startBgMusic();
+  pendingJoinFallback = { playerName: name, customGridCode: code };
   emitSocket('join-room', { code, playerName: name, clientId });
 });
 
@@ -894,6 +895,7 @@ if (socket) {
   });
 
   socket.on('room-created', ({ code, grid, tiersToWin: t }) => {
+    pendingJoinFallback = null;
     roomCode = code;
     setStoredSessionValue(SESSION_ROOM_KEY, roomCode);
     myGrid = grid;
@@ -910,6 +912,7 @@ if (socket) {
   });
 
   socket.on('room-joined', ({ code, grid, tiersToWin: t }) => {
+    pendingJoinFallback = null;
     roomCode = code;
     setStoredSessionValue(SESSION_ROOM_KEY, roomCode);
     myGrid = grid;
@@ -926,6 +929,17 @@ if (socket) {
   });
 
   socket.on('error-msg', (msg) => {
+    if (msg === 'Salon introuvable !' && pendingJoinFallback) {
+      const fallback = pendingJoinFallback;
+      pendingJoinFallback = null;
+      emitSocket('create-room', {
+        playerName: fallback.playerName,
+        clientId,
+        customGridCode: fallback.customGridCode,
+      });
+      return;
+    }
+    pendingJoinFallback = null;
     showError(msg);
   });
 

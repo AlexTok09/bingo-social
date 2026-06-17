@@ -20,23 +20,20 @@
       <label for="player-name" class="sr-only">Ton prénom</label>
       <input type="text" id="player-name" placeholder="Ton prénom" maxlength="15" autocomplete="off" spellcheck="false">
 
-      <label for="custom-grid-code" class="sr-only">Code grille custom</label>
-      <input type="text" id="custom-grid-code" placeholder="Code grille custom (optionnel)" maxlength="6" autocomplete="off" spellcheck="false">
-
       <button id="btn-create" class="btn btn-primary">Créer une partie</button>
 
       <div class="divider"><span>- ou rejoindre avec un code -</span></div>
 
       <div class="join-row">
         <label for="room-code" class="sr-only">Code de la partie</label>
-        <input type="text" id="room-code" placeholder="CODE" maxlength="4" autocomplete="off" spellcheck="false">
+        <input type="text" id="room-code" placeholder="CODE PARTIE OU GRILLE" maxlength="6" autocomplete="off" spellcheck="false">
         <button id="btn-join" class="btn btn-secondary">GO</button>
       </div>
 
       <div id="error-msg" class="error" role="alert"></div>
 
       <button id="btn-info" class="btn btn-link">Règles du jeu</button>
-      <button id="btn-open-grid-editor" class="btn btn-secondary">Créer ta grille</button>
+      <button id="btn-open-grid-editor" class="btn btn-link">Créer ta grille</button>
 
       <section class="custom-grid-list" aria-label="Grilles créées">
         <div class="custom-grid-list-header">
