@@ -537,6 +537,7 @@ async function applyCategories(categories, options = {}) {
       p.grid = generateGrid(room.categories || CATEGORIES);
       p.checked = emptyChecked();
       p.occurrences = emptyOccurrences();
+      p.occurrenceMax = emptyOccurrences();
       p.bonuses = emptyBonuses();
       p.pendingBonus = emptyPendingBonus();
       p.maxChecked = 0;
@@ -850,6 +851,7 @@ io.on('connection', (socket) => {
       grid,
       checked: emptyChecked(),
       occurrences: emptyOccurrences(),
+      occurrenceMax: emptyOccurrences(),
       bonuses: emptyBonuses(),
       pendingBonus: emptyPendingBonus(),
       maxChecked: 0,
@@ -914,6 +916,7 @@ io.on('connection', (socket) => {
       grid,
       checked: emptyChecked(),
       occurrences: emptyOccurrences(),
+      occurrenceMax: emptyOccurrences(),
       bonuses: emptyBonuses(),
       pendingBonus: emptyPendingBonus(),
       maxChecked: 0,
@@ -1064,6 +1067,7 @@ io.on('connection', (socket) => {
     if (player.pendingBonus) return;
 
     player.occurrences ||= emptyOccurrences();
+    player.occurrenceMax ||= emptyOccurrences();
     player.bonuses ||= emptyBonuses();
 
     const categoryKey = typeof category === 'string' ? category : '';
@@ -1075,6 +1079,7 @@ io.on('connection', (socket) => {
 
     const currentCount = player.occurrences[categoryKey][indexNumber] || 1;
     const nextCount = currentCount + 1;
+    const prevMaxCell = player.occurrenceMax[categoryKey][indexNumber] || 1;
     const baseThreshold = BONUS_REPEAT_THRESHOLD[categoryKey] || 3;
     const rerollCount = BONUS_REROLL_COUNT[categoryKey] || 3;
 
@@ -1084,7 +1089,11 @@ io.on('connection', (socket) => {
     while (bonusThreshold < nextCount) { bonusGap *= 2; bonusThreshold += bonusGap; }
 
     player.occurrences[categoryKey][indexNumber] = nextCount;
-    if (nextCount === bonusThreshold) {
+    // High-water : un palier n'octroie son bonus qu'au premier passage, donc
+    // décrémenter (appui long) puis re-répéter ne refarme jamais le bonus.
+    const isNewHigh = nextCount > prevMaxCell;
+    if (isNewHigh) player.occurrenceMax[categoryKey][indexNumber] = nextCount;
+    if (isNewHigh && nextCount === bonusThreshold) {
       player.pendingBonus = { type: 'bonus-choice', category: categoryKey, rerollCount };
       socket.emit('bonus-choice-start', { category: categoryKey, rerollCount });
     } else {
@@ -1097,6 +1106,46 @@ io.on('connection', (socket) => {
       });
     }
 
+    socket.emit('grid-update', {
+      checked: player.checked,
+      occurrences: player.occurrences,
+      bonuses: player.bonuses,
+    });
+    await persistRoom(room);
+  });
+
+  // Appui long : redescend le compteur d'un cran (3 -> 2 -> 1). L'uncheck final
+  // (1 -> rien) passe par toggle-cell côté client.
+  socket.on('decrement-cell', async (payload = {}) => {
+    if (!checkRateLimit(socket)) return;
+    const { category, index } = payload;
+    const { room, player } = await getActionContext(socket, payload);
+    if (!room || room.winner) return;
+    if (!player) return;
+    if (player.pendingBonus) return;
+
+    player.occurrences ||= emptyOccurrences();
+    player.bonuses ||= emptyBonuses();
+
+    const categoryKey = typeof category === 'string' ? category : '';
+    const indexNumber = Number(index);
+    const checkedList = player.checked[categoryKey];
+    const gridItems = player.grid[categoryKey];
+    if (!isValidTier(categoryKey) || !Array.isArray(checkedList) || !Array.isArray(gridItems) || !Number.isInteger(indexNumber) || indexNumber < 0 || indexNumber >= gridItems.length) return;
+    if (!checkedList.includes(indexNumber)) return;
+
+    const currentCount = player.occurrences[categoryKey][indexNumber] || 1;
+    if (currentCount <= 1) return;
+    const nextCount = currentCount - 1;
+    player.occurrences[categoryKey][indexNumber] = nextCount;
+
+    socket.emit('occurrence-update', {
+      category: categoryKey,
+      index: indexNumber,
+      count: nextCount,
+      occurrences: player.occurrences,
+      bonuses: player.bonuses,
+    });
     socket.emit('grid-update', {
       checked: player.checked,
       occurrences: player.occurrences,
@@ -1267,6 +1316,7 @@ io.on('connection', (socket) => {
       p.grid = generateGrid(room.categories || CATEGORIES);
       p.checked = emptyChecked();
       p.occurrences = emptyOccurrences();
+      p.occurrenceMax = emptyOccurrences();
       p.bonuses = emptyBonuses();
       p.pendingBonus = emptyPendingBonus();
       p.maxChecked = 0;

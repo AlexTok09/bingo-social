@@ -1286,7 +1286,8 @@ const EMOJI_BY_ID = {
   'double-mami': '👵👵', 'double-papi': '👴👴',
   'sort-les-poubelles': '🗑️', 'suspect': '🕵️', 'malade': '🤒', 'tache-de-rousseur': '🧑‍🦰',
   'femme-enceinte': '🤰', 'antifa': '🏴', 'deprime': '😔', 'attache-lunette': '👓🪢',
-  'gratte-bourse': '🥜', 'decrotte-le-nez': '👃',
+  'se-gratte-les-bourses': '🥜', 'se-decrotte-le-nez': '👃', 'se-tiennent-la-main': '👫',
+  'moustache-de-mousquetaire': '⚔️🥸', 'noeud-papillon': '🎀🤵',
 };
 
 const EMOJI_SUGGESTION_RULES = [
@@ -2012,7 +2013,8 @@ function buildGrid() {
       let longPressTimer = null;
       let didLongPress = false;
 
-      // Appui long sur une case cochée = annuler (décocher).
+      // Appui long sur une case cochée : redescend le compteur d'un cran
+      // (3 -> 2 -> 1) ; au dernier cran, décoche la case.
       cell.addEventListener('pointerdown', () => {
         didLongPress = false;
         if (freeCheckCategory || rerollRemaining > 0) return;
@@ -2022,10 +2024,20 @@ function buildGrid() {
           didLongPress = true;
           clearLegendaryConfirm();
           playTapSound(category, true);
-          applyLocalToggle(category, index);
-          renderGrid();
           cell.classList.add('long-pressing');
           window.setTimeout(() => cell.classList.remove('long-pressing'), 260);
+          const count = (myOccurrences[category] && myOccurrences[category][index]) || 1;
+          if (count > 1) {
+            myOccurrences = {
+              ...myOccurrences,
+              [category]: { ...(myOccurrences[category] || {}), [index]: count - 1 },
+            };
+            renderGrid();
+            emitSocket('decrement-cell', { category, index });
+            return;
+          }
+          applyLocalToggle(category, index);
+          renderGrid();
           const sent = emitSocket('toggle-cell', { category, index }, ({ ok, reason }) => {
             if (ok) return;
             applyLocalToggle(category, index);

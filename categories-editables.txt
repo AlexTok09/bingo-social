@@ -162,7 +162,7 @@ Sort du pressing
 Mâche un chewing-gum
 Je connais
 Jeu à gratter
-Se tient la main
+Se tiennent la main
 Crocs
 Barbe chauve
 Plâtrée
@@ -184,8 +184,8 @@ Femme enceinte
 Antifa
 Déprimé
 Attache lunette
-Gratte bourse
-Décrotte le nez
+Se gratte les bourses
+Se décrotte le nez
 
 
 
@@ -247,7 +247,7 @@ Accouplement humain ou chien
 Marche dans la merde.
 Jumeaux
 Fume la piple
-Cape
+Porte une cape
 Coupure d'électricité
 Enterrement de vie de garçon.
 Voir un autre joueur de sociologie-bingo.
