@@ -1397,7 +1397,7 @@ const EMOJI_SUGGESTION_RULES = [
   { emoji: '🍺', any: ['ivre', 'biere', 'bourre', 'alcool'] },
   { emoji: '🚬', any: ['cigarette', 'clope', 'megot', 'pipe'] },
   { emoji: '💨', any: ['vape', 'vapote', 'vapot'] },
-  { emoji: '🍔', any: ['mange', 'burger', 'fast food'] },
+  { emoji: '🍔', any: ['burger', 'fast food', 'sandwich'] },
   { emoji: '🥖', any: ['baguette', 'pain'] },
   { emoji: '🥤', any: ['canette', 'soda'] },
   { emoji: '💩', any: ['merde', 'caca'] },
@@ -1434,6 +1434,8 @@ const EMOJI_SUGGESTION_RULES = [
   { emoji: '📲', any: ['tiktok', 'telephone', 'tel', 'portable'] },
   { emoji: '🗣️', any: ['parle tout seul'] },
   { emoji: '📖', any: ['livre', 'lecture'] },
+  { emoji: '🍦', any: ['glace', 'sorbet'] },
+  { emoji: '☕', any: ['cafe', 'café', 'expresso'] },
   { emoji: '🔍', any: ['cherche', 'fouille'] },
   { emoji: '🏖️', any: ['plage', 'sable', 'serviette'] },
   { emoji: '🚉', any: ['gare', 'train', 'quai'] },
@@ -1530,7 +1532,7 @@ const SEMANTIC_EMOJI_CONCEPTS = [
   { emoji: '💼', roots: ['mallet', 'cartabl', 'briefcas'] },
   { emoji: '🛍️', roots: ['shopping', 'sac', 'shopper'] },
 
-  { emoji: '👕', kind: 'colorable', roots: ['tshirt', 'tee', 'maillot', 'habit', 'vetement'] },
+  { emoji: '👕', kind: 'colorable', roots: ['tshirt', 'tee', 'maillot', 'habit', 'vetement', 'pull'] },
   { emoji: '👔', kind: 'colorable', roots: ['costard', 'chemise', 'cravate', 'suit'] },
   { emoji: '🧥', kind: 'colorable', roots: ['manteau', 'doudoun', 'vest', 'jacket'] },
   { emoji: '👗', kind: 'colorable', roots: ['robe', 'jupe'] },
@@ -1565,12 +1567,15 @@ const SEMANTIC_EMOJI_CONCEPTS = [
 
   { emoji: '🚬', roots: ['cigarett', 'clop', 'megot', 'smok', 'fume', 'fum', 'tabac', 'taf'] },
   { emoji: '🍺', roots: ['biere', 'alcool', 'ivre', 'bourr'] },
-  { emoji: '🍔', roots: ['mang', 'burger', 'food', 'sandwich'] },
+  { emoji: '🍔', roots: ['burger', 'fastfood', 'sandwich'] },
   { emoji: '🥖', roots: ['pain', 'baguett'] },
   { emoji: '🥤', roots: ['canett', 'soda', 'boisson'] },
+  { emoji: '🍦', roots: ['glac', 'sorbet'] },
+  { emoji: '☕', roots: ['cafe', 'expresso'] },
 
   { emoji: '🏃', roots: ['cour', 'jog', 'running'] },
   { emoji: '🚶', roots: ['march', 'balad', 'flan', 'pieton', 'deambul'] },
+  { emoji: '🗣️', roots: ['cri', 'crie', 'gueul', 'hurle'] },
   { emoji: '🛹', roots: ['skate'] },
   { emoji: '💃', roots: ['dans'] },
   { emoji: '🤸', roots: ['tomb', 'trebuch'] },
@@ -1635,7 +1640,7 @@ function emojiUnitCount(emoji) {
 }
 
 function suggestSemanticEmoji(label) {
-  const tokens = emojiTokens(label);
+  const tokens = emojiTokens(label).filter(token => !EMOJI_STOPWORDS.has(token));
   if (!tokens.length) return '';
 
   const color = findSemanticColor(tokens);
@@ -1682,6 +1687,26 @@ function phraseMatches(text, phrase) {
   return text.includes(normalizeEmojiText(phrase));
 }
 
+function suggestRuleEmoji(text) {
+  let best = null;
+  for (const rule of EMOJI_SUGGESTION_RULES) {
+    const all = rule.all || [];
+    const any = rule.any || [];
+    const not = rule.not || [];
+    if (not.some(phrase => phraseMatches(text, phrase))) continue;
+    if (all.length && !all.every(phrase => phraseMatches(text, phrase))) continue;
+
+    const anyMatches = any.filter(phrase => phraseMatches(text, phrase));
+    if (any.length && anyMatches.length === 0) continue;
+
+    const specificity = all.length * 8 + anyMatches.length * 4 + Math.max(...[...all, ...anyMatches].map(phrase => normalizeEmojiText(phrase).length), 0);
+    if (!best || specificity > best.specificity) {
+      best = { emoji: rule.emoji, specificity };
+    }
+  }
+  return best?.emoji || '';
+}
+
 // --- Semantic (vector) emoji layer -----------------------------------------
 // Precomputed word/emoji vectors (built offline by scripts/build-semantic-emoji.mjs).
 // No model runs here: we only average int8 vectors and pick the nearest emoji
@@ -1692,6 +1717,11 @@ const EMOJI_STOPWORDS = new Set([
   'par', 'sur', 'dans', 'avec', 'ou', 'ne', 'pas', 'il', 'elle', 'on', 'je',
   'tu', 'nous', 'vous', 'ils', 'elles', 'est', 'sont', 'plus', 'tres', 'tout',
 ]);
+
+const EMOJI_VECTOR_WEAK_ROOTS = [
+  'mec', 'gars', 'personn', 'quelqu', 'normal', 'truc', 'random', 'genre',
+  'regard', 'voir', 'mal', 'bien', 'trop', 'super', 'vraiment',
+];
 
 let semanticEmojiData = null;       // resolved table once loaded
 let semanticEmojiPromise = null;    // in-flight load
@@ -1766,23 +1796,40 @@ function semanticTextVector(data, label) {
 
 function suggestVectorEmoji(label) {
   const data = semanticEmojiData;
-  if (!data) return '';
+  if (!data) return null;
   const vec = semanticTextVector(data, label);
-  if (!vec) return '';
+  if (!vec) return null;
   const { dims, emojiVecs, emojiNorms, emojiList } = data;
   let bestEmoji = '';
   let bestScore = -Infinity;
+  let secondScore = -Infinity;
   for (let r = 0; r < emojiList.length; r++) {
     const off = r * dims;
     let dot = 0;
     for (let c = 0; c < dims; c++) dot += vec[c] * emojiVecs[off + c];
     const score = dot / emojiNorms[r];
     if (score > bestScore) {
+      secondScore = bestScore;
       bestScore = score;
       bestEmoji = emojiList[r];
+    } else if (score > secondScore) {
+      secondScore = score;
     }
   }
-  return bestEmoji;
+  return { emoji: bestEmoji, score: bestScore, margin: bestScore - secondScore };
+}
+
+function hasOnlyWeakVectorTokens(label) {
+  const tokens = emojiTokens(label).filter(token => !EMOJI_STOPWORDS.has(token));
+  if (!tokens.length) return true;
+  return tokens.every(token => EMOJI_VECTOR_WEAK_ROOTS.some(root => semanticRootScore(token, root) > 0));
+}
+
+function shouldUseVectorEmoji(label, suggestion) {
+  if (!suggestion?.emoji) return false;
+  if (hasOnlyWeakVectorTokens(label)) return false;
+  if (suggestion.score < 0.79) return false;
+  return suggestion.margin >= 0.035 || suggestion.score >= 0.84;
 }
 
 function suggestEmojiForText(label) {
@@ -1792,35 +1839,23 @@ function suggestEmojiForText(label) {
   const curatedEmoji = exactCuratedEmojiForText(label);
   if (curatedEmoji) return curatedEmoji;
 
+  const ruleEmoji = suggestRuleEmoji(text);
   const semanticEmoji = suggestSemanticEmoji(label);
+  if (ruleEmoji) {
+    const color = findSemanticColor(emojiTokens(label));
+    if (color && semanticEmoji && semanticEmoji.includes(color.emoji) && !ruleEmoji.includes(color.emoji)) return semanticEmoji;
+    return ruleEmoji;
+  }
   if (semanticEmoji) return semanticEmoji;
 
-  let best = null;
-  for (const rule of EMOJI_SUGGESTION_RULES) {
-    const all = rule.all || [];
-    const any = rule.any || [];
-    const not = rule.not || [];
-    if (not.some(phrase => phraseMatches(text, phrase))) continue;
-    if (all.length && !all.every(phrase => phraseMatches(text, phrase))) continue;
-
-    const anyMatches = any.filter(phrase => phraseMatches(text, phrase));
-    if (any.length && anyMatches.length === 0) continue;
-
-    const specificity = all.length * 8 + anyMatches.length * 4 + Math.max(...[...all, ...anyMatches].map(phrase => normalizeEmojiText(phrase).length), 0);
-    if (!best || specificity > best.specificity) {
-      best = { emoji: rule.emoji, specificity };
-    }
-  }
-  if (best) return best.emoji;
-
   // Final safety net: nearest emoji by meaning. Guarantees a suggestion for any
-  // recognizable word, even ones never hand-coded. Appends a colour square when
-  // the label clearly mentions one (e.g. "berline noire" -> car + black).
+  // strong concrete word, even ones never hand-coded. Low-confidence or vague
+  // matches are ignored to avoid noisy suggestions.
   const vectorEmoji = suggestVectorEmoji(label);
-  if (vectorEmoji) {
+  if (shouldUseVectorEmoji(label, vectorEmoji)) {
     const color = findSemanticColor(emojiTokens(label));
-    if (color && color.score >= 12) return `${vectorEmoji}${color.emoji}`;
-    return vectorEmoji;
+    if (color && color.score >= 12) return `${vectorEmoji.emoji}${color.emoji}`;
+    return vectorEmoji.emoji;
   }
   return '';
 }
