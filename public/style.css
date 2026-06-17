@@ -297,6 +297,11 @@ input[type="text"]::placeholder {
   font-size: 0.9rem;
 }
 
+.join-row input::placeholder {
+  font-size: 0.66rem;
+  letter-spacing: 0;
+}
+
 .editor-topbar,
 .custom-editor-header,
 .custom-grid-card {
