@@ -701,6 +701,10 @@ app.get('/api/admin/categories', (req, res) => {
   res.json(publicCategories());
 });
 
+app.get('/api/original-categories', (req, res) => {
+  res.json({ categories: DEFAULT_CATEGORIES });
+});
+
 app.delete('/api/admin/custom-grids/:code', (req, res) => {
   if (!isAdminRequest(req)) {
     res.status(401).json({ error: 'Mot de passe invalide.' });

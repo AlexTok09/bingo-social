@@ -118,6 +118,7 @@ const btnCreate = $('#btn-create');
 const btnJoin = $('#btn-join');
 const btnInfo = $('#btn-info');
 const btnOpenGridEditor = $('#btn-open-grid-editor');
+const btnLoadOriginalCategories = $('#btn-load-original-categories');
 const btnOpenCustomGrids = $('#btn-open-custom-grids');
 const btnEditorBack = $('#btn-editor-back');
 const btnRefreshCustomGrids = $('#btn-refresh-custom-grids');
@@ -691,6 +692,17 @@ function emptyCustomCategories() {
   }, {});
 }
 
+function originalCategoriesToCustomCategories(categories) {
+  return TIERS.reduce((acc, tier) => {
+    const items = Array.isArray(categories?.[tier]) ? categories[tier] : [];
+    acc[tier] = items.map(item => ({
+      label: item?.label || '',
+      emojis: [categoryEmoji(item)].filter(Boolean),
+    }));
+    return acc;
+  }, {});
+}
+
 function customItemRow(tier, item = {}) {
   const row = document.createElement('div');
   row.className = 'custom-item-row';
@@ -755,6 +767,24 @@ function renderCustomGridEditor(categories = emptyCustomCategories()) {
     section.appendChild(addBtn);
     customGridEditor.appendChild(section);
   });
+}
+
+let originalCategoriesPromise = null;
+
+async function loadOriginalCategories() {
+  if (!originalCategoriesPromise) {
+    originalCategoriesPromise = fetch('/api/original-categories')
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to load original categories');
+        return response.json();
+      })
+      .then(data => data?.categories || null)
+      .catch(() => {
+        originalCategoriesPromise = null;
+        return null;
+      });
+  }
+  return originalCategoriesPromise;
 }
 
 function collectCustomGridPayload() {
@@ -831,6 +861,22 @@ function openGridEditor(grid = null) {
   btnSaveCustomGrid.textContent = editingGridCode ? 'Sauvegarder la grille' : 'Publier la grille';
   renderCustomGridEditor(grid?.categories || emptyCustomCategories());
   showScreen(screenGridEditor);
+}
+
+async function openGridEditorFromOriginalCategories() {
+  loadSemanticEmoji();
+  const categories = await loadOriginalCategories();
+  editingGridCode = null;
+  editingGridToken = null;
+  gridNameInput.value = '';
+  gridSubjectInput.value = '';
+  gridPublicInput.checked = true;
+  editorResult.hidden = true;
+  editorResult.innerHTML = '';
+  btnSaveCustomGrid.textContent = 'Publier la grille';
+  renderCustomGridEditor(originalCategoriesToCustomCategories(categories));
+  showScreen(screenGridEditor);
+  if (!categories) showToast('Catégories d’origine indisponibles, grille vide chargée');
 }
 
 function startCustomGridGame(code) {
@@ -992,6 +1038,7 @@ btnInfo.addEventListener('click', () => {
 });
 
 btnOpenGridEditor.addEventListener('click', () => openGridEditor());
+btnLoadOriginalCategories.addEventListener('click', () => openGridEditorFromOriginalCategories());
 btnEditorBack.addEventListener('click', () => showScreen(screenHome));
 btnRefreshCustomGrids.addEventListener('click', loadCustomGrids);
 btnSaveCustomGrid.addEventListener('click', () => {
