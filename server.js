@@ -3,6 +3,7 @@ const compression = require('compression');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { Server } = require('socket.io');
 const { createAdapter } = require('@socket.io/redis-adapter');
 const Redis = require('ioredis');
@@ -20,6 +21,12 @@ app.use(compression());
 app.use(express.json({ limit: '200kb' }));
 
 const CATEGORIES_FILE = process.env.CATEGORIES_FILE || path.join(__dirname, 'categories.json');
+const CUSTOM_GRIDS_FILE = process.env.CUSTOM_GRIDS_FILE || path.join(__dirname, 'custom-grids.json');
+const CUSTOM_GRID_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const MAX_CUSTOM_GRIDS = 500;
+const CUSTOM_LABEL_MAX = 38;
+const CUSTOM_NAME_MAX = 48;
+const CUSTOM_SUBJECT_MAX = 60;
 
 const CATEGORIES_SOURCE_FILE = path.join(__dirname, 'categories-editables.txt');
 const TIER_HEADINGS = {
@@ -166,6 +173,8 @@ async function scheduleDisconnectedRemoval(roomCode, clientId) {
 function buildPlayerState(room, player) {
   return {
     code: room.code,
+    customGridCode: room.customGridCode || null,
+    customGridName: room.customGridName || null,
     grid: player.grid,
     checked: player.checked,
     occurrences: player.occurrences,
@@ -400,6 +409,101 @@ function normalizeCategories(categories) {
 }
 
 let CATEGORIES = loadCategories();
+let CUSTOM_GRIDS = loadCustomGrids();
+
+function normalizeCustomEmoji(value) {
+  const text = typeof value === 'string' ? value.trim() : '';
+  if (!text) return '';
+  return Array.from(text).slice(0, 2).join('');
+}
+
+function normalizeCustomCategories(categories) {
+  const normalized = emptyCategories();
+  for (const tier of Object.keys(GRID_CONFIG)) {
+    const items = Array.isArray(categories?.[tier]) ? categories[tier] : [];
+    normalized[tier] = items
+      .map((item, index) => {
+        const label = typeof item?.label === 'string' ? item.label.trim().slice(0, CUSTOM_LABEL_MAX) : '';
+        const emojis = Array.isArray(item?.emojis) ? item.emojis.map(normalizeCustomEmoji).filter(Boolean).slice(0, 2) : [];
+        return label ? {
+          id: item?.id || `${slugifyLabel(label)}-${index + 1}`,
+          label,
+          emojis,
+        } : null;
+      })
+      .filter(Boolean)
+      .slice(0, 80);
+  }
+  return normalized;
+}
+
+function validateCustomGridPayload(payload) {
+  const name = typeof payload?.name === 'string' ? payload.name.trim() : '';
+  const subject = typeof payload?.subject === 'string' ? payload.subject.trim() : '';
+  if (!name) return 'Donne un nom à ta grille.';
+  if (!subject) return 'Dis ce que ta grille désigne.';
+
+  const categories = normalizeCustomCategories(payload?.categories);
+  const categoriesError = validateCategoriesConfig(categories);
+  if (categoriesError) return categoriesError;
+  return null;
+}
+
+function loadCustomGrids() {
+  try {
+    if (!fs.existsSync(CUSTOM_GRIDS_FILE)) return {};
+    const parsed = JSON.parse(fs.readFileSync(CUSTOM_GRIDS_FILE, 'utf-8'));
+    if (!parsed || typeof parsed !== 'object') return {};
+    return Object.fromEntries(Object.entries(parsed).map(([code, grid]) => [code, {
+      code,
+      editToken: grid.editToken,
+      name: String(grid.name || '').slice(0, CUSTOM_NAME_MAX),
+      subject: String(grid.subject || '').slice(0, CUSTOM_SUBJECT_MAX),
+      isPublic: grid.isPublic !== false,
+      categories: normalizeCustomCategories(grid.categories),
+      createdAt: grid.createdAt || Date.now(),
+      updatedAt: grid.updatedAt || Date.now(),
+      plays: Number(grid.plays || 0),
+    }]));
+  } catch (error) {
+    console.error('Custom grids load failed:', error.message);
+    return {};
+  }
+}
+
+function saveCustomGrids() {
+  fs.mkdirSync(path.dirname(CUSTOM_GRIDS_FILE), { recursive: true });
+  fs.writeFileSync(CUSTOM_GRIDS_FILE, JSON.stringify(CUSTOM_GRIDS, null, 2), 'utf-8');
+}
+
+function publicCustomGrid(grid) {
+  return {
+    code: grid.code,
+    name: grid.name,
+    subject: grid.subject,
+    isPublic: grid.isPublic !== false,
+    categories: grid.categories,
+    createdAt: grid.createdAt,
+    updatedAt: grid.updatedAt,
+    plays: grid.plays || 0,
+  };
+}
+
+function generateCustomGridCode(name = '') {
+  const prefix = slugifyLabel(name).replace(/-/g, '').slice(0, 3).toUpperCase() || 'SOC';
+  let code = '';
+  do {
+    code = prefix;
+    while (code.length < 6) {
+      code += CUSTOM_GRID_CODE_CHARS[Math.floor(Math.random() * CUSTOM_GRID_CODE_CHARS.length)];
+    }
+  } while (CUSTOM_GRIDS[code]);
+  return code;
+}
+
+function generateEditToken() {
+  return crypto.randomBytes(24).toString('base64url');
+}
 
 function isAdminRequest(req) {
   return Boolean(ADMIN_PASSWORD) && req.get('x-admin-password') === ADMIN_PASSWORD;
@@ -421,7 +525,7 @@ async function applyCategories(categories, options = {}) {
     room.players.forEach(p => {
       clearReconnectTimer(p);
       p.disconnectedAt = null;
-      p.grid = generateGrid();
+      p.grid = generateGrid(room.categories || CATEGORIES);
       p.checked = emptyChecked();
       p.occurrences = emptyOccurrences();
       p.bonuses = emptyBonuses();
@@ -459,12 +563,12 @@ function shuffleArray(arr) {
   return a;
 }
 
-function generateGrid() {
+function generateGrid(sourceCategories = CATEGORIES) {
   return {
-    ordinaire: pickGridItems(CATEGORIES.ordinaire, GRID_CONFIG.ordinaire),
-    semi: pickGridItems(CATEGORIES.semi, GRID_CONFIG.semi),
-    rare: pickGridItems(CATEGORIES.rare, GRID_CONFIG.rare),
-    legendaire: pickGridItems(CATEGORIES.legendaire, GRID_CONFIG.legendaire),
+    ordinaire: pickGridItems(sourceCategories.ordinaire, GRID_CONFIG.ordinaire),
+    semi: pickGridItems(sourceCategories.semi, GRID_CONFIG.semi),
+    rare: pickGridItems(sourceCategories.rare, GRID_CONFIG.rare),
+    legendaire: pickGridItems(sourceCategories.legendaire, GRID_CONFIG.legendaire),
   };
 }
 
@@ -488,7 +592,7 @@ function pickGridItems(items, count) {
   return selected;
 }
 
-function rerollOneCell(player, tier, index) {
+function rerollOneCell(player, tier, index, sourceCategories = CATEGORIES) {
   const checked = new Set(player.checked[tier] || []);
   if (checked.has(index) || !player.grid[tier]?.[index]) return false;
 
@@ -496,7 +600,7 @@ function rerollOneCell(player, tier, index) {
   const usedIds = new Set(player.grid[tier].map(item => item.id));
   usedIds.delete(current.id);
   const hasUltraElsewhere = player.grid[tier].some((item, itemIndex) => itemIndex !== index && ultraKey(item));
-  const replacement = shuffleArray(CATEGORIES[tier]).find(candidate => {
+  const replacement = shuffleArray(sourceCategories[tier]).find(candidate => {
     const isUltra = Boolean(ultraKey(candidate));
     return !usedIds.has(candidate.id) && (!isUltra || !hasUltraElsewhere);
   });
@@ -587,6 +691,91 @@ app.post('/api/admin/reset-categories', async (req, res) => {
   res.json({ ok: true, categories: publicCategories(), resetRooms });
 });
 
+app.get('/api/custom-grids', (req, res) => {
+  const grids = Object.values(CUSTOM_GRIDS)
+    .filter(grid => grid.isPublic !== false)
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+    .slice(0, 100)
+    .map(publicCustomGrid);
+  res.json({ grids });
+});
+
+app.get('/api/custom-grids/:code', (req, res) => {
+  const code = String(req.params.code || '').toUpperCase().trim();
+  const grid = CUSTOM_GRIDS[code];
+  if (!grid || grid.isPublic === false) {
+    res.status(404).json({ error: 'Grille introuvable.' });
+    return;
+  }
+  res.json({ grid: publicCustomGrid(grid) });
+});
+
+app.get('/api/custom-grids/:code/edit/:token', (req, res) => {
+  const code = String(req.params.code || '').toUpperCase().trim();
+  const token = String(req.params.token || '');
+  const grid = CUSTOM_GRIDS[code];
+  if (!grid || grid.editToken !== token) {
+    res.status(404).json({ error: 'Lien d’édition invalide.' });
+    return;
+  }
+  res.json({ grid: { ...publicCustomGrid(grid), editToken: grid.editToken } });
+});
+
+app.post('/api/custom-grids', (req, res) => {
+  if (Object.keys(CUSTOM_GRIDS).length >= MAX_CUSTOM_GRIDS) {
+    res.status(429).json({ error: 'Trop de grilles créées pour le moment.' });
+    return;
+  }
+
+  const error = validateCustomGridPayload(req.body);
+  if (error) {
+    res.status(400).json({ error });
+    return;
+  }
+
+  const now = Date.now();
+  const code = generateCustomGridCode(req.body.name);
+  const grid = {
+    code,
+    editToken: generateEditToken(),
+    name: req.body.name.trim().slice(0, CUSTOM_NAME_MAX),
+    subject: req.body.subject.trim().slice(0, CUSTOM_SUBJECT_MAX),
+    isPublic: req.body.isPublic !== false,
+    categories: normalizeCustomCategories(req.body.categories),
+    createdAt: now,
+    updatedAt: now,
+    plays: 0,
+  };
+
+  CUSTOM_GRIDS[code] = grid;
+  saveCustomGrids();
+  res.status(201).json({ grid: { ...publicCustomGrid(grid), editToken: grid.editToken } });
+});
+
+app.put('/api/custom-grids/:code/edit/:token', (req, res) => {
+  const code = String(req.params.code || '').toUpperCase().trim();
+  const token = String(req.params.token || '');
+  const existing = CUSTOM_GRIDS[code];
+  if (!existing || existing.editToken !== token) {
+    res.status(404).json({ error: 'Lien d’édition invalide.' });
+    return;
+  }
+
+  const error = validateCustomGridPayload(req.body);
+  if (error) {
+    res.status(400).json({ error });
+    return;
+  }
+
+  existing.name = req.body.name.trim().slice(0, CUSTOM_NAME_MAX);
+  existing.subject = req.body.subject.trim().slice(0, CUSTOM_SUBJECT_MAX);
+  existing.isPublic = req.body.isPublic !== false;
+  existing.categories = normalizeCustomCategories(req.body.categories);
+  existing.updatedAt = Date.now();
+  saveCustomGrids();
+  res.json({ grid: { ...publicCustomGrid(existing), editToken: existing.editToken } });
+});
+
 app.get('/healthz', (req, res) => {
   res.json({ ok: true });
 });
@@ -632,7 +821,14 @@ io.on('connection', (socket) => {
       return;
     }
     const code = generateRoomCode();
-    const grid = generateGrid();
+    const customGridCode = typeof payload === 'object' && payload ? String(payload.customGridCode || '').toUpperCase().trim() : '';
+    const customGrid = customGridCode ? CUSTOM_GRIDS[customGridCode] : null;
+    if (customGridCode && !customGrid) {
+      socket.emit('error-msg', 'Grille custom introuvable !');
+      return;
+    }
+    const sourceCategories = customGrid?.categories || CATEGORIES;
+    const grid = generateGrid(sourceCategories);
     const player = {
       id: socket.id,
       clientId,
@@ -649,13 +845,21 @@ io.on('connection', (socket) => {
       players: [player],
       winner: null,
       tiersToWin: 1,
+      customGridCode: customGrid?.code || null,
+      customGridName: customGrid?.name || null,
+      categories: sourceCategories,
       createdAt: Date.now(),
     });
+    if (customGrid) {
+      customGrid.plays = (customGrid.plays || 0) + 1;
+      customGrid.updatedAt = Date.now();
+      saveCustomGrids();
+    }
     await persistRoom(rooms.get(code));
     socket.join(code);
     socket.roomCode = code;
     socket.clientId = clientId;
-    socket.emit('room-created', { code, grid, tiersToWin: 1 });
+    socket.emit('room-created', { code, grid, tiersToWin: 1, customGridCode: customGrid?.code || null, customGridName: customGrid?.name || null });
     io.to(code).emit('players-update', getPlayersInfo(rooms.get(code)));
   });
 
@@ -687,7 +891,7 @@ io.on('connection', (socket) => {
       socket.emit('error-msg', 'Ce nom est déjà pris !');
       return;
     }
-    const grid = generateGrid();
+    const grid = generateGrid(room.categories || CATEGORIES);
     const player = {
       id: socket.id,
       clientId,
@@ -704,7 +908,7 @@ io.on('connection', (socket) => {
     socket.join(roomCode);
     socket.roomCode = roomCode;
     socket.clientId = clientId;
-    socket.emit('room-joined', { code: roomCode, grid, tiersToWin: room.tiersToWin || 1 });
+    socket.emit('room-joined', { code: roomCode, grid, tiersToWin: room.tiersToWin || 1, customGridCode: room.customGridCode || null, customGridName: room.customGridName || null });
     io.to(roomCode).emit('players-update', getPlayersInfo(room));
     io.to(roomCode).emit('player-joined', normalizedName);
   });
@@ -894,7 +1098,7 @@ io.on('connection', (socket) => {
     player.occurrences ||= emptyOccurrences();
     player.bonuses ||= emptyBonuses();
 
-    if (!rerollOneCell(player, categoryKey, indexNumber)) return;
+    if (!rerollOneCell(player, categoryKey, indexNumber, room.categories || CATEGORIES)) return;
     player.pendingBonus.picked.push(pickKey);
     player.pendingBonus.remaining -= 1;
     const remaining = player.pendingBonus.remaining;
@@ -1037,7 +1241,7 @@ io.on('connection', (socket) => {
     room.winner = null;
     room.players.forEach(p => {
       clearReconnectTimer(p);
-      p.grid = generateGrid();
+      p.grid = generateGrid(room.categories || CATEGORIES);
       p.checked = emptyChecked();
       p.occurrences = emptyOccurrences();
       p.bonuses = emptyBonuses();

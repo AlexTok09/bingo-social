@@ -78,3 +78,5 @@ En production, `ADMIN_PASSWORD` est obligatoire.
 Les catégories sont sauvegardées dans `CATEGORIES_FILE`, ou dans `categories.json` par défaut.
 
 Attention: les salons sont maintenant persistés dans Redis/Valkey si `REDIS_URL` est actif, mais les catégories admin restent sauvegardées dans `CATEGORIES_FILE`. Pour conserver durablement les modifications faites dans `/admin`, utiliser un disque persistant Render avec `CATEGORIES_FILE=/var/data/categories.json`, ou déplacer les catégories dans une base de données.
+
+Les grilles créées par les joueurs sont sauvegardées dans `CUSTOM_GRIDS_FILE`, ou `custom-grids.json` par défaut. En production Render, prévoir aussi un disque persistant avec `CUSTOM_GRIDS_FILE=/var/data/custom-grids.json`, ou déplacer ces grilles dans une base de données, sinon elles peuvent disparaître après redéploiement ou redémarrage.

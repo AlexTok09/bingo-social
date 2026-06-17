@@ -75,11 +75,23 @@ function setStoredSessionValue(key, value) {
 
 const screenHome = $('#screen-home');
 const screenGame = $('#screen-game');
+const screenGridEditor = $('#screen-grid-editor');
 const inputName = $('#player-name');
 const inputCode = $('#room-code');
+const inputCustomGridCode = $('#custom-grid-code');
 const btnCreate = $('#btn-create');
 const btnJoin = $('#btn-join');
 const btnInfo = $('#btn-info');
+const btnOpenGridEditor = $('#btn-open-grid-editor');
+const btnEditorBack = $('#btn-editor-back');
+const btnRefreshCustomGrids = $('#btn-refresh-custom-grids');
+const customGridsList = $('#custom-grids-list');
+const customGridEditor = $('#custom-grid-editor');
+const gridNameInput = $('#grid-name');
+const gridSubjectInput = $('#grid-subject');
+const gridPublicInput = $('#grid-public');
+const btnSaveCustomGrid = $('#btn-save-custom-grid');
+const editorResult = $('#editor-result');
 const errorMsg = $('#error-msg');
 const displayCode = $('#display-code');
 const playerCount = $('#player-count');
@@ -117,6 +129,11 @@ let jokerRerollActive = false;
 let tiersToWin = 1;
 let pendingLegendaryConfirm = null;
 let pendingLegendaryConfirmTimeout = null;
+let editingGridCode = null;
+let editingGridToken = null;
+
+const CUSTOM_LABEL_MAX = 38;
+const CUSTOM_GRID_COUNTS = { ordinaire: 12, semi: 6, rare: 2, legendaire: 1 };
 
 function updateModeBanner() {
   if (modeBanner) modeBanner.hidden = tiersToWin <= 1;
@@ -139,6 +156,16 @@ function showToast(msg) {
 function showError(msg) {
   errorMsg.textContent = msg;
   setTimeout(() => { if (errorMsg.textContent === msg) errorMsg.textContent = ''; }, 4000);
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  }[char]));
 }
 
 function resetGameState() {
@@ -623,15 +650,199 @@ if (!socket) {
   });
 }
 
+function emptyCustomCategories() {
+  return TIERS.reduce((acc, tier) => {
+    acc[tier] = Array.from({ length: CUSTOM_GRID_COUNTS[tier] }, () => ({ label: '', emojis: [''] }));
+    return acc;
+  }, {});
+}
+
+function customItemRow(tier, item = {}) {
+  const row = document.createElement('div');
+  row.className = 'custom-item-row';
+  row.dataset.tier = tier;
+
+  const emojiInput = document.createElement('input');
+  emojiInput.type = 'text';
+  emojiInput.className = 'custom-emoji-input';
+  emojiInput.maxLength = 8;
+  emojiInput.placeholder = '🎲';
+  emojiInput.value = Array.isArray(item.emojis) ? item.emojis.join('') : '';
+
+  const labelInput = document.createElement('input');
+  labelInput.type = 'text';
+  labelInput.className = 'custom-label-input';
+  labelInput.maxLength = CUSTOM_LABEL_MAX;
+  labelInput.placeholder = 'Texte de la case';
+  labelInput.value = item.label || '';
+
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'btn-mini';
+  removeBtn.textContent = '×';
+  removeBtn.addEventListener('click', () => row.remove());
+
+  row.append(emojiInput, labelInput, removeBtn);
+  return row;
+}
+
+function renderCustomGridEditor(categories = emptyCustomCategories()) {
+  customGridEditor.innerHTML = '';
+  TIERS.forEach(tier => {
+    const section = document.createElement('section');
+    section.className = `custom-editor-section ${tier}`;
+    section.innerHTML = `
+      <div class="custom-editor-header">
+        <h2>${TIER_NAMES[tier]}</h2>
+        <span>${CUSTOM_GRID_COUNTS[tier]} minimum</span>
+      </div>
+      <div class="custom-items" data-tier="${tier}"></div>
+    `;
+    const list = section.querySelector('.custom-items');
+    const items = categories[tier]?.length ? categories[tier] : emptyCustomCategories()[tier];
+    items.forEach(item => list.appendChild(customItemRow(tier, item)));
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'btn btn-secondary btn-add-row';
+    addBtn.textContent = 'Ajouter une case';
+    addBtn.addEventListener('click', () => list.appendChild(customItemRow(tier)));
+    section.appendChild(addBtn);
+    customGridEditor.appendChild(section);
+  });
+}
+
+function collectCustomGridPayload() {
+  const categories = emptyChecked();
+  TIERS.forEach(tier => {
+    categories[tier] = [...customGridEditor.querySelectorAll(`.custom-items[data-tier="${tier}"] .custom-item-row`)]
+      .map(row => {
+        const label = row.querySelector('.custom-label-input').value.trim();
+        const emojis = Array.from(row.querySelector('.custom-emoji-input').value.trim()).slice(0, 2);
+        return { label, emojis };
+      })
+      .filter(item => item.label);
+  });
+
+  return {
+    name: gridNameInput.value.trim(),
+    subject: gridSubjectInput.value.trim(),
+    isPublic: gridPublicInput.checked,
+    categories,
+  };
+}
+
+function showEditorResult(grid) {
+  const editUrl = `${window.location.origin}${window.location.pathname}?editGrid=${encodeURIComponent(grid.code)}&token=${encodeURIComponent(grid.editToken)}`;
+  editorResult.hidden = false;
+  editorResult.innerHTML = `
+    <strong>Grille publiée</strong>
+    <span>Code jeu : ${grid.code}</span>
+    <span>Lien secret d’édition :</span>
+    <button class="btn-mini" type="button" data-copy="${editUrl}">Copier le lien</button>
+    <button class="btn-mini" type="button" data-play="${grid.code}">Jouer avec</button>
+  `;
+  editorResult.querySelector('[data-copy]').addEventListener('click', async () => {
+    await navigator.clipboard?.writeText(editUrl);
+    showToast('Lien d’édition copié');
+  });
+  editorResult.querySelector('[data-play]').addEventListener('click', () => {
+    inputCustomGridCode.value = grid.code;
+    showScreen(screenHome);
+    showToast(`Code grille ${grid.code} prêt`);
+  });
+}
+
+async function saveCustomGrid() {
+  const payload = collectCustomGridPayload();
+  const url = editingGridCode && editingGridToken
+    ? `/api/custom-grids/${encodeURIComponent(editingGridCode)}/edit/${encodeURIComponent(editingGridToken)}`
+    : '/api/custom-grids';
+  const response = await fetch(url, {
+    method: editingGridCode ? 'PUT' : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    showToast(data.error || 'Grille invalide');
+    return;
+  }
+  editingGridCode = data.grid.code;
+  editingGridToken = data.grid.editToken;
+  btnSaveCustomGrid.textContent = 'Sauvegarder la grille';
+  showEditorResult(data.grid);
+  loadCustomGrids();
+}
+
+function openGridEditor(grid = null) {
+  editingGridCode = grid?.code || null;
+  editingGridToken = grid?.editToken || null;
+  gridNameInput.value = grid?.name || '';
+  gridSubjectInput.value = grid?.subject || '';
+  gridPublicInput.checked = grid?.isPublic !== false;
+  editorResult.hidden = true;
+  editorResult.innerHTML = '';
+  btnSaveCustomGrid.textContent = editingGridCode ? 'Sauvegarder la grille' : 'Publier la grille';
+  renderCustomGridEditor(grid?.categories || emptyCustomCategories());
+  showScreen(screenGridEditor);
+}
+
+async function loadCustomGrids() {
+  if (!customGridsList) return;
+  customGridsList.innerHTML = '<p class="muted">Chargement...</p>';
+  try {
+    const response = await fetch('/api/custom-grids');
+    const data = await response.json();
+    const grids = data.grids || [];
+    if (!grids.length) {
+      customGridsList.innerHTML = '<p class="muted">Aucune grille publique pour le moment.</p>';
+      return;
+    }
+    customGridsList.innerHTML = '';
+    grids.forEach(grid => {
+      const card = document.createElement('article');
+      card.className = 'custom-grid-card';
+      card.innerHTML = `
+        <div>
+          <strong>${escapeHtml(grid.name)}</strong>
+          <span>${escapeHtml(grid.subject)} · ${escapeHtml(grid.code)}</span>
+        </div>
+        <button class="btn-mini" type="button">Jouer</button>
+      `;
+      card.querySelector('button').addEventListener('click', () => {
+        inputCustomGridCode.value = grid.code;
+        showToast(`Grille ${grid.code} sélectionnée`);
+      });
+      customGridsList.appendChild(card);
+    });
+  } catch {
+    customGridsList.innerHTML = '<p class="muted">Impossible de charger les grilles.</p>';
+  }
+}
+
+async function openEditorFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('editGrid');
+  const token = params.get('token');
+  if (!code || !token) return;
+  try {
+    const response = await fetch(`/api/custom-grids/${encodeURIComponent(code.toUpperCase())}/edit/${encodeURIComponent(token)}`);
+    const data = await response.json();
+    if (response.ok) openGridEditor(data.grid);
+  } catch {}
+}
+
 // --- HOME ACTIONS ---
 
 btnCreate.addEventListener('click', () => {
   const name = inputName.value.trim();
+  const customGridCode = inputCustomGridCode.value.trim().toUpperCase();
   if (!name) { showError('Entre ton prénom !'); return; }
   playerName = name;
   setStoredSessionValue(SESSION_NAME_KEY, playerName);
   startBgMusic();
-  emitSocket('create-room', { playerName: name, clientId });
+  emitSocket('create-room', { playerName: name, clientId, customGridCode });
 });
 
 btnJoin.addEventListener('click', () => {
@@ -647,6 +858,13 @@ btnJoin.addEventListener('click', () => {
 
 btnInfo.addEventListener('click', () => {
   window.location.href = '/info.html';
+});
+
+btnOpenGridEditor.addEventListener('click', () => openGridEditor());
+btnEditorBack.addEventListener('click', () => showScreen(screenHome));
+btnRefreshCustomGrids.addEventListener('click', loadCustomGrids);
+btnSaveCustomGrid.addEventListener('click', () => {
+  saveCustomGrid().catch(() => showToast('Erreur de sauvegarde'));
 });
 
 inputName.addEventListener('keydown', (e) => {
@@ -933,6 +1151,7 @@ const EMOJI_BY_ID = {
 };
 
 function categoryEmoji(item) {
+  if (Array.isArray(item?.emojis) && item.emojis.length) return item.emojis.slice(0, 2).join('');
   if (item && EMOJI_BY_ID[item.id]) return EMOJI_BY_ID[item.id];
   const key = `${item.id || ''} ${item.label || ''}`.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -1486,3 +1705,6 @@ btnBonusReroll.addEventListener('click', () => {
   closeBonusChoice();
   emitSocket('choose-bonus', { choice: 'reroll' });
 });
+
+loadCustomGrids();
+openEditorFromQuery();
