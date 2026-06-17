@@ -672,6 +672,9 @@ function customItemRow(tier, item = {}) {
   emojiInput.maxLength = 8;
   emojiInput.placeholder = '🎲';
   emojiInput.value = Array.isArray(item.emojis) ? item.emojis.join('') : '';
+  emojiInput.addEventListener('input', () => {
+    emojiInput.dataset.autoEmoji = '';
+  });
 
   const labelInput = document.createElement('input');
   labelInput.type = 'text';
@@ -680,9 +683,12 @@ function customItemRow(tier, item = {}) {
   labelInput.placeholder = 'Texte de la case';
   labelInput.value = item.label || '';
   labelInput.addEventListener('input', () => {
-    if (emojiInput.value.trim()) return;
-    const suggestedEmoji = categoryEmoji({ id: '', label: labelInput.value });
-    if (suggestedEmoji !== '🎲') emojiInput.value = suggestedEmoji;
+    const currentEmoji = emojiInput.value.trim();
+    if (currentEmoji && currentEmoji !== emojiInput.dataset.autoEmoji) return;
+    const suggestedEmoji = suggestEmojiForText(labelInput.value);
+    if (!suggestedEmoji) return;
+    emojiInput.value = suggestedEmoji;
+    emojiInput.dataset.autoEmoji = suggestedEmoji;
   });
 
   const removeBtn = document.createElement('button');
@@ -1173,6 +1179,161 @@ const EMOJI_BY_ID = {
   'femme-enceinte': '🤰', 'antifa': '🏴', 'deprime': '😔', 'attache-lunette': '👓🪢',
   'gratte-bourse': '🥜', 'decrotte-le-nez': '👃',
 };
+
+const EMOJI_SUGGESTION_RULES = [
+  { emoji: '💅🐩', all: ['caniche'], any: ['toilett', 'coiffe', 'groom'] },
+  { emoji: '🐺', all: ['bataille'], any: ['chien', 'chiens', 'dog', 'clebs'] },
+  { emoji: '🧍‍♀️🐩', all: ['femme'], any: ['chien', 'dog', 'caniche'] },
+  { emoji: '🧍‍♂️🐕', all: ['homme'], any: ['chien', 'dog', 'caniche'] },
+  { emoji: '🐕💩', any: ['toutounette', 'crotte', 'dejection'] },
+  { emoji: '🧷🐕', all: ['punk'], any: ['chien', 'dog'] },
+  { emoji: '🐩', any: ['caniche'] },
+  { emoji: '🐕', any: ['chien', 'chiot', 'toutou', 'clebs', 'dog'] },
+  { emoji: '🐈', any: ['chat', 'cat'] },
+  { emoji: '🐀', any: ['rat', 'souris'] },
+  { emoji: '🕊️', all: ['pigeon'], any: ['solo', 'seul'] },
+  { emoji: '🍞🐦', all: ['pigeon'], any: ['mange', 'nourrit', 'pain'] },
+  { emoji: '🦅', any: ['goeland', 'mouette'] },
+  { emoji: '🐦‍⬛', any: ['corbeau'] },
+
+  { emoji: '👕🎸', all: ['groupe'], any: ['musique', 'concert', 'rock', 'metal', 'tshirt', 't-shirt', 'tee'] },
+  { emoji: '🎸', any: ['guitare', 'bassiste', 'guitariste', 'instrument'] },
+  { emoji: '🎤', any: ['chante', 'chantent', 'micro', 'karaoke'] },
+  { emoji: '🎧', any: ['casque', 'dj'] },
+  { emoji: '🔊', any: ['son a donf', 'enceinte', 'haut parleur', 'speaker'] },
+
+  { emoji: '👓🪢', all: ['attache'], any: ['lunette', 'lunettes'] },
+  { emoji: '🕶️', all: ['lunette'], any: ['tete', 'soleil'] },
+  { emoji: '👓', any: ['lunette', 'lunettes', 'cataracte'] },
+  { emoji: '🧢', any: ['casquette'] },
+  { emoji: '👒', any: ['panama', 'chapeau'] },
+  { emoji: '🥶', any: ['bonnet', 'doudoune', 'froid'] },
+  { emoji: '👔', any: ['costard', 'chemise', 'cravate'] },
+  { emoji: '👕', any: ['tshirt', 't-shirt', 'maillot'] },
+  { emoji: '🩲', any: ['string', 'slip', 'calecon'] },
+  { emoji: '👟', any: ['lacet', 'basket', 'chaussure'] },
+  { emoji: '🛼', any: ['roller'] },
+  { emoji: '🐊', any: ['crocs'] },
+
+  { emoji: '🚲📦', all: ['velo'], any: ['cargo', 'cargot'] },
+  { emoji: '🚶‍♂️🚲', all: ['velo'], any: ['main'] },
+  { emoji: '🚴', all: ['velo'], any: ['deux', '2'] },
+  { emoji: '🚵', all: ['velo'], any: ['debout'] },
+  { emoji: '🚲', any: ['velo', 'bike', 'velib', 'bicyclette'] },
+  { emoji: '🛴', any: ['trottinette', 'trotinette', 'scooter'] },
+  { emoji: '🛵', any: ['deliveroo', 'uber eats', 'livreur'] },
+  { emoji: '🚕', any: ['taxi'] },
+  { emoji: '🚗', any: ['voiture', 'auto ecole', 'creneau'] },
+  { emoji: '🅿️', any: ['parking', 'horodateur', 'creneau'] },
+
+  { emoji: '👵👴', any: ['papi et mami', 'papi mami', 'grand parents'] },
+  { emoji: '👵', any: ['mami', 'mamie', 'vieille'] },
+  { emoji: '👴', any: ['papi', 'vieux'] },
+  { emoji: '👩‍🍼', all: ['porte'], any: ['bebe', 'bébé'] },
+  { emoji: '👶', any: ['bebe', 'poussette'] },
+  { emoji: '🤰', any: ['enceinte', 'grossesse'] },
+  { emoji: '👨‍👦', any: ['pere et fils', 'père et fils'] },
+  { emoji: '👩‍👧', any: ['mere et fille', 'mère et fille'] },
+  { emoji: '👥', any: ['groupe de pote', 'groupe de potes', 'bande'] },
+  { emoji: '👭', any: ['deux amis', 'deux copines'] },
+  { emoji: '💑', any: ['couple', 'meuf par le cou'] },
+  { emoji: '💔', any: ['embrouille couple', 'rupture'] },
+  { emoji: '💏', any: ['embrasse', 'baiser', 'bisou'] },
+
+  { emoji: '🎓', any: ['etudiant', 'étudiant', 'fac', 'ecole'] },
+  { emoji: '📸', any: ['touriste', 'photo', 'appareil photo'] },
+  { emoji: '🛍️', any: ['shopping', 'shopper', 'sacs', 'sac'] },
+  { emoji: '🎒', any: ['backpacker', 'sac a dos', 'sac à dos'] },
+  { emoji: '💼', any: ['mallette', 'attaché case', 'attaché-case'] },
+  { emoji: '🗑️', any: ['poubelle', 'poubelles'] },
+  { emoji: '🦯', any: ['canne'] },
+  { emoji: '🦮', any: ['aveugle'] },
+  { emoji: '🩼', any: ['platre', 'béquille', 'bequille'] },
+
+  { emoji: '🍺', any: ['ivre', 'biere', 'bourre', 'alcool'] },
+  { emoji: '🚬', any: ['cigarette', 'clope', 'megot', 'pipe'] },
+  { emoji: '💨', any: ['vape', 'vapote', 'vapot'] },
+  { emoji: '🍔', any: ['mange', 'burger', 'fast food'] },
+  { emoji: '🥖', any: ['baguette', 'pain'] },
+  { emoji: '🥤', any: ['canette', 'soda'] },
+  { emoji: '💩', any: ['merde', 'caca'] },
+  { emoji: '🤮', any: ['vomi', 'vomit'] },
+
+  { emoji: '😎', any: ['style', 'frais', 'cool'] },
+  { emoji: '🤨', any: ['chelou', 'bizarre', 'suspect'] },
+  { emoji: '🔪', any: ['psycho', 'flippant', 'tueur'] },
+  { emoji: '😡', any: ['colere', 'énervé', 'enerve'] },
+  { emoji: '😭', any: ['pleure', 'triste'] },
+  { emoji: '😁', any: ['heureux', 'happy', 'sourire'] },
+  { emoji: '🤣', any: ['fou rire', 'rigole'] },
+  { emoji: '🥵', any: ['sueur', 'transpire', 'chaud'] },
+  { emoji: '🤡', any: ['clown'] },
+  { emoji: '🎭', any: ['deguise', 'déguisé', 'costume'] },
+  { emoji: '🦸', any: ['cape', 'super hero', 'superhero'] },
+  { emoji: '🖤', any: ['emo', 'dark', 'gothique'] },
+
+  { emoji: '💇', any: ['cheveux', 'coiffure'] },
+  { emoji: '🧑‍🦰', any: ['roux', 'rousseur', 'carotte'] },
+  { emoji: '👨‍🦲', any: ['calvitie', 'chauve'] },
+  { emoji: '🧔', any: ['barbe', 'hipster'] },
+  { emoji: '🥸', any: ['moustache'] },
+  { emoji: '💍', any: ['piercing'] },
+  { emoji: '🐉', any: ['tatouage', 'tattoo'] },
+
+  { emoji: '🏃', any: ['court', 'jogger', 'running'] },
+  { emoji: '🛹', any: ['skate'] },
+  { emoji: '🤸', any: ['trebuche', 'tombe'] },
+  { emoji: '💃', any: ['danse'] },
+  { emoji: '📲', any: ['tiktok', 'telephone', 'tel', 'portable'] },
+  { emoji: '🗣️', any: ['parle tout seul'] },
+  { emoji: '📖', any: ['livre', 'lecture'] },
+  { emoji: '🔍', any: ['cherche', 'fouille'] },
+  { emoji: '🏖️', any: ['plage', 'sable', 'serviette'] },
+  { emoji: '🚉', any: ['gare', 'train', 'quai'] },
+  { emoji: '🏙️', any: ['ville', 'quartier'] },
+  { emoji: '🚪', any: ['ouvre les portes', 'porte'] },
+  { emoji: '🫨', any: ['portiere', 'portière'] },
+  { emoji: '⚰️', any: ['cercueil'] },
+  { emoji: '🚑', any: ['malaise', 'dead', 'malade'] },
+];
+
+function normalizeEmojiText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[-_/]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function phraseMatches(text, phrase) {
+  return text.includes(normalizeEmojiText(phrase));
+}
+
+function suggestEmojiForText(label) {
+  const text = normalizeEmojiText(label);
+  if (text.length < 2) return '';
+
+  let best = null;
+  for (const rule of EMOJI_SUGGESTION_RULES) {
+    const all = rule.all || [];
+    const any = rule.any || [];
+    const not = rule.not || [];
+    if (not.some(phrase => phraseMatches(text, phrase))) continue;
+    if (all.length && !all.every(phrase => phraseMatches(text, phrase))) continue;
+
+    const anyMatches = any.filter(phrase => phraseMatches(text, phrase));
+    if (any.length && anyMatches.length === 0) continue;
+
+    const specificity = all.length * 8 + anyMatches.length * 4 + Math.max(...[...all, ...anyMatches].map(phrase => normalizeEmojiText(phrase).length), 0);
+    if (!best || specificity > best.specificity) {
+      best = { emoji: rule.emoji, specificity };
+    }
+  }
+
+  return best?.emoji || '';
+}
 
 function categoryEmoji(item) {
   if (Array.isArray(item?.emojis) && item.emojis.length) return item.emojis.slice(0, 2).join('');
