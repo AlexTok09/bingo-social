@@ -669,6 +669,23 @@ function publicCustomGrid(grid) {
   };
 }
 
+function resolveCustomGrid(lookup = '', clientId = null) {
+  const raw = String(lookup || '').trim();
+  if (!raw) return null;
+
+  const code = raw.toUpperCase();
+  if (CUSTOM_GRIDS[code]) return CUSTOM_GRIDS[code];
+
+  const slug = slugifyLabel(raw);
+  const matches = Object.values(CUSTOM_GRIDS)
+    .filter(grid => {
+      if (slugifyLabel(grid.name) !== slug) return false;
+      return grid.isPublic !== false || (clientId && grid.ownerClientId === clientId);
+    })
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  return matches[0] || null;
+}
+
 function generateCustomGridCode(name = '') {
   const prefix = slugifyLabel(name).replace(/-/g, '').slice(0, 3).toUpperCase() || 'SOC';
   let code = '';
@@ -1060,9 +1077,9 @@ io.on('connection', (socket) => {
       return;
     }
     const code = generateRoomCode();
-    const customGridCode = typeof payload === 'object' && payload ? String(payload.customGridCode || '').toUpperCase().trim() : '';
-    const customGrid = customGridCode ? CUSTOM_GRIDS[customGridCode] : null;
-    if (customGridCode && !customGrid) {
+    const customGridLookup = typeof payload === 'object' && payload ? String(payload.customGridCode || '').trim() : '';
+    const customGrid = customGridLookup ? resolveCustomGrid(customGridLookup, clientId) : null;
+    if (customGridLookup && !customGrid) {
       socket.emit('error-msg', 'Grille custom introuvable !');
       return;
     }

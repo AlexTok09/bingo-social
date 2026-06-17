@@ -1110,7 +1110,7 @@ function openCustomGridStartFromQuery() {
 
 btnCreate.addEventListener('click', () => {
   const name = inputName.value.trim();
-  const customGridCode = inputCode.value.trim().toUpperCase();
+  const customGridCode = inputCode.value.trim();
   if (!name) { showError('Entre ton prénom !'); return; }
   playerName = name;
   setStoredSessionValue(SESSION_NAME_KEY, playerName);
@@ -1120,14 +1120,20 @@ btnCreate.addEventListener('click', () => {
 
 btnJoin.addEventListener('click', () => {
   const name = inputName.value.trim();
-  const code = inputCode.value.trim().toUpperCase();
+  const code = inputCode.value.trim();
   if (!name) { showError('Entre ton prénom !'); return; }
-  if (!code || code.length < 4) { showError('Code à 4 caractères !'); return; }
+  if (!code) { showError('Entre un code ou un nom de grille !'); return; }
   playerName = name;
   setStoredSessionValue(SESSION_NAME_KEY, playerName);
   startBgMusic();
+  if (code.length < 4) {
+    pendingJoinFallback = null;
+    emitSocket('create-room', { playerName: name, clientId, customGridCode: code });
+    return;
+  }
+  const roomCode = code.toUpperCase();
   pendingJoinFallback = { playerName: name, customGridCode: code };
-  emitSocket('join-room', { code, playerName: name, clientId });
+  emitSocket('join-room', { code: roomCode, playerName: name, clientId });
 });
 
 btnInfo.addEventListener('click', () => {
@@ -1154,7 +1160,7 @@ btnSaveCustomGrid.addEventListener('click', () => {
 
 inputName.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
-    if (inputCode.value.trim().length >= 4) {
+    if (inputCode.value.trim()) {
       btnJoin.click();
     } else {
       btnCreate.click();
