@@ -1524,6 +1524,7 @@ const SEMANTIC_EMOJI_CONCEPTS = [
   { emoji: '🥤', roots: ['canett', 'soda', 'boisson'] },
 
   { emoji: '🏃', roots: ['cour', 'jog', 'running'] },
+  { emoji: '🚶', roots: ['march', 'balad', 'flan', 'pieton', 'deambul'] },
   { emoji: '🛹', roots: ['skate'] },
   { emoji: '💃', roots: ['dans'] },
   { emoji: '🤸', roots: ['tomb', 'trebuch'] },
@@ -1539,7 +1540,9 @@ function emojiTokens(text) {
   return normalizeEmojiText(text)
     .split(' ')
     .filter(token => token.length > 1)
-    .map(token => token.replace(/(es|s)$/g, ''));
+    // Strip a plural ending only on long-enough words, so "bus" stays "bus"
+    // (was becoming "bu" and falsely matching the "burger" root).
+    .map(token => (token.length >= 5 ? token.replace(/(es|s)$/g, '') : token));
 }
 
 function editDistance(a, b) {
@@ -1561,7 +1564,11 @@ function editDistance(a, b) {
 function semanticRootScore(token, root) {
   const normalizedRoot = normalizeEmojiText(root);
   if (token === normalizedRoot) return 12 + normalizedRoot.length;
-  if (token.startsWith(normalizedRoot) || normalizedRoot.startsWith(token)) return 8 + Math.min(token.length, normalizedRoot.length);
+  // token carries the whole root as a prefix (e.g. "marchant" vs "march").
+  if (token.startsWith(normalizedRoot)) return 8 + Math.min(token.length, normalizedRoot.length);
+  // root starts with the token: only trust this for tokens of 4+ chars, else a
+  // 2-letter token like "bu" would falsely match "burger".
+  if (token.length >= 4 && normalizedRoot.startsWith(token)) return 8 + Math.min(token.length, normalizedRoot.length);
   if (token.length >= 5 && normalizedRoot.length >= 5 && editDistance(token, normalizedRoot) <= 1) return 6;
   return 0;
 }
@@ -1575,26 +1582,54 @@ function findSemanticColor(tokens) {
   return best;
 }
 
+// Count visible glyphs, ignoring variation selectors, so "👴" -> 1 and
+// "🎩💎" -> 2. Used to avoid stacking three or more emojis when composing.
+function emojiUnitCount(emoji) {
+  return Array.from(emoji.replace(/️/g, '')).length;
+}
+
 function suggestSemanticEmoji(label) {
   const tokens = emojiTokens(label);
   if (!tokens.length) return '';
 
   const color = findSemanticColor(tokens);
-  let best = null;
-  for (const concept of SEMANTIC_EMOJI_CONCEPTS) {
-    const score = Math.max(...tokens.flatMap(token => concept.roots.map(root => semanticRootScore(token, root))));
-    if (score > 0 && (!best || score > best.score)) best = { ...concept, score };
-  }
 
+  // Hardcoded multi-concept combos win outright.
   const hasRoot = (...roots) => tokens.some(token => roots.some(root => semanticRootScore(token, root) > 0));
   if (hasRoot('canich', 'chien') && hasRoot('toilett', 'coiff', 'groom')) return '💅🐩';
   if (hasRoot('lunett') && hasRoot('attach', 'cord', 'chain')) return '👓🪢';
   if (hasRoot('habit', 'vetement', 'tshirt', 'maillot') && hasRoot('groupe', 'music', 'concert', 'rock', 'metal')) return '👕🎸';
   if (hasRoot('bataill', 'bagarr') && hasRoot('chien', 'dog', 'clebs')) return '🐺';
 
-  if (!best) return color?.emoji || '';
-  if (color && best.kind === 'colorable') return `${best.emoji}${color.emoji}`;
-  return best.emoji;
+  // Best concept per word, so two distinct ideas can be composed.
+  const scored = [];
+  for (const concept of SEMANTIC_EMOJI_CONCEPTS) {
+    let score = 0;
+    let tokenIdx = -1;
+    tokens.forEach((token, ti) => {
+      const s = Math.max(...concept.roots.map(root => semanticRootScore(token, root)));
+      if (s > score) { score = s; tokenIdx = ti; }
+    });
+    if (score > 0) scored.push({ concept, score, tokenIdx });
+  }
+  if (!scored.length) return color?.emoji || '';
+  scored.sort((a, b) => b.score - a.score);
+
+  const primary = scored[0];
+  // Compose with a strong second concept triggered by a *different* word
+  // (e.g. "mange en marchant" -> 🍔🚶). Only single-glyph concepts, to keep the
+  // result at two emojis max.
+  const secondary = scored.find(s =>
+    s.tokenIdx !== primary.tokenIdx &&
+    s.concept.emoji !== primary.concept.emoji &&
+    s.score >= 12);
+  if (secondary && emojiUnitCount(primary.concept.emoji) === 1 && emojiUnitCount(secondary.concept.emoji) === 1) {
+    const [first, second] = primary.tokenIdx <= secondary.tokenIdx ? [primary, secondary] : [secondary, primary];
+    return `${first.concept.emoji}${second.concept.emoji}`;
+  }
+
+  if (color && primary.concept.kind === 'colorable') return `${primary.concept.emoji}${color.emoji}`;
+  return primary.concept.emoji;
 }
 
 function phraseMatches(text, phrase) {
