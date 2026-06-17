@@ -1039,6 +1039,23 @@ function submitCustomGridStart() {
   launchCustomGridGame(pendingCustomGridCode, name);
 }
 
+async function deleteMyGrid(code, token, name) {
+  if (!window.confirm(`Supprimer définitivement la grille « ${name} » ? Cette action est irréversible.`)) return;
+  try {
+    const response = await fetch(`/api/custom-grids/${encodeURIComponent(code)}/edit/${encodeURIComponent(token)}`, { method: 'DELETE' });
+    if (response.ok || response.status === 404) {
+      forgetMyGrid(code);
+      showToast(`Grille « ${name} » supprimée`);
+      loadCustomGrids();
+    } else {
+      const data = await response.json().catch(() => ({}));
+      showToast(data.error || 'Suppression impossible');
+    }
+  } catch {
+    showToast('Connexion impossible');
+  }
+}
+
 async function editMyGrid(code, token) {
   try {
     const response = await fetch(`/api/custom-grids/${encodeURIComponent(code)}/edit/${encodeURIComponent(token)}`);
@@ -1078,10 +1095,12 @@ function renderMyGridsSection(mine) {
       <div class="custom-grid-card-actions">
         <button class="btn-mini" type="button" data-edit>Éditer</button>
         <button class="btn-mini" type="button" data-play>Jouer</button>
+        <button class="btn-mini btn-mini-danger" type="button" data-delete>Supprimer</button>
       </div>
     `;
     card.querySelector('[data-edit]').addEventListener('click', () => editMyGrid(code, entry.token));
     card.querySelector('[data-play]').addEventListener('click', () => openCustomGridPlayTab(code, entry.name || code));
+    card.querySelector('[data-delete]').addEventListener('click', () => deleteMyGrid(code, entry.token, entry.name || code));
     section.appendChild(card);
   });
   customGridsList.appendChild(section);

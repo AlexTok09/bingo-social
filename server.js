@@ -1099,6 +1099,23 @@ app.put('/api/custom-grids/:code/edit/:token', (req, res) => {
   res.json({ grid: { ...publicCustomGrid(existing), editToken: existing.editToken } });
 });
 
+// Suppression par le créateur (via son lien/jeton d'édition secret).
+app.delete('/api/custom-grids/:code/edit/:token', (req, res) => {
+  if (!checkHttpGridRateLimit(req, res)) return;
+
+  const code = String(req.params.code || '').toUpperCase().trim();
+  const token = String(req.params.token || '');
+  const existing = CUSTOM_GRIDS[code];
+  if (!existing || !safeEqual(existing.editToken, token)) {
+    res.status(404).json({ error: 'Lien d’édition invalide.' });
+    return;
+  }
+
+  delete CUSTOM_GRIDS[code];
+  saveCustomGrids();
+  res.json({ ok: true });
+});
+
 app.get('/healthz', (req, res) => {
   res.json({ ok: true });
 });

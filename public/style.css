@@ -250,6 +250,11 @@ input[type="text"]::placeholder {
   box-shadow: 3px 3px 0 var(--shadow);
 }
 
+.btn-mini-danger {
+  background: var(--pink);
+  color: #fff;
+}
+
 .btn-primary {
   background: var(--acid);
 }
