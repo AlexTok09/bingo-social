@@ -267,6 +267,13 @@ input[type="text"]::placeholder {
   border-style: dashed;
 }
 
+.btn-rennes-categories {
+  background: var(--pink);
+  color: #fff;
+  box-shadow: 4px 4px 0 var(--shadow);
+  border-style: solid;
+}
+
 .divider {
   display: flex;
   align-items: center;
