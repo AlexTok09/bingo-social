@@ -20,8 +20,9 @@ const ROOM_TTL_SECONDS = 4 * 60 * 60;
 app.use(compression());
 app.use(express.json({ limit: '200kb' }));
 
-const CATEGORIES_FILE = process.env.CATEGORIES_FILE || path.join(__dirname, 'categories.json');
-const CUSTOM_GRIDS_FILE = process.env.CUSTOM_GRIDS_FILE || path.join(__dirname, 'custom-grids.json');
+const PERSISTENT_DATA_DIR = fs.existsSync('/var/data') ? '/var/data' : __dirname;
+const CATEGORIES_FILE = process.env.CATEGORIES_FILE || path.join(PERSISTENT_DATA_DIR, 'categories.json');
+const CUSTOM_GRIDS_FILE = process.env.CUSTOM_GRIDS_FILE || path.join(PERSISTENT_DATA_DIR, 'custom-grids.json');
 const CUSTOM_GRID_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const MAX_CUSTOM_GRIDS = 500;
 const CUSTOM_LABEL_MAX = 38;
