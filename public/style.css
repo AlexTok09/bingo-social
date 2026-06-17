@@ -957,6 +957,67 @@ input[type="text"]::placeholder {
   animation: slam 0.28s ease, winBurst 0.65s ease;
 }
 
+/* Notif plein écran « grille sauvegardée » : wizz puis se calme, < 4s. */
+.grid-saved-overlay {
+  z-index: 320;
+  transition: opacity 0.34s ease;
+}
+.grid-saved-overlay.closing {
+  opacity: 0;
+}
+.grid-saved-card {
+  width: min(100%, 360px);
+  padding: 28px 22px;
+  text-align: center;
+  border: 4px solid var(--ink);
+  border-radius: 8px;
+  background: var(--acid);
+  box-shadow: 8px 8px 0 var(--pink), 14px 14px 0 var(--ink);
+  animation: wizzSettle 1.1s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+.grid-saved-emoji {
+  font-size: 3rem;
+  line-height: 1;
+  margin-bottom: 8px;
+  animation: wizzSpin 0.7s ease both;
+}
+.grid-saved-card h2 {
+  margin: 0 0 10px;
+  font-size: 1.35rem;
+  word-break: break-word;
+}
+.grid-saved-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+@keyframes wizzSettle {
+  0%   { transform: translate(0, -14px) scale(0.9) rotate(0deg); opacity: 0; }
+  8%   { transform: translate(-9px, 4px) scale(1.04) rotate(-4deg); opacity: 1; }
+  16%  { transform: translate(8px, -5px) rotate(3.2deg); }
+  24%  { transform: translate(-7px, 5px) rotate(-2.4deg); }
+  33%  { transform: translate(6px, -4px) rotate(1.8deg); }
+  43%  { transform: translate(-4px, 3px) rotate(-1.2deg); }
+  54%  { transform: translate(3px, -2px) rotate(0.7deg); }
+  67%  { transform: translate(-2px, 1px) rotate(-0.35deg); }
+  80%  { transform: translate(1px, -1px) rotate(0.15deg); }
+  100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+}
+
+@keyframes wizzSpin {
+  0%   { transform: rotate(0deg) scale(0.6); }
+  35%  { transform: rotate(-18deg) scale(1.25); }
+  60%  { transform: rotate(14deg) scale(1.1); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grid-saved-card,
+  .grid-saved-emoji { animation-duration: 0.01ms; }
+}
+
 .win-tier-ordinaire { background: rgba(22, 18, 15, 0.7); }
 .win-tier-ordinaire .win-content { background: var(--ordinaire-soft); }
 

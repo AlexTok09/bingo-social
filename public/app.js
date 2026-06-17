@@ -139,6 +139,9 @@ const btnCustomStartBack = $('#btn-custom-start-back');
 const btnCustomStartPlay = $('#btn-custom-start-play');
 const editLinkReminder = $('#edit-link-reminder');
 const editLinkUrlInput = $('#edit-link-url');
+const gridSavedOverlay = $('#grid-saved-overlay');
+const gridSavedTitle = $('#grid-saved-title');
+const gridSavedHint = $('#grid-saved-hint');
 const btnCopyEditLink = $('#btn-copy-edit-link');
 const btnCloseEditLink = $('#btn-close-edit-link');
 const errorMsg = $('#error-msg');
@@ -841,6 +844,43 @@ function showEditorResult(grid) {
   });
 }
 
+let gridSavedTimeout;
+let gridSavedOnClose = null;
+
+function closeGridSavedNotice() {
+  clearTimeout(gridSavedTimeout);
+  if (!gridSavedOverlay.classList.contains('active')) return;
+  gridSavedOverlay.classList.add('closing');
+  const cb = gridSavedOnClose;
+  gridSavedOnClose = null;
+  window.setTimeout(() => {
+    gridSavedOverlay.classList.remove('active', 'closing');
+    if (typeof cb === 'function') cb();
+  }, 340);
+}
+
+// Notif plein écran : « Grille « <nom> » sauvegardée », wizz puis se calme,
+// disparaît seule en < 4 s (ou au clic).
+function showGridSavedNotice(grid, onClose) {
+  const name = (grid?.name || gridNameInput.value || '').trim();
+  gridSavedTitle.textContent = name ? `Grille « ${name} » sauvegardée` : 'Grille sauvegardée';
+  gridSavedHint.textContent = grid?.code
+    ? `Rentre-la dans CODE (ou le code ${grid.code}) pour jouer dedans`
+    : 'Rentre-la dans CODE pour jouer dedans';
+  gridSavedOnClose = typeof onClose === 'function' ? onClose : null;
+
+  gridSavedOverlay.classList.remove('closing');
+  gridSavedOverlay.classList.add('active');
+  // Rejoue l'animation wizz à chaque sauvegarde.
+  const card = gridSavedOverlay.querySelector('.grid-saved-card');
+  if (card) { card.style.animation = 'none'; void card.offsetWidth; card.style.animation = ''; }
+
+  clearTimeout(gridSavedTimeout);
+  gridSavedTimeout = window.setTimeout(closeGridSavedNotice, 3300);
+}
+
+if (gridSavedOverlay) gridSavedOverlay.addEventListener('click', closeGridSavedNotice);
+
 async function saveCustomGrid() {
   const wasCreating = !(editingGridCode && editingGridToken);
   const payload = collectCustomGridPayload();
@@ -862,7 +902,9 @@ async function saveCustomGrid() {
   rememberMyGrid(data.grid);
   btnSaveCustomGrid.textContent = 'Sauvegarder la grille';
   showEditorResult(data.grid);
-  if (wasCreating) showEditLinkReminder(data.grid);
+  // Notif plein écran à chaque sauvegarde ; à la première publication, le
+  // rappel du lien d'édition s'enchaîne une fois la notif refermée.
+  showGridSavedNotice(data.grid, wasCreating ? () => showEditLinkReminder(data.grid) : null);
   loadCustomGrids();
 }
 
