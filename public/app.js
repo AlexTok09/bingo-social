@@ -679,6 +679,11 @@ function customItemRow(tier, item = {}) {
   labelInput.maxLength = CUSTOM_LABEL_MAX;
   labelInput.placeholder = 'Texte de la case';
   labelInput.value = item.label || '';
+  labelInput.addEventListener('input', () => {
+    if (emojiInput.value.trim()) return;
+    const suggestedEmoji = categoryEmoji({ id: '', label: labelInput.value });
+    if (suggestedEmoji !== '🎲') emojiInput.value = suggestedEmoji;
+  });
 
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';
