@@ -349,7 +349,7 @@ function restartWinBurst() {
 let bgMusic = null;
 function startBgMusic() {
   if (bgMusic) return;
-  bgMusic = new Audio('/sociolobingo.mp3');
+  bgMusic = new Audio('/data/SocioloBingo2.wav');
   bgMusic.loop = false;
   bgMusic.volume = 0.8;
   bgMusic.play().catch(() => {});
@@ -368,7 +368,7 @@ const SFX_VOLUME = 0.8;
 const sfxCache = {};
 const SFX_FILES = [
   '/ordinaire.mp3', '/semi-ordinaire.mp3', '/rare.mp3', '/legendaire.mp3',
-  '/bonus.mp3', '/bonusSound.mp3', '/jokersound.mp3', '/multipick.mp3', '/sociolobingo.mp3',
+  '/bonus.mp3', '/bonusSound.mp3', '/jokersound.mp3', '/multipick.mp3', '/data/SocioloBingo2.wav',
   '/data/VictoryBingo.mp3',
 ];
 
