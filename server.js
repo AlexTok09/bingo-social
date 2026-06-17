@@ -17,7 +17,14 @@ const REDIS_URL = process.env.REDIS_URL || process.env.VALKEY_URL || process.env
 const ROOM_KEY_PREFIX = 'bingo:room:';
 const ROOM_TTL_SECONDS = 4 * 60 * 60;
 
-app.use(compression());
+app.use(compression({
+  // The semantic emoji tables are application/octet-stream, which compression
+  // skips by default. Force gzip on them (int8 vectors shrink ~20%).
+  filter(req, res) {
+    if (req.path.endsWith('.bin')) return true;
+    return compression.filter(req, res);
+  },
+}));
 app.use(express.json({ limit: '200kb' }));
 
 const PERSISTENT_DATA_DIR = fs.existsSync('/var/data') ? '/var/data' : __dirname;
@@ -458,6 +465,7 @@ function loadCustomGrids() {
     return Object.fromEntries(Object.entries(parsed).map(([code, grid]) => [code, {
       code,
       editToken: grid.editToken,
+      ownerClientId: grid.ownerClientId || null,
       name: String(grid.name || '').slice(0, CUSTOM_NAME_MAX),
       subject: String(grid.subject || '').slice(0, CUSTOM_SUBJECT_MAX),
       isPublic: grid.isPublic !== false,
@@ -531,6 +539,7 @@ async function applyCategories(categories, options = {}) {
       p.occurrences = emptyOccurrences();
       p.bonuses = emptyBonuses();
       p.pendingBonus = emptyPendingBonus();
+      p.maxChecked = 0;
     });
 
     room.players.forEach(p => {
@@ -739,6 +748,7 @@ app.post('/api/custom-grids', (req, res) => {
   const grid = {
     code,
     editToken: generateEditToken(),
+    ownerClientId: typeof req.body.clientId === 'string' ? req.body.clientId.slice(0, 100) : null,
     name: req.body.name.trim().slice(0, CUSTOM_NAME_MAX),
     subject: req.body.subject.trim().slice(0, CUSTOM_SUBJECT_MAX),
     isPublic: req.body.isPublic !== false,
@@ -768,6 +778,9 @@ app.put('/api/custom-grids/:code/edit/:token', (req, res) => {
     return;
   }
 
+  if (!existing.ownerClientId && typeof req.body.clientId === 'string') {
+    existing.ownerClientId = req.body.clientId.slice(0, 100);
+  }
   existing.name = req.body.name.trim().slice(0, CUSTOM_NAME_MAX);
   existing.subject = req.body.subject.trim().slice(0, CUSTOM_SUBJECT_MAX);
   existing.isPublic = req.body.isPublic !== false;
@@ -839,6 +852,7 @@ io.on('connection', (socket) => {
       occurrences: emptyOccurrences(),
       bonuses: emptyBonuses(),
       pendingBonus: emptyPendingBonus(),
+      maxChecked: 0,
       disconnectedAt: null,
     };
     rooms.set(code, {
@@ -902,6 +916,7 @@ io.on('connection', (socket) => {
       occurrences: emptyOccurrences(),
       bonuses: emptyBonuses(),
       pendingBonus: emptyPendingBonus(),
+      maxChecked: 0,
       disconnectedAt: null,
     };
     room.players.push(player);
@@ -1002,10 +1017,17 @@ io.on('connection', (socket) => {
     syncPlayerState(socket, player);
     reply({ ok: true });
 
+    // 1 joker toutes les 2 cases cochées, basé sur le plus haut total atteint
+    // (high-water). Décocher puis recocher ne redonne donc jamais de joker.
     const checkedTotal = totalCheckedCount(player);
-    if (!player.pendingBonus && checkedTotal >= 2 && checkedTotal % 2 === 0) {
-      player.bonuses.joker = (player.bonuses.joker || 0) + 1;
-      socket.emit('joker-earned', { count: player.bonuses.joker });
+    const prevMax = player.maxChecked || 0;
+    if (checkedTotal > prevMax) {
+      player.maxChecked = checkedTotal;
+      const newJokers = Math.floor(checkedTotal / 2) - Math.floor(prevMax / 2);
+      if (newJokers > 0) {
+        player.bonuses.joker = (player.bonuses.joker || 0) + newJokers;
+        socket.emit('joker-earned', { count: player.bonuses.joker });
+      }
     }
 
     const winCategory = evaluateWinner(room, player, categoryKey);
@@ -1247,6 +1269,7 @@ io.on('connection', (socket) => {
       p.occurrences = emptyOccurrences();
       p.bonuses = emptyBonuses();
       p.pendingBonus = emptyPendingBonus();
+      p.maxChecked = 0;
     });
 
     room.players.forEach(p => {

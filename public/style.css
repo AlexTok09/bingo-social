@@ -351,6 +351,35 @@ input[type="text"]::placeholder {
   opacity: 0.72;
 }
 
+.custom-grids-subtitle {
+  font-family: var(--font);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  opacity: 0.7;
+  margin: 4px 2px 2px;
+}
+
+.my-grids-section,
+.public-grids-section {
+  display: grid;
+  gap: 6px;
+}
+
+.public-grids-section {
+  margin-top: 8px;
+}
+
+.custom-grid-card.mine {
+  border-color: var(--legendaire, #802cff);
+  background: #faf5ff;
+}
+
+.custom-grid-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 .custom-grid-panel {
   max-height: min(70dvh, 520px);
 }

@@ -3,6 +3,7 @@ const TIERS = ['ordinaire', 'semi', 'rare', 'legendaire'];
 const CLIENT_ID_KEY = 'bingo-client-id';
 const SESSION_ROOM_KEY = 'bingo-room-code';
 const SESSION_NAME_KEY = 'bingo-player-name';
+const MY_GRIDS_KEY = 'bingo-my-grids';
 const TIER_NAMES = {
   ordinaire: 'Ordinaire',
   semi: 'Semi-Ordinaire',
@@ -69,6 +70,41 @@ function setStoredSessionValue(key, value) {
       window.localStorage.removeItem(key);
     } else {
       window.localStorage.setItem(key, value);
+    }
+  } catch {}
+}
+
+// Grilles publiées depuis cette machine : { CODE: { token, name, subject } }.
+// Permet de ré-éditer ses grilles sans le lien secret tant que le cache n'est pas effacé.
+function getMyGrids() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(MY_GRIDS_KEY) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function rememberMyGrid(grid) {
+  if (!grid?.code || !grid?.editToken) return;
+  try {
+    const all = getMyGrids();
+    all[grid.code] = {
+      token: grid.editToken,
+      name: grid.name || '',
+      subject: grid.subject || '',
+      updatedAt: Date.now(),
+    };
+    window.localStorage.setItem(MY_GRIDS_KEY, JSON.stringify(all));
+  } catch {}
+}
+
+function forgetMyGrid(code) {
+  try {
+    const all = getMyGrids();
+    if (all[code]) {
+      delete all[code];
+      window.localStorage.setItem(MY_GRIDS_KEY, JSON.stringify(all));
     }
   } catch {}
 }
@@ -776,7 +812,7 @@ async function saveCustomGrid() {
   const response = await fetch(url, {
     method: editingGridCode ? 'PUT' : 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, clientId }),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -785,12 +821,14 @@ async function saveCustomGrid() {
   }
   editingGridCode = data.grid.code;
   editingGridToken = data.grid.editToken;
+  rememberMyGrid(data.grid);
   btnSaveCustomGrid.textContent = 'Sauvegarder la grille';
   showEditorResult(data.grid);
   loadCustomGrids();
 }
 
 function openGridEditor(grid = null) {
+  loadSemanticEmoji(); // warm up the vector table while the user fills the form
   editingGridCode = grid?.code || null;
   editingGridToken = grid?.editToken || null;
   gridNameInput.value = grid?.name || '';
@@ -803,18 +841,90 @@ function openGridEditor(grid = null) {
   showScreen(screenGridEditor);
 }
 
+function selectGridToPlay(code) {
+  inputCode.value = code;
+  closeCustomGridPanel();
+  showToast(`Grille ${code} sélectionnée`);
+}
+
+async function editMyGrid(code, token) {
+  try {
+    const response = await fetch(`/api/custom-grids/${encodeURIComponent(code)}/edit/${encodeURIComponent(token)}`);
+    const data = await response.json().catch(() => ({}));
+    if (response.ok) {
+      rememberMyGrid(data.grid);
+      closeCustomGridPanel();
+      openGridEditor(data.grid);
+    } else {
+      forgetMyGrid(code);
+      showToast('Cette grille n’existe plus');
+      loadCustomGrids();
+    }
+  } catch {
+    showToast('Connexion impossible');
+  }
+}
+
+function renderMyGridsSection(mine) {
+  const codes = Object.keys(mine).sort((a, b) => (mine[b].updatedAt || 0) - (mine[a].updatedAt || 0));
+  if (!codes.length) return;
+  const section = document.createElement('div');
+  section.className = 'my-grids-section';
+  const heading = document.createElement('p');
+  heading.className = 'custom-grids-subtitle';
+  heading.textContent = 'Mes grilles (cette machine)';
+  section.appendChild(heading);
+  codes.forEach(code => {
+    const entry = mine[code];
+    const card = document.createElement('article');
+    card.className = 'custom-grid-card mine';
+    card.innerHTML = `
+      <div>
+        <strong>${escapeHtml(entry.name || code)}</strong>
+        <span>${entry.subject ? `${escapeHtml(entry.subject)} · ` : ''}${escapeHtml(code)}</span>
+      </div>
+      <div class="custom-grid-card-actions">
+        <button class="btn-mini" type="button" data-edit>Éditer</button>
+        <button class="btn-mini" type="button" data-play>Jouer</button>
+      </div>
+    `;
+    card.querySelector('[data-edit]').addEventListener('click', () => editMyGrid(code, entry.token));
+    card.querySelector('[data-play]').addEventListener('click', () => selectGridToPlay(code));
+    section.appendChild(card);
+  });
+  customGridsList.appendChild(section);
+}
+
 async function loadCustomGrids() {
   if (!customGridsList) return;
-  customGridsList.innerHTML = '<p class="muted">Chargement...</p>';
+  const mine = getMyGrids();
+  customGridsList.innerHTML = '';
+  renderMyGridsSection(mine);
+
+  const publicWrap = document.createElement('div');
+  publicWrap.className = 'public-grids-section';
+  const heading = document.createElement('p');
+  heading.className = 'custom-grids-subtitle';
+  heading.textContent = 'Grilles publiques';
+  publicWrap.appendChild(heading);
+  const status = document.createElement('p');
+  status.className = 'muted';
+  status.textContent = 'Chargement...';
+  publicWrap.appendChild(status);
+  customGridsList.appendChild(publicWrap);
+
   try {
     const response = await fetch('/api/custom-grids');
     const data = await response.json();
-    const grids = data.grids || [];
+    const grids = (data.grids || []).filter(grid => !mine[grid.code]);
+    status.remove();
     if (!grids.length) {
-      customGridsList.innerHTML = '<p class="muted">Aucune grille publique pour le moment.</p>';
+      const empty = document.createElement('p');
+      empty.className = 'muted';
+      empty.textContent = 'Aucune autre grille publique pour le moment.';
+      publicWrap.appendChild(empty);
       return;
     }
-    customGridsList.innerHTML = '';
     grids.forEach(grid => {
       const card = document.createElement('article');
       card.className = 'custom-grid-card';
@@ -825,15 +935,11 @@ async function loadCustomGrids() {
         </div>
         <button class="btn-mini" type="button">Jouer</button>
       `;
-      card.querySelector('button').addEventListener('click', () => {
-        inputCode.value = grid.code;
-        closeCustomGridPanel();
-        showToast(`Grille ${grid.code} sélectionnée`);
-      });
-      customGridsList.appendChild(card);
+      card.querySelector('button').addEventListener('click', () => selectGridToPlay(grid.code));
+      publicWrap.appendChild(card);
     });
   } catch {
-    customGridsList.innerHTML = '<p class="muted">Impossible de charger les grilles.</p>';
+    status.textContent = 'Impossible de charger les grilles.';
   }
 }
 
@@ -845,7 +951,10 @@ async function openEditorFromQuery() {
   try {
     const response = await fetch(`/api/custom-grids/${encodeURIComponent(code.toUpperCase())}/edit/${encodeURIComponent(token)}`);
     const data = await response.json();
-    if (response.ok) openGridEditor(data.grid);
+    if (response.ok) {
+      rememberMyGrid(data.grid);
+      openGridEditor(data.grid);
+    }
   } catch {}
 }
 
@@ -1491,6 +1600,109 @@ function phraseMatches(text, phrase) {
   return text.includes(normalizeEmojiText(phrase));
 }
 
+// --- Semantic (vector) emoji layer -----------------------------------------
+// Precomputed word/emoji vectors (built offline by scripts/build-semantic-emoji.mjs).
+// No model runs here: we only average int8 vectors and pick the nearest emoji
+// by cosine similarity. Loaded lazily the first time the grid editor opens.
+const EMOJI_STOPWORDS = new Set([
+  'de', 'la', 'le', 'les', 'des', 'du', 'un', 'une', 'et', 'en', 'au', 'aux',
+  'a', 'd', 'l', 's', 'ce', 'se', 'sa', 'son', 'ses', 'qui', 'que', 'pour',
+  'par', 'sur', 'dans', 'avec', 'ou', 'ne', 'pas', 'il', 'elle', 'on', 'je',
+  'tu', 'nous', 'vous', 'ils', 'elles', 'est', 'sont', 'plus', 'tres', 'tout',
+]);
+
+let semanticEmojiData = null;       // resolved table once loaded
+let semanticEmojiPromise = null;    // in-flight load
+
+function loadSemanticEmoji() {
+  if (semanticEmojiPromise) return semanticEmojiPromise;
+  semanticEmojiPromise = (async () => {
+    try {
+      const [manifest, wordsBuf, emojisBuf] = await Promise.all([
+        fetch('/data/sem-manifest.json').then(r => r.json()),
+        fetch('/data/sem-words.bin').then(r => r.arrayBuffer()),
+        fetch('/data/sem-emojis.bin').then(r => r.arrayBuffer()),
+      ]);
+      const dims = manifest.dims;
+      const words = new Int8Array(wordsBuf);
+      const emojiVecs = new Int8Array(emojisBuf);
+      const wordIndex = new Map();
+      const prefixIndex = new Map(); // 4-char prefix -> first (most frequent) row
+      manifest.words.forEach((w, i) => {
+        wordIndex.set(w, i);
+        if (w.length >= 4) {
+          const p = w.slice(0, 4);
+          if (!prefixIndex.has(p)) prefixIndex.set(p, i);
+        }
+      });
+      // Precompute emoji vector norms for cosine.
+      const emojiNorms = new Float32Array(manifest.emojis.length);
+      for (let r = 0; r < manifest.emojis.length; r++) {
+        let s = 0;
+        const off = r * dims;
+        for (let c = 0; c < dims; c++) s += emojiVecs[off + c] * emojiVecs[off + c];
+        emojiNorms[r] = Math.sqrt(s) || 1;
+      }
+      semanticEmojiData = { dims, words, emojiVecs, emojiNorms, wordIndex, prefixIndex, emojiList: manifest.emojis };
+      return semanticEmojiData;
+    } catch (err) {
+      console.warn('Semantic emoji data unavailable:', err);
+      semanticEmojiData = null;
+      return null;
+    }
+  })();
+  return semanticEmojiPromise;
+}
+
+function semanticTextVector(data, label) {
+  const { dims, words, wordIndex, prefixIndex } = data;
+  const tokens = normalizeEmojiText(label)
+    .split(' ')
+    .filter(tok => tok.length >= 2 && !EMOJI_STOPWORDS.has(tok));
+  if (!tokens.length) return null;
+
+  const acc = new Float64Array(dims);
+  let used = 0;
+  for (const token of tokens) {
+    let idx = wordIndex.get(token);
+    if (idx === undefined && token.length >= 4) idx = prefixIndex.get(token.slice(0, 4)); // OOV backoff
+    if (idx === undefined) continue;
+    const off = idx * dims;
+    let norm = 0;
+    for (let c = 0; c < dims; c++) norm += words[off + c] * words[off + c];
+    norm = Math.sqrt(norm) || 1;
+    for (let c = 0; c < dims; c++) acc[c] += words[off + c] / norm;
+    used += 1;
+  }
+  if (!used) return null;
+  let mag = 0;
+  for (let c = 0; c < dims; c++) mag += acc[c] * acc[c];
+  mag = Math.sqrt(mag) || 1;
+  for (let c = 0; c < dims; c++) acc[c] /= mag;
+  return acc;
+}
+
+function suggestVectorEmoji(label) {
+  const data = semanticEmojiData;
+  if (!data) return '';
+  const vec = semanticTextVector(data, label);
+  if (!vec) return '';
+  const { dims, emojiVecs, emojiNorms, emojiList } = data;
+  let bestEmoji = '';
+  let bestScore = -Infinity;
+  for (let r = 0; r < emojiList.length; r++) {
+    const off = r * dims;
+    let dot = 0;
+    for (let c = 0; c < dims; c++) dot += vec[c] * emojiVecs[off + c];
+    const score = dot / emojiNorms[r];
+    if (score > bestScore) {
+      bestScore = score;
+      bestEmoji = emojiList[r];
+    }
+  }
+  return bestEmoji;
+}
+
 function suggestEmojiForText(label) {
   const text = normalizeEmojiText(label);
   if (text.length < 2) return '';
@@ -1514,8 +1726,18 @@ function suggestEmojiForText(label) {
       best = { emoji: rule.emoji, specificity };
     }
   }
+  if (best) return best.emoji;
 
-  return best?.emoji || '';
+  // Final safety net: nearest emoji by meaning. Guarantees a suggestion for any
+  // recognizable word, even ones never hand-coded. Appends a colour square when
+  // the label clearly mentions one (e.g. "berline noire" -> car + black).
+  const vectorEmoji = suggestVectorEmoji(label);
+  if (vectorEmoji) {
+    const color = findSemanticColor(emojiTokens(label));
+    if (color && color.score >= 12) return `${vectorEmoji}${color.emoji}`;
+    return vectorEmoji;
+  }
+  return '';
 }
 
 function categoryEmoji(item) {
@@ -1790,16 +2012,30 @@ function buildGrid() {
       let longPressTimer = null;
       let didLongPress = false;
 
+      // Appui long sur une case cochée = annuler (décocher).
       cell.addEventListener('pointerdown', () => {
         didLongPress = false;
+        if (freeCheckCategory || rerollRemaining > 0) return;
         const checked = myChecked[category] || [];
         if (!checked.includes(index)) return;
         longPressTimer = window.setTimeout(() => {
           didLongPress = true;
-          playMultipickSound();
-          emitSocket('repeat-cell', { category, index });
+          clearLegendaryConfirm();
+          playTapSound(category, true);
+          applyLocalToggle(category, index);
+          renderGrid();
           cell.classList.add('long-pressing');
           window.setTimeout(() => cell.classList.remove('long-pressing'), 260);
+          const sent = emitSocket('toggle-cell', { category, index }, ({ ok, reason }) => {
+            if (ok) return;
+            applyLocalToggle(category, index);
+            renderGrid();
+            if (reason) showToast(reason);
+          });
+          if (!sent) {
+            applyLocalToggle(category, index);
+            renderGrid();
+          }
         }, 560);
       });
 
@@ -1837,8 +2073,17 @@ function buildGrid() {
           emitSocket('reroll-cell', { category, index });
           return;
         }
-        const wasChecked = checked.includes(index);
-        if (category === 'legendaire' && !wasChecked) {
+        // 2e tap sur une case déjà cochée = ajouter une répétition.
+        if (checked.includes(index)) {
+          clearLegendaryConfirm();
+          playMultipickSound();
+          emitSocket('repeat-cell', { category, index });
+          cell.classList.add('long-pressing');
+          window.setTimeout(() => cell.classList.remove('long-pressing'), 260);
+          return;
+        }
+        // Case non cochée : on coche (la légendaire demande confirmation).
+        if (category === 'legendaire') {
           if (pendingLegendaryConfirm !== index) {
             requestLegendaryConfirm(cell, index);
             return;
@@ -1847,7 +2092,7 @@ function buildGrid() {
         } else {
           clearLegendaryConfirm();
         }
-        playTapSound(category, wasChecked);
+        playTapSound(category, false);
         applyLocalToggle(category, index);
         renderGrid();
         const sent = emitSocket('toggle-cell', { category, index }, ({ ok, reason }) => {

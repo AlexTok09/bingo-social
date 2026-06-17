@@ -8,6 +8,7 @@
   },
   "scripts": {
     "start": "node server.js",
+    "build:emoji": "node scripts/build-semantic-emoji.mjs",
     "load:test": "node scripts/load-test-socketio.js",
     "load:test:1k": "PLAYERS=1000 ROOMS=50 DURATION_MS=120000 node scripts/load-test-socketio.js"
   },
