@@ -1443,6 +1443,39 @@ function normalizeEmojiText(value) {
     .trim();
 }
 
+function slugifyEmojiLabel(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 60);
+}
+
+function compactEmojiText(value) {
+  const stopWords = new Set(['a', 'au', 'aux', 'd', 'de', 'des', 'du', 'et', 'la', 'l', 'le', 'les', 'un', 'une']);
+  return normalizeEmojiText(value)
+    .split(' ')
+    .filter(word => word && !stopWords.has(word))
+    .join(' ');
+}
+
+function exactCuratedEmojiForText(label) {
+  const slug = slugifyEmojiLabel(label);
+  if (!slug) return '';
+  if (EMOJI_BY_ID[slug]) return EMOJI_BY_ID[slug];
+
+  const text = normalizeEmojiText(label);
+  const compactText = compactEmojiText(label);
+  for (const [id, emoji] of Object.entries(EMOJI_BY_ID)) {
+    if (normalizeEmojiText(id) === text) return emoji;
+    if (compactText && compactEmojiText(id) === compactText) return emoji;
+  }
+  return '';
+}
+
 const EMOJI_COLOR_MODIFIERS = [
   { emoji: '🔵', roots: ['bleu', 'azur', 'cyan'] },
   { emoji: '🔴', roots: ['rouge', 'red'] },
@@ -1744,6 +1777,9 @@ function suggestVectorEmoji(label) {
 function suggestEmojiForText(label) {
   const text = normalizeEmojiText(label);
   if (text.length < 2) return '';
+
+  const curatedEmoji = exactCuratedEmojiForText(label);
+  if (curatedEmoji) return curatedEmoji;
 
   const semanticEmoji = suggestSemanticEmoji(label);
   if (semanticEmoji) return semanticEmoji;
