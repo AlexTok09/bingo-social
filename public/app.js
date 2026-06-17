@@ -770,6 +770,7 @@ function renderCustomGridEditor(categories = emptyCustomCategories()) {
 }
 
 let originalCategoriesPromise = null;
+let originalCategoriesActive = false;
 
 async function loadOriginalCategories() {
   if (!originalCategoriesPromise) {
@@ -851,6 +852,7 @@ async function saveCustomGrid() {
 
 function openGridEditor(grid = null) {
   loadSemanticEmoji(); // warm up the vector table while the user fills the form
+  originalCategoriesActive = false;
   editingGridCode = grid?.code || null;
   editingGridToken = grid?.editToken || null;
   gridNameInput.value = grid?.name || '';
@@ -865,6 +867,21 @@ function openGridEditor(grid = null) {
 
 async function openGridEditorFromOriginalCategories() {
   loadSemanticEmoji();
+  if (originalCategoriesActive) {
+    originalCategoriesActive = false;
+    editingGridCode = null;
+    editingGridToken = null;
+    gridNameInput.value = '';
+    gridSubjectInput.value = '';
+    gridPublicInput.checked = true;
+    editorResult.hidden = true;
+    editorResult.innerHTML = '';
+    btnSaveCustomGrid.textContent = 'Publier la grille';
+    renderCustomGridEditor(emptyCustomCategories());
+    showScreen(screenGridEditor);
+    return;
+  }
+
   const categories = await loadOriginalCategories();
   editingGridCode = null;
   editingGridToken = null;
@@ -875,6 +892,7 @@ async function openGridEditorFromOriginalCategories() {
   editorResult.innerHTML = '';
   btnSaveCustomGrid.textContent = 'Publier la grille';
   renderCustomGridEditor(originalCategoriesToCustomCategories(categories));
+  originalCategoriesActive = Boolean(categories);
   showScreen(screenGridEditor);
   if (!categories) showToast('Catégories d’origine indisponibles, grille vide chargée');
 }
