@@ -716,6 +716,14 @@ function originalCategoriesToCustomCategories(categories) {
   }, {});
 }
 
+// Repli sur le moteur d'emoji des catégories rennaises (categoryEmoji) quand le
+// moteur custom ne propose rien : il matche beaucoup de mots (doudoune, chien…)
+// et garde l'émoji réactif au texte. On ignore son fallback générique 🎲.
+function fallbackEmojiForText(text) {
+  const emoji = categoryEmoji({ label: text });
+  return emoji && emoji !== '🎲' ? emoji : '';
+}
+
 function customItemRow(tier, item = {}) {
   const row = document.createElement('div');
   row.className = 'custom-item-row';
@@ -744,7 +752,7 @@ function customItemRow(tier, item = {}) {
   labelInput.addEventListener('input', () => {
     const currentEmoji = emojiInput.value.trim();
     if (currentEmoji && currentEmoji !== emojiInput.dataset.autoEmoji) return;
-    const suggestedEmoji = suggestEmojiForText(labelInput.value);
+    const suggestedEmoji = suggestEmojiForText(labelInput.value) || fallbackEmojiForText(labelInput.value);
     if (!suggestedEmoji) return;
     emojiInput.value = suggestedEmoji;
     emojiInput.dataset.autoEmoji = suggestedEmoji;
