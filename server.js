@@ -30,6 +30,7 @@ app.use(express.json({ limit: '200kb' }));
 const PERSISTENT_DATA_DIR = fs.existsSync('/var/data') ? '/var/data' : __dirname;
 const CATEGORIES_FILE = process.env.CATEGORIES_FILE || path.join(PERSISTENT_DATA_DIR, 'categories.json');
 const CUSTOM_GRIDS_FILE = process.env.CUSTOM_GRIDS_FILE || path.join(PERSISTENT_DATA_DIR, 'custom-grids.json');
+const STATS_FILE = process.env.STATS_FILE || path.join(PERSISTENT_DATA_DIR, 'stats.json');
 const CUSTOM_GRID_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const MAX_CUSTOM_GRIDS = 500;
 const CUSTOM_LABEL_MAX = 38;
@@ -418,6 +419,7 @@ function normalizeCategories(categories) {
 
 let CATEGORIES = loadCategories();
 let CUSTOM_GRIDS = loadCustomGrids();
+let STATS = loadStats();
 
 function normalizeCustomEmoji(value) {
   const text = typeof value === 'string' ? value.trim() : '';
@@ -483,6 +485,32 @@ function loadCustomGrids() {
 function saveCustomGrids() {
   fs.mkdirSync(path.dirname(CUSTOM_GRIDS_FILE), { recursive: true });
   fs.writeFileSync(CUSTOM_GRIDS_FILE, JSON.stringify(CUSTOM_GRIDS, null, 2), 'utf-8');
+}
+
+// Compteur privé : nombre total de parties lancées (création de salon + rejeu).
+function loadStats() {
+  try {
+    if (!fs.existsSync(STATS_FILE)) return { gamesPlayed: 0, firstAt: Date.now() };
+    const parsed = JSON.parse(fs.readFileSync(STATS_FILE, 'utf-8'));
+    return { gamesPlayed: Number(parsed?.gamesPlayed || 0), firstAt: Number(parsed?.firstAt) || Date.now() };
+  } catch (error) {
+    console.error('Stats load failed:', error.message);
+    return { gamesPlayed: 0, firstAt: Date.now() };
+  }
+}
+
+function saveStats() {
+  try {
+    fs.mkdirSync(path.dirname(STATS_FILE), { recursive: true });
+    fs.writeFileSync(STATS_FILE, JSON.stringify(STATS), 'utf-8');
+  } catch (error) {
+    console.error('Stats save failed:', error.message);
+  }
+}
+
+function bumpGamesPlayed() {
+  STATS.gamesPlayed += 1;
+  saveStats();
 }
 
 function publicCustomGrid(grid) {
@@ -671,6 +699,21 @@ app.get('/api/admin/categories', (req, res) => {
     return;
   }
   res.json(publicCategories());
+});
+
+app.get('/api/admin/stats', (req, res) => {
+  if (!isAdminRequest(req)) {
+    res.status(401).json({ error: 'Mot de passe invalide.' });
+    return;
+  }
+  const grids = Object.values(CUSTOM_GRIDS);
+  res.json({
+    gamesPlayed: STATS.gamesPlayed,
+    firstAt: STATS.firstAt,
+    activeRooms: rooms.size,
+    customGrids: grids.length,
+    customGridPlays: grids.reduce((sum, grid) => sum + (grid.plays || 0), 0),
+  });
 });
 
 app.put('/api/admin/categories', async (req, res) => {
@@ -873,6 +916,7 @@ io.on('connection', (socket) => {
       saveCustomGrids();
     }
     await persistRoom(rooms.get(code));
+    bumpGamesPlayed();
     socket.join(code);
     socket.roomCode = code;
     socket.clientId = clientId;
@@ -1330,6 +1374,7 @@ io.on('connection', (socket) => {
     });
 
     await persistRoom(room);
+    bumpGamesPlayed();
     io.to(roomCode).emit('players-update', getPlayersInfo(room));
   });
 

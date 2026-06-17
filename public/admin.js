@@ -12,6 +12,7 @@ const passwordInput = document.querySelector('#admin-password');
 const loginError = document.querySelector('#admin-login-error');
 const rowsEl = document.querySelector('#admin-category-rows');
 const statusEl = document.querySelector('#admin-status');
+const statsEl = document.querySelector('#admin-stats');
 const applyActiveInput = document.querySelector('#apply-active');
 const btnLogin = document.querySelector('#btn-login');
 const btnAddRow = document.querySelector('#btn-add-row');
@@ -64,8 +65,25 @@ async function loadCategories() {
     adminPanel.hidden = false;
     renderRows();
     setStatus('Connecté.');
+    loadStats();
   } catch (error) {
     loginError.textContent = error.message;
+  }
+}
+
+async function loadStats() {
+  if (!statsEl) return;
+  try {
+    const s = await adminFetch('/api/admin/stats');
+    const since = s.firstAt ? new Date(s.firstAt).toLocaleDateString('fr-FR') : '—';
+    statsEl.innerHTML = `
+      <strong>🎲 ${s.gamesPlayed}</strong> parties jouées depuis le ${since}
+      · ${s.activeRooms} salon(s) actif(s)
+      · ${s.customGrids} grille(s) custom (${s.customGridPlays} parties)
+    `;
+    statsEl.hidden = false;
+  } catch {
+    statsEl.hidden = true;
   }
 }
 

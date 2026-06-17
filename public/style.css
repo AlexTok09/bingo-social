@@ -1551,6 +1551,21 @@ input[type="text"]::placeholder {
   margin-bottom: 14px;
 }
 
+.admin-stats {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.admin-stats strong {
+  font-family: var(--font);
+  font-size: 1rem;
+}
+
 .admin-toggle {
   display: flex;
   align-items: center;

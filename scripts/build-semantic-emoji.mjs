@@ -21,7 +21,7 @@ const VEC_FILE = new URL('fr.vec.head', TMP);
 const EMOJI_FILE = new URL('emoji-fr.json', TMP);
 
 const MAX_WORDS = Number(process.env.MAX_WORDS || 45000);
-const DIMS = Number(process.env.DIMS || 48);
+const DIMS = Number(process.env.DIMS || 96);
 const SRC_DIMS = 300;
 
 const STOPWORDS = new Set([

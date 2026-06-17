@@ -1033,6 +1033,7 @@ if (socket) {
     bonusRerollCount = 3;
     tiersToWin = t || 1;
     updateModeBanner();
+    playSocioloIntro();
     enterGame();
   });
 
@@ -1050,6 +1051,7 @@ if (socket) {
     bonusRerollCount = 3;
     tiersToWin = t || 1;
     updateModeBanner();
+    playSocioloIntro();
     enterGame();
   });
 
@@ -1517,7 +1519,7 @@ const SEMANTIC_EMOJI_CONCEPTS = [
   { emoji: '🤮', roots: ['vomi', 'vomit'] },
   { emoji: '💩', roots: ['merd', 'caca', 'crotte'] },
 
-  { emoji: '🚬', roots: ['cigarett', 'clop', 'megot', 'smok'] },
+  { emoji: '🚬', roots: ['cigarett', 'clop', 'megot', 'smok', 'fume', 'fum', 'tabac', 'taf'] },
   { emoji: '🍺', roots: ['biere', 'alcool', 'ivre', 'bourr'] },
   { emoji: '🍔', roots: ['mang', 'burger', 'food', 'sandwich'] },
   { emoji: '🥖', roots: ['pain', 'baguett'] },
