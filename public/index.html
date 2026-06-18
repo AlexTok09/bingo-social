@@ -71,10 +71,6 @@
           <span>Nom de la grille</span>
           <input type="text" id="grid-name" maxlength="48" placeholder="Paris terrasse">
         </label>
-        <label>
-          <span>On y joue où ?</span>
-          <input type="text" id="grid-subject" maxlength="60" placeholder="ville, plage, gare, festival...">
-        </label>
         <label class="editor-public-toggle">
           <input type="checkbox" id="grid-public" checked>
           <span>Visible dans les grilles créées</span>
@@ -84,6 +80,7 @@
       <div id="custom-grid-editor"></div>
 
       <button id="btn-save-custom-grid" class="btn btn-primary" type="button">Publier la grille</button>
+      <button id="btn-delete-current-grid" class="btn btn-secondary btn-delete-current-grid" type="button" hidden>Supprimer ma grille</button>
     </main>
   </div>
 
@@ -197,7 +194,7 @@
   <div id="edit-link-reminder" class="overlay edit-link-reminder" role="dialog" aria-modal="true" aria-label="Lien d’édition">
     <div class="edit-link-content">
       <h2>Sauvegarde ton lien d’édition</h2>
-      <p>Ce lien secret te permet de revenir modifier ta grille plus tard.</p>
+      <p>Le mot de passe est gardé ici tant que tu ne vides pas le cache.</p>
       <input id="edit-link-url" type="text" readonly>
       <button id="btn-copy-edit-link" class="btn btn-primary" type="button">Copier le lien</button>
       <button id="btn-close-edit-link" class="btn btn-secondary" type="button">J’ai sauvegardé</button>

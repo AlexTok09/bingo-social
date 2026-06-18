@@ -537,9 +537,7 @@ function normalizeCustomCategories(categories) {
 
 function validateCustomGridPayload(payload) {
   const name = typeof payload?.name === 'string' ? payload.name.trim() : '';
-  const subject = typeof payload?.subject === 'string' ? payload.subject.trim() : '';
   if (!name) return 'Donne un nom à ta grille.';
-  if (!subject) return 'Dis ce que ta grille désigne.';
 
   const categories = normalizeCustomCategories(payload?.categories);
   const categoriesError = validateCategoriesConfig(categories);
@@ -1052,7 +1050,7 @@ app.post('/api/custom-grids', (req, res) => {
     editToken: generateEditToken(),
     ownerClientId,
     name: req.body.name.trim().slice(0, CUSTOM_NAME_MAX),
-    subject: req.body.subject.trim().slice(0, CUSTOM_SUBJECT_MAX),
+    subject: String(req.body.subject || '').trim().slice(0, CUSTOM_SUBJECT_MAX),
     isPublic: req.body.isPublic !== false,
     categories: normalizeCustomCategories(req.body.categories),
     createdAt: now,
@@ -1091,7 +1089,7 @@ app.put('/api/custom-grids/:code/edit/:token', (req, res) => {
     existing.ownerClientId = req.body.clientId.slice(0, 100);
   }
   existing.name = req.body.name.trim().slice(0, CUSTOM_NAME_MAX);
-  existing.subject = req.body.subject.trim().slice(0, CUSTOM_SUBJECT_MAX);
+  existing.subject = String(req.body.subject || '').trim().slice(0, CUSTOM_SUBJECT_MAX);
   existing.isPublic = req.body.isPublic !== false;
   existing.categories = normalizeCustomCategories(req.body.categories);
   existing.updatedAt = Date.now();

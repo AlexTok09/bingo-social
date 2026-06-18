@@ -132,6 +132,7 @@ const gridNameInput = $('#grid-name');
 const gridSubjectInput = $('#grid-subject');
 const gridPublicInput = $('#grid-public');
 const btnSaveCustomGrid = $('#btn-save-custom-grid');
+const btnDeleteCurrentGrid = $('#btn-delete-current-grid');
 const editorResult = $('#editor-result');
 const customStartTitle = $('#custom-start-title');
 const customStartNameInput = $('#custom-start-name');
@@ -827,7 +828,7 @@ function collectCustomGridPayload() {
 
   return {
     name: gridNameInput.value.trim(),
-    subject: gridSubjectInput.value.trim(),
+    subject: gridSubjectInput?.value.trim() || '',
     isPublic: gridPublicInput.checked,
     categories,
   };
@@ -868,7 +869,7 @@ function closeGridSavedNotice() {
 }
 
 // Notif plein écran : « Grille « <nom> » sauvegardée », wizz puis se calme,
-// disparaît seule en < 4 s (ou au clic).
+// disparaît seule après quelques secondes (ou au clic).
 function showGridSavedNotice(grid, onClose) {
   const name = (grid?.name || gridNameInput.value || '').trim();
   gridSavedTitle.textContent = name ? `Grille « ${name} » sauvegardée` : 'Grille sauvegardée';
@@ -884,7 +885,7 @@ function showGridSavedNotice(grid, onClose) {
   if (card) { card.style.animation = 'none'; void card.offsetWidth; card.style.animation = ''; }
 
   clearTimeout(gridSavedTimeout);
-  gridSavedTimeout = window.setTimeout(closeGridSavedNotice, 3300);
+  gridSavedTimeout = window.setTimeout(closeGridSavedNotice, 5300);
 }
 
 if (gridSavedOverlay) gridSavedOverlay.addEventListener('click', closeGridSavedNotice);
@@ -909,6 +910,7 @@ async function saveCustomGrid() {
   editingGridToken = data.grid.editToken;
   rememberMyGrid(data.grid);
   btnSaveCustomGrid.textContent = 'Sauvegarder la grille';
+  btnDeleteCurrentGrid.hidden = false;
   showEditorResult(data.grid);
   // Notif plein écran à chaque sauvegarde ; à la première publication, le
   // rappel du lien d'édition s'enchaîne une fois la notif refermée.
@@ -922,11 +924,12 @@ function openGridEditor(grid = null) {
   editingGridCode = grid?.code || null;
   editingGridToken = grid?.editToken || null;
   gridNameInput.value = grid?.name || '';
-  gridSubjectInput.value = grid?.subject || '';
+  if (gridSubjectInput) gridSubjectInput.value = grid?.subject || '';
   gridPublicInput.checked = grid?.isPublic !== false;
   editorResult.hidden = true;
   editorResult.innerHTML = '';
   btnSaveCustomGrid.textContent = editingGridCode ? 'Sauvegarder la grille' : 'Publier la grille';
+  btnDeleteCurrentGrid.hidden = !(editingGridCode && editingGridToken);
   renderCustomGridEditor(grid?.categories || emptyCustomCategories());
   showScreen(screenGridEditor);
 }
@@ -938,11 +941,12 @@ async function openGridEditorFromOriginalCategories() {
     editingGridCode = null;
     editingGridToken = null;
     gridNameInput.value = '';
-    gridSubjectInput.value = '';
+    if (gridSubjectInput) gridSubjectInput.value = '';
     gridPublicInput.checked = true;
     editorResult.hidden = true;
     editorResult.innerHTML = '';
     btnSaveCustomGrid.textContent = 'Publier la grille';
+    btnDeleteCurrentGrid.hidden = true;
     renderCustomGridEditor(emptyCustomCategories());
     showScreen(screenGridEditor);
     return;
@@ -952,11 +956,12 @@ async function openGridEditorFromOriginalCategories() {
   editingGridCode = null;
   editingGridToken = null;
   gridNameInput.value = '';
-  gridSubjectInput.value = '';
+  if (gridSubjectInput) gridSubjectInput.value = '';
   gridPublicInput.checked = true;
   editorResult.hidden = true;
   editorResult.innerHTML = '';
   btnSaveCustomGrid.textContent = 'Publier la grille';
+  btnDeleteCurrentGrid.hidden = true;
   renderCustomGridEditor(originalCategoriesToCustomCategories(categories));
   originalCategoriesActive = Boolean(categories);
   showScreen(screenGridEditor);
@@ -1040,13 +1045,14 @@ function submitCustomGridStart() {
 }
 
 async function deleteMyGrid(code, token, name) {
-  if (!window.confirm(`Supprimer définitivement la grille « ${name} » ? Cette action est irréversible.`)) return;
+  if (!window.confirm(`Supprimer définitivement la grille « ${name} » ? Cette action est irréversible.`)) return false;
   try {
     const response = await fetch(`/api/custom-grids/${encodeURIComponent(code)}/edit/${encodeURIComponent(token)}`, { method: 'DELETE' });
     if (response.ok || response.status === 404) {
       forgetMyGrid(code);
       showToast(`Grille « ${name} » supprimée`);
       loadCustomGrids();
+      return true;
     } else {
       const data = await response.json().catch(() => ({}));
       showToast(data.error || 'Suppression impossible');
@@ -1054,6 +1060,26 @@ async function deleteMyGrid(code, token, name) {
   } catch {
     showToast('Connexion impossible');
   }
+  return false;
+}
+
+async function deleteCurrentGrid() {
+  if (!(editingGridCode && editingGridToken)) {
+    showToast('Sauvegarde d’abord la grille');
+    return;
+  }
+  const deleted = await deleteMyGrid(editingGridCode, editingGridToken, gridNameInput.value.trim() || editingGridCode);
+  if (!deleted) return;
+  editingGridCode = null;
+  editingGridToken = null;
+  gridNameInput.value = '';
+  if (gridSubjectInput) gridSubjectInput.value = '';
+  gridPublicInput.checked = true;
+  editorResult.hidden = true;
+  editorResult.innerHTML = '';
+  btnSaveCustomGrid.textContent = 'Publier la grille';
+  btnDeleteCurrentGrid.hidden = true;
+  renderCustomGridEditor(emptyCustomCategories());
 }
 
 async function editMyGrid(code, token) {
@@ -1142,7 +1168,7 @@ async function loadCustomGrids() {
       card.innerHTML = `
         <div>
           <strong>${escapeHtml(grid.name)}</strong>
-          <span>${escapeHtml(grid.subject)} · ${escapeHtml(grid.code)}</span>
+          <span>${grid.subject ? `${escapeHtml(grid.subject)} · ` : ''}${escapeHtml(grid.code)}</span>
         </div>
         <button class="btn-mini" type="button">Jouer</button>
       `;
@@ -1229,6 +1255,9 @@ btnCloseEditLink.addEventListener('click', closeEditLinkReminder);
 btnRefreshCustomGrids.addEventListener('click', loadCustomGrids);
 btnSaveCustomGrid.addEventListener('click', () => {
   saveCustomGrid().catch(() => showToast('Erreur de sauvegarde'));
+});
+btnDeleteCurrentGrid.addEventListener('click', () => {
+  deleteCurrentGrid().catch(() => showToast('Suppression impossible'));
 });
 
 inputName.addEventListener('keydown', (e) => {

@@ -441,6 +441,10 @@ input[type="text"]::placeholder {
   height: 22px;
 }
 
+.btn-delete-current-grid {
+  margin-top: -4px;
+}
+
 .custom-editor-section.ordinaire { background: var(--ordinaire-soft); }
 .custom-editor-section.semi { background: var(--semi-soft); }
 .custom-editor-section.rare { background: var(--rare-soft); }
@@ -962,7 +966,7 @@ input[type="text"]::placeholder {
   animation: slam 0.28s ease, winBurst 0.65s ease;
 }
 
-/* Notif plein écran « grille sauvegardée » : wizz puis se calme, < 4s. */
+/* Notif plein écran « grille sauvegardée » : wizz puis se calme. */
 .grid-saved-overlay {
   z-index: 320;
   transition: opacity 0.34s ease;
