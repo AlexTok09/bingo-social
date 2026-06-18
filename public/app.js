@@ -390,10 +390,14 @@ function restartWinBurst() {
   }, 750);
 }
 
+const INTRO_SOUND = '/data/SocioloPop.wav';
+const WIN_SOUND = '/data/WinningChorus.wav';
+const LEGENDARY_WIN_SOUND = '/data/winningJapanese.mp3';
+
 let bgMusic = null;
 function startBgMusic() {
   if (bgMusic) return;
-  bgMusic = new Audio('/sociolobingo.mp3');
+  bgMusic = new Audio(INTRO_SOUND);
   bgMusic.loop = false;
   bgMusic.volume = 0.8;
   bgMusic.play().catch(() => {});
@@ -412,8 +416,8 @@ const SFX_VOLUME = 0.8;
 const sfxCache = {};
 const SFX_FILES = [
   '/ordinaire.mp3', '/semi-ordinaire.mp3', '/rare.mp3', '/legendaire.mp3',
-  '/bonus.mp3', '/bonusSound.mp3', '/jokersound.mp3', '/multipick.mp3', '/sociolobingo.mp3',
-  '/data/VictoryBingo.mp3',
+  '/bonus.mp3', '/bonusSound.mp3', '/jokersound.mp3', '/multipick.mp3',
+  INTRO_SOUND, WIN_SOUND, LEGENDARY_WIN_SOUND,
 ];
 
 function preloadSounds() {
@@ -445,7 +449,7 @@ function playTapSound(category, wasChecked) {
 }
 
 function playWinCasinoSound(category) {
-  playSfx('/data/VictoryBingo.mp3');
+  playSfx(category === 'legendaire' ? LEGENDARY_WIN_SOUND : WIN_SOUND);
 }
 
 function winAnimOrdinaire() {
