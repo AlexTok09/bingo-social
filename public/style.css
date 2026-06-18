@@ -422,6 +422,10 @@ input[type="text"]::placeholder {
   box-shadow: 5px 5px 0 var(--shadow);
 }
 
+.editor-result[hidden] {
+  display: none;
+}
+
 .editor-meta label,
 .editor-public-toggle {
   display: grid;
