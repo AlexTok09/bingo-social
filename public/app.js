@@ -1570,7 +1570,7 @@ const EMOJI_BY_ID = {
   'papi-et-mami': '👵👴', 'doudoune-sans-manche': '🥶🎽', 'femme-et-chien': '🧍‍♀️🐩',
   'vieille-bourgeoise': '👵💎', 'jean-charles-mariniere': '⚓👕', 'poussette': '👶🛒',
   'velo-cargo': '🚲📦', 'caillra': '😈💸', 'deux-amis': '👭', 'drague-de-rue': '😏👀',
-  'rasta': '🧔🇯🇲', 'shopper': '🛍️', 'bonnet': '🎅', 'sac-banane': '👝🍌',
+  'rasta': '🇯🇲', 'shopper': '🛍️', 'bonnet': '🎅', 'sac-banane': '👝🍌',
   'velo-a-main': '🚶‍♂️🚲', 'porte-un-bebe': '👩‍🍼', 'velo-pliant': '🚲🪗', 'fume-une-cigarette': '🚬',
   'habit-de-groupe-musique': '👕🎸', 'porte-un-maillot-d-une-equipe-de-sport': '👕⚽',
   'punk-a-chien': '🧷🐕', 'panama': '👒🌴', 'cheveux-jusqu-au-fesses': '💇‍♀️',
@@ -1586,7 +1586,7 @@ const EMOJI_BY_ID = {
   'sort-les-poubelles': '🗑️', 'suspect': '🕵️', 'malade': '🤒', 'tache-de-rousseur': '🧑‍🦰',
   'femme-enceinte': '🤰', 'antifa': '🏴', 'deprime': '😔', 'attache-lunette': '👓🪢',
   'se-gratte-les-bourses': '🥜', 'se-decrotte-le-nez': '👃', 'se-tiennent-la-main': '👫',
-  'moustache-de-mousquetaire': '⚔️🥸', 'noeud-papillon': '🎀🤵',
+  'moustache-de-mousquetaire': '⚔️🥸', 'noeud-papillon': '🎀🤵', 'crocs': '🐊👟',
 };
 
 const EMOJI_SUGGESTION_RULES = [

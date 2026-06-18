@@ -233,9 +233,19 @@ function renderRows() {
       });
       tierCell.appendChild(select);
 
+      const emojiCell = document.createElement('td');
+      const emojiInput = document.createElement('input');
+      emojiInput.type = 'text';
+      emojiInput.className = 'admin-emoji-input';
+      emojiInput.maxLength = 24;
+      emojiInput.placeholder = 'Emoji';
+      emojiInput.value = Array.isArray(item.emojis) ? item.emojis.join('') : '';
+      emojiCell.appendChild(emojiInput);
+
       const labelCell = document.createElement('td');
       const input = document.createElement('input');
       input.type = 'text';
+      input.className = 'admin-label-input';
       input.value = item.label;
       input.placeholder = 'Nom de catégorie';
       labelCell.appendChild(input);
@@ -252,11 +262,17 @@ function renderRows() {
       actionCell.appendChild(del);
 
       row.appendChild(tierCell);
+      row.appendChild(emojiCell);
       row.appendChild(labelCell);
       row.appendChild(actionCell);
       rowsEl.appendChild(row);
     });
   });
+}
+
+function collectEmojiInput(value) {
+  const text = String(value || '').trim();
+  return text ? [text] : [];
 }
 
 function collectRows() {
@@ -269,13 +285,16 @@ function collectRows() {
     const originalTier = row.dataset.tier;
     const originalIndex = Number(row.dataset.index);
     const tier = row.querySelector('select').value;
-    const label = row.querySelector('input[type="text"]').value.trim();
+    const label = row.querySelector('.admin-label-input').value.trim();
+    const emojis = collectEmojiInput(row.querySelector('.admin-emoji-input')?.value);
     if (!label) return;
     const existing = categories[originalTier]?.[originalIndex];
-    next[tier].push({
+    const item = {
       id: existing?.id || `custom-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       label,
-    });
+    };
+    if (emojis.length) item.emojis = emojis;
+    next[tier].push(item);
   });
 
   categories = next;

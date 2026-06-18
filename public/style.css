@@ -1827,7 +1827,7 @@ input[type="text"]::placeholder {
 
 .admin-table {
   width: 100%;
-  min-width: 620px;
+  min-width: 720px;
   border-collapse: collapse;
 }
 
@@ -1860,6 +1860,11 @@ input[type="text"]::placeholder {
   color: var(--ink);
   box-shadow: none;
   font: 900 0.95rem var(--body-font);
+}
+
+.admin-emoji-input {
+  text-align: center;
+  font-size: 1.2rem;
 }
 
 .admin-row-delete {

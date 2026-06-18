@@ -529,7 +529,16 @@ function saveCategories(categories) {
 function normalizeCategories(categories) {
   return Object.fromEntries(Object.entries(categories).map(([tier, items]) => [
     tier,
-    (items || []).map(({ id, label }) => ({ id, label })),
+    (items || []).map(({ id, label, emojis, emoji }) => {
+      const normalized = { id, label };
+      const emojiValues = Array.isArray(emojis) ? emojis : (emoji ? [emoji] : []);
+      const normalizedEmojis = emojiValues
+        .map(value => String(value || '').trim().slice(0, 24))
+        .filter(Boolean)
+        .slice(0, 2);
+      if (normalizedEmojis.length) normalized.emojis = normalizedEmojis;
+      return normalized;
+    }),
   ]));
 }
 
