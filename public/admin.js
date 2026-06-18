@@ -270,8 +270,9 @@ function renderRows() {
   });
 }
 
-function collectEmojiInput(value) {
+function collectEmojiInput(value, existingEmojis = []) {
   const text = String(value || '').trim();
+  if (Array.isArray(existingEmojis) && existingEmojis.join('') === text) return existingEmojis;
   return text ? [text] : [];
 }
 
@@ -286,9 +287,9 @@ function collectRows() {
     const originalIndex = Number(row.dataset.index);
     const tier = row.querySelector('select').value;
     const label = row.querySelector('.admin-label-input').value.trim();
-    const emojis = collectEmojiInput(row.querySelector('.admin-emoji-input')?.value);
     if (!label) return;
     const existing = categories[originalTier]?.[originalIndex];
+    const emojis = collectEmojiInput(row.querySelector('.admin-emoji-input')?.value, existing?.emojis);
     const item = {
       id: existing?.id || `custom-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       label,
