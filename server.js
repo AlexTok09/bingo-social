@@ -614,22 +614,34 @@ function normalizeVisitorStats(rawVisitors = {}) {
   const visitors = rawVisitors && typeof rawVisitors === 'object' ? rawVisitors : {};
   const rawById = visitors.byId && typeof visitors.byId === 'object' ? visitors.byId : {};
   const byId = {};
+  let humans = 0;
+  let bots = 0;
 
   Object.entries(rawById).forEach(([id, entry]) => {
     if (!id || !entry || typeof entry !== 'object') return;
     const firstSeen = Number(entry.firstSeen || entry.lastSeen) || Date.now();
     const lastSeen = Number(entry.lastSeen || entry.firstSeen) || firstSeen;
+    const userAgent = String(entry.userAgent || '').slice(0, 180);
+    // On reclassifie au chargement à partir du user-agent déjà stocké : les
+    // anciens visiteurs profitent ainsi du filtrage bots sans donnée en plus.
+    const isBot = typeof entry.isBot === 'boolean'
+      ? entry.isBot
+      : classifyUserAgent(userAgent).likelyBot;
     byId[id] = {
       firstSeen,
       lastSeen,
       visits: Number(entry.visits || 0),
-      userAgent: String(entry.userAgent || '').slice(0, 180),
+      userAgent,
       pathname: String(entry.pathname || '').slice(0, 120),
+      isBot,
     };
+    if (isBot) bots += 1; else humans += 1;
   });
 
+  // byId n'est jamais purgé : il fait foi pour les totaux cumulés.
   return {
-    total: Math.max(Number(visitors.total || 0), Object.keys(byId).length),
+    total: Math.max(Number(visitors.total || 0), humans),
+    bots: Math.max(Number(visitors.bots || 0), bots),
     byId,
   };
 }
@@ -639,6 +651,11 @@ function normalizeStats(raw = {}) {
   const qrScans = raw.qrScans && typeof raw.qrScans === 'object' ? raw.qrScans : {};
   return {
     gamesPlayed: Number(raw.gamesPlayed || 0),
+    gamesFinished: Number(raw.gamesFinished || 0),
+    gameDurationTotalMs: Number(raw.gameDurationTotalMs || 0),
+    gamePlayersTotal: Number(raw.gamePlayersTotal || 0),
+    gameFastestMs: Number(raw.gameFastestMs || 0),
+    gameLongestMs: Number(raw.gameLongestMs || 0),
     firstAt: Number(raw.firstAt) || Date.now(),
     qrScans: {
       total: Number(qrScans.total || 0),
@@ -673,6 +690,36 @@ function bumpGamesPlayed() {
   saveStats();
 }
 
+// Enregistre une partie qui atteint un gagnant (= réellement terminée).
+// Alimente durée moyenne, taux de complétion et record de rapidité.
+function recordGameFinished(room) {
+  if (!room) return;
+  const startedAt = Number(room.gameStartedAt || room.createdAt) || Date.now();
+  const durationMs = Math.max(0, Date.now() - startedAt);
+  const players = Array.isArray(room.players) ? room.players.length : 0;
+  STATS.gamesFinished = Number(STATS.gamesFinished || 0) + 1;
+  STATS.gameDurationTotalMs = Number(STATS.gameDurationTotalMs || 0) + durationMs;
+  STATS.gamePlayersTotal = Number(STATS.gamePlayersTotal || 0) + players;
+  if (!STATS.gameFastestMs || durationMs < STATS.gameFastestMs) STATS.gameFastestMs = durationMs;
+  if (durationMs > Number(STATS.gameLongestMs || 0)) STATS.gameLongestMs = durationMs;
+  saveStats();
+}
+
+function gameplayStats() {
+  const started = Number(STATS.gamesPlayed || 0);
+  const finished = Number(STATS.gamesFinished || 0);
+  return {
+    started,
+    finished,
+    completionRate: started ? Math.min(1, finished / started) : 0,
+    avgDurationMs: finished ? Math.round(Number(STATS.gameDurationTotalMs || 0) / finished) : 0,
+    avgPlayers: finished ? Number(STATS.gamePlayersTotal || 0) / finished : 0,
+    fastestMs: Number(STATS.gameFastestMs || 0),
+    longestMs: Number(STATS.gameLongestMs || 0),
+    totalDurationMs: Number(STATS.gameDurationTotalMs || 0),
+  };
+}
+
 function visitorHash(clientId) {
   const raw = String(clientId || '').trim().slice(0, 120);
   if (!raw) return '';
@@ -687,11 +734,14 @@ function recordVisitor(payload = {}, req) {
   const current = STATS.visitors?.byId?.[id] || null;
   const userAgent = String(payload.userAgent || req.get('user-agent') || '').slice(0, 180);
   const pathname = String(payload.pathname || req.path || '/').slice(0, 120);
+  const isBot = classifyUserAgent(userAgent).likelyBot;
 
-  STATS.visitors ||= { total: 0, byId: {} };
+  STATS.visitors ||= { total: 0, bots: 0, byId: {} };
   STATS.visitors.byId ||= {};
   if (!current) {
-    STATS.visitors.total = Number(STATS.visitors.total || 0) + 1;
+    // On ne gonfle plus le total avec les crawlers : ils sont comptés à part.
+    if (isBot) STATS.visitors.bots = Number(STATS.visitors.bots || 0) + 1;
+    else STATS.visitors.total = Number(STATS.visitors.total || 0) + 1;
   }
   STATS.visitors.byId[id] = {
     firstSeen: Number(current?.firstSeen) || now,
@@ -699,13 +749,15 @@ function recordVisitor(payload = {}, req) {
     visits: Number(current?.visits || 0) + 1,
     userAgent,
     pathname,
+    isBot,
   };
   saveStats();
   return visitorStats();
 }
 
 function visitorStats() {
-  const entries = Object.values(STATS.visitors?.byId || {});
+  const all = Object.values(STATS.visitors?.byId || {});
+  const entries = all.filter(entry => !entry.isBot);
   const now = Date.now();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -714,6 +766,7 @@ function visitorStats() {
 
   return {
     total: Number(STATS.visitors?.total || entries.length || 0),
+    bots: Number(STATS.visitors?.bots || (all.length - entries.length) || 0),
     known: entries.length,
     today: seenAfter(today.getTime()),
     newToday: entries.filter(entry => Number(entry.firstSeen || 0) >= today.getTime()).length,
@@ -880,6 +933,7 @@ async function applyCategories(categories, options = {}) {
 
   for (const room of rooms.values()) {
     room.winner = null;
+    room.gameStartedAt = Date.now();
     room.players.forEach(p => {
       clearReconnectTimer(p);
       p.disconnectedAt = null;
@@ -1063,12 +1117,16 @@ app.get('/api/admin/stats', (req, res) => {
     return;
   }
   const grids = Object.values(CUSTOM_GRIDS);
+  const activePlayers = [...rooms.values()].reduce((sum, room) => sum + (room.players?.length || 0), 0);
   res.json({
     gamesPlayed: STATS.gamesPlayed,
+    gamesFinished: STATS.gamesFinished,
     firstAt: STATS.firstAt,
     activeRooms: rooms.size,
+    activePlayers,
     customGrids: grids.length,
     customGridPlays: grids.reduce((sum, grid) => sum + (grid.plays || 0), 0),
+    gameplay: gameplayStats(),
     visitors: visitorStats(),
     qr: qrScanStats(),
   });
@@ -1311,6 +1369,7 @@ io.on('connection', (socket) => {
       customGridName: customGrid?.name || null,
       categories: sourceCategories,
       createdAt: Date.now(),
+      gameStartedAt: Date.now(),
     });
     if (customGrid) {
       customGrid.plays = (customGrid.plays || 0) + 1;
@@ -1483,6 +1542,7 @@ io.on('connection', (socket) => {
     const winCategory = evaluateWinner(room, player, categoryKey);
     if (winCategory && !room.winner) {
       room.winner = { id: player.id, clientId: player.clientId, name: player.name, category: winCategory, hard: (room.tiersToWin || 1) > 1 };
+      recordGameFinished(room);
       io.to(roomCode).emit('game-won', room.winner);
     }
 
@@ -1744,6 +1804,7 @@ io.on('connection', (socket) => {
     const winCategory = evaluateWinner(room, player, categoryKey);
     if (winCategory && !room.winner) {
       room.winner = { id: player.id, clientId: player.clientId, name: player.name, category: winCategory, hard: (room.tiersToWin || 1) > 1 };
+      recordGameFinished(room);
       io.to(roomCode).emit('game-won', room.winner);
     }
 
@@ -1761,6 +1822,7 @@ io.on('connection', (socket) => {
 
     room.tiersToWin = payload && payload.difficulty === 'hard' ? 2 : 1;
     room.winner = null;
+    room.gameStartedAt = Date.now();
     room.players.forEach(p => {
       clearReconnectTimer(p);
       p.grid = generateGrid(room.categories || CATEGORIES);

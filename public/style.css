@@ -1704,6 +1704,58 @@ input[type="text"]::placeholder {
   font-size: 1rem;
 }
 
+.admin-stats h2 {
+  margin-bottom: 2px;
+  font: 900 0.95rem var(--font);
+  text-transform: uppercase;
+}
+
+.admin-stat-caption {
+  margin-bottom: 12px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  opacity: 0.6;
+}
+
+.admin-metric-group {
+  margin-bottom: 14px;
+}
+
+.admin-metric-group:last-child {
+  margin-bottom: 0;
+}
+
+.admin-metric-group h3 {
+  margin-bottom: 6px;
+  font: 900 0.78rem var(--font);
+  text-transform: uppercase;
+}
+
+.admin-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 8px;
+}
+
+.admin-metric-grid div {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border: 2px solid var(--ink);
+  border-radius: 7px;
+  background: var(--paper);
+}
+
+.admin-metric-grid strong {
+  font: 900 1.05rem var(--font);
+}
+
+.admin-metric-grid span {
+  font-size: 0.7rem;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
 .admin-qr-stats {
   margin-bottom: 14px;
   padding: 12px;

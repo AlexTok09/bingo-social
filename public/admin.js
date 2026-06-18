@@ -74,25 +74,84 @@ async function loadCategories() {
   }
 }
 
+function formatCount(value) {
+  return Number(value || 0).toLocaleString('fr-FR');
+}
+
+function formatDuration(ms) {
+  const totalSec = Math.round(Number(ms || 0) / 1000);
+  if (totalSec <= 0) return '—';
+  if (totalSec < 60) return `${totalSec} s`;
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  if (min < 60) return sec ? `${min} min ${String(sec).padStart(2, '0')}` : `${min} min`;
+  const h = Math.floor(min / 60);
+  const rem = min % 60;
+  return rem ? `${h} h ${String(rem).padStart(2, '0')}` : `${h} h`;
+}
+
+function formatPercent(ratio) {
+  return `${Math.round(Number(ratio || 0) * 100)} %`;
+}
+
+function metricGroup(parent, title, items) {
+  const group = document.createElement('div');
+  group.className = 'admin-metric-group';
+  if (title) {
+    const heading = document.createElement('h3');
+    heading.textContent = title;
+    group.appendChild(heading);
+  }
+  const grid = document.createElement('div');
+  grid.className = 'admin-metric-grid';
+  items.forEach(([value, label]) => appendMetric(grid, label, value));
+  group.appendChild(grid);
+  parent.appendChild(group);
+}
+
 async function loadStats() {
   if (!statsEl) return;
   try {
     const s = await adminFetch('/api/admin/stats');
     const since = s.firstAt ? new Date(s.firstAt).toLocaleDateString('fr-FR') : '—';
-    const visitors = s.visitors || {};
-    const count = value => Number(value || 0).toLocaleString('fr-FR');
-    statsEl.innerHTML = `
-      <strong>🎲 ${s.gamesPlayed}</strong> parties jouées depuis le ${since}
-      · ${s.activeRooms} salon(s) actif(s)
-      · ${s.customGrids} grille(s) custom (${s.customGridPlays} parties)
-      <br>
-      <strong>👤 ${count(visitors.total)}</strong> visiteurs uniques
-      · ${count(visitors.today)} aujourd’hui
-      · ${count(visitors.newToday)} nouveaux aujourd’hui
-      · ${count(visitors.last7Days)} sur 7 jours
-      · ${count(visitors.last30Days)} sur 30 jours
-      · ${count(visitors.returning)} revenus
-    `;
+    const v = s.visitors || {};
+    const g = s.gameplay || {};
+
+    statsEl.innerHTML = '';
+    const title = document.createElement('h2');
+    title.textContent = 'Tableau de bord';
+    statsEl.appendChild(title);
+    const caption = document.createElement('p');
+    caption.className = 'admin-stat-caption';
+    caption.textContent = `Depuis le ${since}`;
+    statsEl.appendChild(caption);
+
+    metricGroup(statsEl, '🎲 Parties', [
+      [formatCount(g.started ?? s.gamesPlayed), 'lancées'],
+      [formatCount(g.finished ?? s.gamesFinished), 'terminées'],
+      [formatPercent(g.completionRate), 'taux de complétion'],
+      [formatDuration(g.avgDurationMs), 'durée moyenne'],
+      [formatDuration(g.fastestMs), 'partie éclair'],
+      [g.avgPlayers ? g.avgPlayers.toFixed(1) : '—', 'joueurs / partie'],
+    ]);
+
+    metricGroup(statsEl, '🟢 En direct', [
+      [formatCount(s.activeRooms), 'salons actifs'],
+      [formatCount(s.activePlayers), 'joueurs en ligne'],
+      [formatCount(s.customGrids), 'grilles custom'],
+      [formatCount(s.customGridPlays), 'parties custom'],
+    ]);
+
+    metricGroup(statsEl, '👤 Visiteurs uniques', [
+      [formatCount(v.total), 'total'],
+      [formatCount(v.today), 'aujourd’hui'],
+      [formatCount(v.newToday), 'nouveaux'],
+      [formatCount(v.last7Days), '7 jours'],
+      [formatCount(v.last30Days), '30 jours'],
+      [formatCount(v.returning), 'revenus'],
+      [formatCount(v.bots), 'bots écartés'],
+    ]);
+
     statsEl.hidden = false;
     renderQrStats(s.qr);
   } catch {
