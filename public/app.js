@@ -394,7 +394,7 @@ function applyPendingBonusState(pendingBonus) {
   }
 }
 
-function showWinnerState(winner, { playEffects = true } = {}) {
+function showWinnerState(winner, { playEffects = true, playSound = true } = {}) {
   if (!winner) return;
   winOverlay.className = 'overlay active win-tier-' + winner.category;
   winDrawing.textContent = categoryEmoji({ id: winner.category, label: TIER_NAMES[winner.category] || winner.category });
@@ -406,7 +406,7 @@ function showWinnerState(winner, { playEffects = true } = {}) {
       : `Grille "${TIER_NAMES[winner.category] || winner.category}" complétée`;
   btnNewGame.style.display = 'block';
   if (playEffects) {
-    playWinCasinoSound(winner.category);
+    if (playSound) playWinCasinoSound(winner.category);
     restartWinBurst();
     const winAnims = { ordinaire: winAnimOrdinaire, semi: winAnimSemi, rare: winAnimRare, legendaire: winAnimLegendaire };
     (winAnims[winner.category] || winAnimOrdinaire)();
@@ -488,9 +488,51 @@ function playWinCasinoSound(category) {
   playSfx(category === 'legendaire' ? LEGENDARY_WIN_SOUND : WIN_SOUND);
 }
 
+// Explosion d'emojis plein écran (pluie + flash arc-en-ciel), réutilisée
+// par toutes les victoires. Respecte prefers-reduced-motion.
+function launchEmojiExplosion({ count = 24, duration = 3500, withRainbow = true } = {}) {
+  if (prefersReducedMotion()) return null;
+  const chaos = document.createElement('div');
+  chaos.className = 'emoji-explosion-layer';
+  chaos.style.cssText = 'position:fixed;inset:0;z-index:9998;pointer-events:none;overflow:hidden';
+  document.body.appendChild(chaos);
+
+  if (withRainbow) {
+    const rainbow = document.createElement('div');
+    rainbow.style.cssText = 'position:fixed;inset:0;z-index:9997;pointer-events:none;animation:rainbowFlash 0.15s linear infinite;mix-blend-mode:overlay;opacity:0.45';
+    chaos.appendChild(rainbow);
+  }
+
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const emojiRain = [];
+  for (let i = 0; i < count; i++) {
+    const drop = document.createElement('span');
+    drop.textContent = CONFETTI_EMOJIS[Math.floor(Math.random() * CONFETTI_EMOJIS.length)];
+    drop.style.cssText = `position:absolute;left:0;top:0;font-size:${1.5 + Math.random() * 2}rem;opacity:0.85;will-change:transform;`;
+    chaos.appendChild(drop);
+    emojiRain.push({ el: drop, x: Math.random() * w, y: -30 - Math.random() * h * 0.2, speed: 2 + Math.random() * 4, wobble: Math.random() * 3 - 1.5 });
+  }
+
+  const start = performance.now();
+  function tick(now) {
+    if (now - start > duration) { chaos.remove(); return; }
+    emojiRain.forEach(d => {
+      d.y += d.speed;
+      d.x += d.wobble;
+      if (d.y > h + 30) { d.y = -30; d.x = Math.random() * w; }
+      d.el.style.transform = `translate(${d.x}px,${d.y}px)`;
+    });
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+  return chaos;
+}
+
 function winAnimOrdinaire() {
   launchEmojiConfetti();
   setTimeout(() => launchEmojiConfetti(), 500);
+  launchEmojiExplosion({ count: 20, duration: 3000 });
   const content = document.querySelector('.win-content');
   if (content) {
     content.style.animation = 'slam 0.28s ease, winShake 0.2s ease 4';
@@ -505,6 +547,7 @@ function winAnimOrdinaire() {
 
 function winAnimSemi() {
   for (let i = 0; i < 3; i++) setTimeout(() => launchEmojiConfetti(), i * 350);
+  launchEmojiExplosion({ count: 26, duration: 3800 });
   const content = document.querySelector('.win-content');
   if (content) {
     content.style.animation = 'slam 0.28s ease, winShake 0.12s ease 10, winGlow 0.3s ease infinite alternate';
@@ -521,6 +564,7 @@ function winAnimSemi() {
 
 function winAnimRare() {
   for (let i = 0; i < 4; i++) setTimeout(() => launchEmojiConfetti(), i * 300);
+  launchEmojiExplosion({ count: 30, duration: 4200 });
   const content = document.querySelector('.win-content');
   if (content) {
     content.style.animation = 'winShake 0.15s ease 8, winGlow 0.6s ease infinite alternate';
@@ -535,28 +579,13 @@ function winAnimRare() {
 
 function winAnimLegendaire() {
   if (prefersReducedMotion()) return;
-  const chaos = document.createElement('div');
-  chaos.id = 'legendaire-chaos';
-  chaos.style.cssText = 'position:fixed;inset:0;z-index:9998;pointer-events:none;overflow:hidden';
-  document.body.appendChild(chaos);
 
   for (let i = 0; i < 8; i++) setTimeout(() => launchEmojiConfetti(), i * 250);
 
-  const rainbow = document.createElement('div');
-  rainbow.style.cssText = 'position:fixed;inset:0;z-index:9997;pointer-events:none;animation:rainbowFlash 0.15s linear infinite;mix-blend-mode:overlay;opacity:0.6';
-  chaos.appendChild(rainbow);
-
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-  const emojiRain = [];
-  for (let i = 0; i < 30; i++) {
-    const drop = document.createElement('span');
-    drop.textContent = CONFETTI_EMOJIS[Math.floor(Math.random() * CONFETTI_EMOJIS.length)];
-    const startX = Math.random() * w;
-    drop.style.cssText = `position:absolute;left:0;top:0;font-size:${1.5 + Math.random() * 2}rem;opacity:0.85;will-change:transform;`;
-    chaos.appendChild(drop);
-    emojiRain.push({ el: drop, x: startX, y: -30 - Math.random() * h * 0.2, speed: 2 + Math.random() * 4, wobble: Math.random() * 3 - 1.5 });
-  }
+  // Explosion d'emojis la plus intense (plus dense, opacité du flash relevée).
+  const chaos = launchEmojiExplosion({ count: 30, duration: 5000 });
+  const rainbow = chaos?.querySelector('div');
+  if (rainbow) rainbow.style.opacity = '0.6';
 
   document.body.style.animation = 'screenShake 0.08s linear infinite';
 
@@ -576,26 +605,12 @@ function winAnimLegendaire() {
     title.style.animation = 'textGlitch 0.1s steps(2) infinite';
   }
 
-  const startRain = performance.now();
-  function rainTick(now) {
-    if (now - startRain > 5000) return;
-    emojiRain.forEach(d => {
-      d.y += d.speed;
-      d.x += d.wobble;
-      if (d.y > h + 30) { d.y = -30; d.x = Math.random() * w; }
-      d.el.style.transform = `translate(${d.x}px,${d.y}px)`;
-    });
-    requestAnimationFrame(rainTick);
-  }
-  requestAnimationFrame(rainTick);
-
   setTimeout(() => {
     clearInterval(flipInterval);
     document.body.style.animation = '';
     document.body.style.transform = '';
     if (content) content.style.animation = 'slam 0.28s ease';
     if (title) title.style.animation = '';
-    chaos.remove();
   }, 5000);
 }
 
@@ -1570,7 +1585,9 @@ if (socket) {
   });
 
   socket.on('game-won', ({ name, category }) => {
-    showWinnerState({ name, category }, { playEffects: true });
+    // Son de victoire déclenché en tout premier, avant le rendu de l'overlay.
+    playWinCasinoSound(category);
+    showWinnerState({ name, category }, { playEffects: true, playSound: false });
   });
 
   socket.on('new-game-started', ({ grid, tiersToWin: t }) => {
@@ -1640,7 +1657,7 @@ const EMOJI_BY_ID = {
   'rasta': '🇯🇲', 'shopper': '🛍️', 'bonnet': '🎅', 'sac-banane': '👝🍌',
   'velo-a-main': '🚶‍♂️🚲', 'porte-un-bebe': '👩‍🍼', 'velo-pliant': '🚲🪗', 'fume-une-cigarette': '🚬',
   'habit-de-groupe-musique': '👕🎸', 'porte-un-maillot-d-une-equipe-de-sport': '👕⚽',
-  'punk-a-chien': '🧷🐕', 'panama': '👒🌴', 'cheveux-jusqu-au-fesses': '💇‍♀️',
+  'punk-a-chien': '🧑‍🎤🐕', 'panama': '👒🌴', 'cheveux-jusqu-au-fesses': '💇‍♀️',
   'fouille-dans-l-horodateur': '🅿️🔍', 'il-elle-court': '🏃‍♀️', 'trebuche': '💥🤸',
   'jette-megot-par-terre': '🚬👇', 'pull-sur-les-epaules': '👔⛵', 'a-deux-sur-le-velo': '🚲👫',
   'enregistre-danse-tiktok': '📲💃', 'voiture-mariage': '💒🚗', 'vehicule-paris-dakar': '🏜️🏍️',
@@ -1665,7 +1682,7 @@ const EMOJI_SUGGESTION_RULES = [
   { emoji: '🧍‍♀️🐩', all: ['femme'], any: ['chien', 'dog', 'caniche'] },
   { emoji: '🧍‍♂️🐕', all: ['homme'], any: ['chien', 'dog', 'caniche'] },
   { emoji: '🐕💩', any: ['toutounette', 'crotte', 'dejection'] },
-  { emoji: '🧷🐕', all: ['punk'], any: ['chien', 'dog'] },
+  { emoji: '🧑‍🎤🐕', all: ['punk'], any: ['chien', 'dog'] },
   { emoji: '🐩', any: ['caniche'] },
   { emoji: '🐕', any: ['chien', 'chiot', 'toutou', 'clebs', 'dog'] },
   { emoji: '🐈', any: ['chat', 'cat'] },
@@ -2258,7 +2275,7 @@ function categoryEmoji(item) {
   if (key.includes('trotinette') || key.includes('electrique')) return '🛴';
   if (key.includes('jogger') || key.includes('jogg')) return '🏃';
   if (key.includes('tricot')) return '🧶';
-  if (key.includes('pigeon') && key.includes('mange')) return '🍞';
+  if (key.includes('pigeon') && key.includes('mange')) return '🍞🐦';
   if (key.includes('mange')) return '🍔';
   if (key.includes('rire') && !key.includes('fou')) return '😂';
   if (key.includes('dock') || key.includes('martins')) return '👢';
