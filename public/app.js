@@ -5,6 +5,7 @@ const SESSION_ROOM_KEY = 'bingo-room-code';
 const SESSION_NAME_KEY = 'bingo-player-name';
 const MY_GRIDS_KEY = 'bingo-my-grids';
 const VISITOR_PING_DAY_KEY = 'bingo-visitor-ping-day';
+const GESTURE_HINT_KEY = 'bingo-gesture-hint-seen';
 const TIER_NAMES = {
   ordinaire: 'Ordinaire',
   semi: 'Semi-Ordinaire',
@@ -240,6 +241,41 @@ function showToast(msg) {
 function showError(msg) {
   errorMsg.textContent = msg;
   setTimeout(() => { if (errorMsg.textContent === msg) errorMsg.textContent = ''; }, 4000);
+}
+
+// --- Feedback de connexion (cold-start Render) ---
+// Sans ça, un clic sur « Créer » pendant le réveil du serveur ne montre rien
+// et l'utilisateur re-tape ou abandonne.
+let entryUnlockTimer = null;
+
+function entryButtons() {
+  return [btnCreate, btnJoin, btnCustomStartPlay].filter(Boolean);
+}
+
+function beginConnecting() {
+  const cold = !socket || !socket.connected;
+  entryButtons().forEach(btn => {
+    if (btn.dataset.idleLabel == null) btn.dataset.idleLabel = btn.textContent;
+    btn.disabled = true;
+    btn.classList.add('is-connecting');
+    btn.textContent = cold ? 'Réveil du serveur…' : 'Connexion…';
+  });
+  if (cold) showError('Réveil du serveur, ça peut prendre quelques secondes…');
+  window.clearTimeout(entryUnlockTimer);
+  entryUnlockTimer = window.setTimeout(() => {
+    endConnecting();
+    showError('Le serveur tarde à répondre. Réessaie.');
+  }, 60000);
+}
+
+function endConnecting() {
+  window.clearTimeout(entryUnlockTimer);
+  entryUnlockTimer = null;
+  entryButtons().forEach(btn => {
+    btn.disabled = false;
+    btn.classList.remove('is-connecting');
+    if (btn.dataset.idleLabel != null) btn.textContent = btn.dataset.idleLabel;
+  });
 }
 
 function escapeHtml(value) {
@@ -1064,6 +1100,7 @@ function launchCustomGridGame(code, name) {
   setStoredSessionValue(SESSION_NAME_KEY, playerName);
   pendingJoinFallback = null;
   startBgMusic();
+  beginConnecting();
   emitSocket('create-room', { playerName: normalizedName, clientId, customGridCode });
   return true;
 }
@@ -1248,6 +1285,7 @@ btnCreate.addEventListener('click', () => {
   playerName = name;
   setStoredSessionValue(SESSION_NAME_KEY, playerName);
   startBgMusic();
+  beginConnecting();
   emitSocket('create-room', { playerName: name, clientId, customGridCode });
 });
 
@@ -1259,6 +1297,7 @@ btnJoin.addEventListener('click', () => {
   playerName = name;
   setStoredSessionValue(SESSION_NAME_KEY, playerName);
   startBgMusic();
+  beginConnecting();
   if (code.length < 4) {
     pendingJoinFallback = null;
     emitSocket('create-room', { playerName: name, clientId, customGridCode: code });
@@ -1317,10 +1356,12 @@ if (socket) {
   });
 
   socket.on('connect_error', () => {
+    endConnecting();
     showError('Connexion temps réel impossible : serveur Socket.IO requis.');
   });
 
   socket.on('room-created', ({ code, grid, tiersToWin: t }) => {
+    endConnecting();
     pendingJoinFallback = null;
     roomCode = code;
     setStoredSessionValue(SESSION_ROOM_KEY, roomCode);
@@ -1339,6 +1380,7 @@ if (socket) {
   });
 
   socket.on('room-joined', ({ code, grid, tiersToWin: t }) => {
+    endConnecting();
     pendingJoinFallback = null;
     roomCode = code;
     setStoredSessionValue(SESSION_ROOM_KEY, roomCode);
@@ -1367,6 +1409,7 @@ if (socket) {
       });
       return;
     }
+    endConnecting();
     pendingJoinFallback = null;
     showError(msg);
   });
@@ -1568,6 +1611,26 @@ function enterGame() {
   showScreen(screenGame);
   updateJokerSlot();
   renderGrid();
+  showGestureHintOnce();
+}
+
+// Astuce gestuelle affichée une seule fois : les gestes (double-tap, appui
+// long) ne sont sinon expliqués que dans les règles, que personne ne lit.
+function showGestureHintOnce() {
+  let seen = false;
+  try { seen = window.localStorage.getItem(GESTURE_HINT_KEY) === '1'; } catch {}
+  if (seen) return;
+  const hint = $('#gesture-hint');
+  if (!hint) return;
+  hint.hidden = false;
+  requestAnimationFrame(() => hint.classList.add('visible'));
+  const dismiss = () => {
+    hint.classList.remove('visible');
+    try { window.localStorage.setItem(GESTURE_HINT_KEY, '1'); } catch {}
+    window.setTimeout(() => { hint.hidden = true; }, 300);
+  };
+  $('#gesture-hint-close')?.addEventListener('click', dismiss, { once: true });
+  window.setTimeout(() => { if (!hint.hidden) dismiss(); }, 9000);
 }
 
 const EMOJI_BY_ID = {
@@ -1581,7 +1644,7 @@ const EMOJI_BY_ID = {
   'fouille-dans-l-horodateur': '🅿️🔍', 'il-elle-court': '🏃‍♀️', 'trebuche': '💥🤸',
   'jette-megot-par-terre': '🚬👇', 'pull-sur-les-epaules': '👔⛵', 'a-deux-sur-le-velo': '🚲👫',
   'enregistre-danse-tiktok': '📲💃', 'voiture-mariage': '💒🚗', 'vehicule-paris-dakar': '🏜️🏍️',
-  'toutounette-actif': '🐕💩', 'on-se-croise-on-hesite': '🤷↔️', 'string-visible': '🍑🩲',
+  'toutounette-actif': '🐕💩🛍️', 'on-se-croise-on-hesite': '🤷↔️', 'string-visible': '🍑🩲',
   'poil-de-carotte': '🧑‍🦰🥕', 'full-piercing': '💍🧷',
   'pantalon-vert': '👖🟢', 'chemise-dans-pantalon': '👔👖', 'coupe-afro': '🪮',
   'treilli': '🪖', 'marcel': '🎽', 'bide-a-biere': '🍺🫃', 'homme-et-chien': '🧍‍♂️🐕',
@@ -2407,6 +2470,10 @@ function buildGrid() {
       const cell = document.createElement('div');
       cell.className = `cell ${category}-cell`;
       cell.dataset.idx = index;
+      cell.setAttribute('role', 'button');
+      cell.tabIndex = 0;
+      cell.setAttribute('aria-pressed', 'false');
+      cell.setAttribute('aria-label', item.label.replace(/\s*\(ultra\)/gi, ''));
 
       const emojiSpan = document.createElement('span');
       emojiSpan.className = 'emoji';
@@ -2472,68 +2539,80 @@ function buildGrid() {
           window.setTimeout(() => { didLongPress = false; }, 0);
           return;
         }
-        const checked = myChecked[category] || [];
-        if (freeCheckCategory) {
-          if (freeCheckCategory !== '*' && category !== freeCheckCategory) {
-            showToast(`Choisis dans ${TIER_NAMES[freeCheckCategory]}`);
-            return;
-          }
-          if (checked.includes(index)) {
-            showToast('Choisis une case non cochée');
-            return;
-          }
-          animateFreeCheckCell(cell);
-          emitSocket('free-check-cell', { category, index });
-          return;
-        }
-        if (rerollRemaining > 0) {
-          if (checked.includes(index)) {
-            showToast('Choisis une case non cochée');
-            return;
-          }
-          emitSocket('reroll-cell', { category, index });
-          return;
-        }
-        // 2e tap sur une case déjà cochée = ajouter une répétition.
-        if (checked.includes(index)) {
-          clearLegendaryConfirm();
-          playMultipickSound();
-          emitSocket('repeat-cell', { category, index });
-          cell.classList.add('long-pressing');
-          window.setTimeout(() => cell.classList.remove('long-pressing'), 260);
-          return;
-        }
-        // Case non cochée : on coche (la légendaire demande confirmation).
-        if (category === 'legendaire') {
-          if (pendingLegendaryConfirm !== index) {
-            requestLegendaryConfirm(cell, index);
-            return;
-          }
-          clearLegendaryConfirm();
-        } else {
-          clearLegendaryConfirm();
-        }
-        playTapSound(category, false);
-        applyLocalToggle(category, index);
-        renderGrid();
-        const sent = emitSocket('toggle-cell', { category, index }, ({ ok, reason }) => {
-          if (ok) return;
-          applyLocalToggle(category, index);
-          renderGrid();
-          if (reason) showToast(reason);
-        });
-        if (!sent) {
-          applyLocalToggle(category, index);
-          renderGrid();
-          return;
-        }
-        cell.classList.add('just-checked');
-        setTimeout(() => cell.classList.remove('just-checked'), 250);
+        tapCell(category, index, cell);
+      });
+
+      // Accessibilité clavier : Entrée/Espace cochent comme un tap.
+      cell.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return;
+        event.preventDefault();
+        tapCell(category, index, cell);
       });
 
       container.appendChild(cell);
     });
   });
+}
+
+// Action d'un tap (souris/tactile/clavier) sur une case de la grille.
+function tapCell(category, index, cell) {
+  const checked = myChecked[category] || [];
+  if (freeCheckCategory) {
+    if (freeCheckCategory !== '*' && category !== freeCheckCategory) {
+      showToast(`Choisis dans ${TIER_NAMES[freeCheckCategory]}`);
+      return;
+    }
+    if (checked.includes(index)) {
+      showToast('Choisis une case non cochée');
+      return;
+    }
+    animateFreeCheckCell(cell);
+    emitSocket('free-check-cell', { category, index });
+    return;
+  }
+  if (rerollRemaining > 0) {
+    if (checked.includes(index)) {
+      showToast('Choisis une case non cochée');
+      return;
+    }
+    emitSocket('reroll-cell', { category, index });
+    return;
+  }
+  // 2e tap sur une case déjà cochée = ajouter une répétition.
+  if (checked.includes(index)) {
+    clearLegendaryConfirm();
+    playMultipickSound();
+    emitSocket('repeat-cell', { category, index });
+    cell.classList.add('long-pressing');
+    window.setTimeout(() => cell.classList.remove('long-pressing'), 260);
+    return;
+  }
+  // Case non cochée : on coche (la légendaire demande confirmation).
+  if (category === 'legendaire') {
+    if (pendingLegendaryConfirm !== index) {
+      requestLegendaryConfirm(cell, index);
+      return;
+    }
+    clearLegendaryConfirm();
+  } else {
+    clearLegendaryConfirm();
+  }
+  playTapSound(category, false);
+  applyLocalToggle(category, index);
+  renderGrid();
+  const sent = emitSocket('toggle-cell', { category, index }, ({ ok, reason }) => {
+    if (ok) return;
+    applyLocalToggle(category, index);
+    renderGrid();
+    if (reason) showToast(reason);
+  });
+  if (!sent) {
+    applyLocalToggle(category, index);
+    renderGrid();
+    return;
+  }
+  cell.classList.add('just-checked');
+  setTimeout(() => cell.classList.remove('just-checked'), 250);
 }
 
 function renderGrid() {
@@ -2554,6 +2633,7 @@ function renderGrid() {
       const isChecked = checked.includes(index);
 
       cell.classList.toggle('checked', isChecked);
+      cell.setAttribute('aria-pressed', isChecked ? 'true' : 'false');
       cell.classList.toggle('reroll-target', !isChecked && rerollRemaining > 0);
       cell.classList.toggle('freecheck-target', !isChecked && (freeCheckCategory === category || freeCheckCategory === '*'));
 

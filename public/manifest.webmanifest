@@ -1,0 +1,20 @@
+{
+  "name": "Sociolo-Bingo",
+  "short_name": "SocioloBingo",
+  "description": "Le jeu d'observation et de jugement social en terrasse.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff1bd",
+  "theme_color": "#fff1bd",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

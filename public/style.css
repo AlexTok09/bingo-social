@@ -235,6 +235,41 @@ input[type="text"]::placeholder {
   filter: grayscale(0.45);
 }
 
+/* Bouton d'entrée en attente de connexion (cold-start) : on garde la couleur
+   et on signale l'activité plutôt que de griser comme un simple disabled. */
+.btn.is-connecting {
+  opacity: 1;
+  filter: none;
+  cursor: progress;
+  animation: connectingPulse 1s ease-in-out infinite;
+}
+
+@keyframes connectingPulse {
+  0%, 100% { box-shadow: 5px 5px 0 var(--shadow); }
+  50% { box-shadow: 2px 2px 0 var(--shadow); transform: translate(2px, 2px); }
+}
+
+/* Focus clavier visible (les boutons n'en avaient aucun). */
+.btn:focus-visible,
+.btn-icon:focus-visible,
+.btn-close:focus-visible,
+.btn-mini:focus-visible {
+  outline: 3px solid var(--acid);
+  outline-offset: 3px;
+}
+
+.cell:focus-visible {
+  outline: 4px solid var(--blue);
+  outline-offset: -4px;
+  z-index: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn.is-connecting {
+    animation: none;
+  }
+}
+
 .btn:active,
 .btn-icon:active,
 .btn-close:active,
@@ -2045,5 +2080,65 @@ input[type="text"]::placeholder {
 
   .admin-qr-metrics {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* --- Astuce gestuelle (1er lancement) --- */
+.gesture-hint {
+  position: fixed;
+  left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  transform: translate(-50%, 12px);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(420px, calc(100vw - 24px));
+  padding: 10px 12px;
+  border: 3px solid var(--ink);
+  border-radius: 9px;
+  background: #fff9dd;
+  box-shadow: 5px 5px 0 var(--shadow);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.gesture-hint.visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+
+.gesture-hint p {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--ink);
+}
+
+.gesture-hint-close {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 3px solid var(--ink);
+  border-radius: 7px;
+  background: var(--acid);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.gesture-hint-close:active {
+  transform: translate(2px, 2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gesture-hint {
+    transition: opacity 0.25s ease;
+    transform: translate(-50%, 0);
   }
 }

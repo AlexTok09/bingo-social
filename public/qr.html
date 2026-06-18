@@ -35,10 +35,33 @@
         campaign,
       };
 
-      const fetchWithTimeout = (url, options = {}, timeoutMs = 1800) => Promise.race([
+      const fetchWithTimeout = (url, options = {}, timeoutMs = 3000) => Promise.race([
         fetch(url, options),
         new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs)),
       ]);
+
+      // Le scan est envoyé via sendBeacon : la livraison survit à la redirection
+      // et n'a pas de timeout, donc le 1er scan qui réveille le serveur (cold
+      // start Render, ~30-50 s) n'est plus perdu. Fallback fetch keepalive.
+      const sent = (() => {
+        try {
+          if (navigator.sendBeacon) {
+            const blob = new Blob([JSON.stringify(scanPayload)], { type: 'application/json' });
+            return navigator.sendBeacon('/api/qr-scan', blob);
+          }
+        } catch {}
+        return false;
+      })();
+      if (!sent) {
+        try {
+          fetch('/api/qr-scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(scanPayload),
+            keepalive: true,
+          }).catch(() => {});
+        } catch {}
+      }
 
       let redirectTarget = '/';
       try {
@@ -47,15 +70,6 @@
         if (typeof data.redirectTarget === 'string' && data.redirectTarget.startsWith('/')) {
           redirectTarget = data.redirectTarget;
         }
-      } catch {}
-
-      try {
-        await fetchWithTimeout('/api/qr-scan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(scanPayload),
-          keepalive: true,
-        });
       } catch {}
 
       window.location.replace(redirectTarget);
