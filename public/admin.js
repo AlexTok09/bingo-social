@@ -220,31 +220,56 @@ async function loadAdminGrids() {
   if (!gridsListEl) return;
   gridsListEl.innerHTML = '<p class="muted">Chargement...</p>';
   try {
-    const data = await fetch('/api/custom-grids').then(r => r.json());
+    const data = await adminFetch('/api/admin/custom-grids');
     const grids = data.grids || [];
     if (!grids.length) {
-      gridsListEl.innerHTML = '<p class="muted">Aucune grille publique.</p>';
+      gridsListEl.innerHTML = '<p class="muted">Aucune grille.</p>';
       return;
     }
     gridsListEl.innerHTML = '';
     grids.forEach(grid => {
+      const hidden = grid.isPublic === false;
       const card = document.createElement('div');
       card.className = 'admin-grid-card';
+      if (hidden) card.classList.add('is-hidden-grid');
       const info = document.createElement('div');
       const name = document.createElement('strong');
       name.textContent = grid.name; // textContent: noms fournis par les joueurs
       const meta = document.createElement('span');
-      meta.textContent = `${grid.plays || 0} parties`;
+      meta.textContent = `${grid.plays || 0} parties${hidden ? ' · masquée' : ''}`;
       info.append(name, meta);
+
+      const actions = document.createElement('div');
+      actions.className = 'admin-grid-actions';
+      const toggle = document.createElement('button');
+      toggle.className = 'btn btn-secondary';
+      toggle.textContent = hidden ? 'Afficher' : 'Masquer';
+      toggle.addEventListener('click', () => toggleGridVisibility(grid));
       const del = document.createElement('button');
       del.className = 'btn btn-secondary';
       del.textContent = 'Supprimer';
       del.addEventListener('click', () => deleteGrid(grid));
-      card.append(info, del);
+      actions.append(toggle, del);
+
+      card.append(info, actions);
       gridsListEl.appendChild(card);
     });
   } catch {
     gridsListEl.innerHTML = '<p class="muted">Impossible de charger les grilles.</p>';
+  }
+}
+
+async function toggleGridVisibility(grid) {
+  const makePublic = grid.isPublic === false;
+  try {
+    await adminFetch(`/api/admin/custom-grids/${encodeURIComponent(grid.code)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isPublic: makePublic }),
+    });
+    setStatus(makePublic ? `Grille « ${grid.name} » affichée.` : `Grille « ${grid.name} » masquée.`);
+    loadAdminGrids();
+  } catch (error) {
+    setStatus(error.message);
   }
 }
 

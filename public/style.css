@@ -1889,6 +1889,18 @@ input[type="text"]::placeholder {
   flex-shrink: 0;
 }
 
+.admin-grid-card .admin-grid-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.admin-grid-card.is-hidden-grid {
+  opacity: 0.65;
+  background: #f3f1ea;
+}
+
 .admin-toggle {
   display: flex;
   align-items: center;

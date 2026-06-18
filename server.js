@@ -1096,6 +1096,39 @@ app.post('/api/visitor-ping', (req, res) => {
   res.status(201).json({ ok: true, visitors });
 });
 
+// Liste admin : toutes les grilles, y compris les masquées (l'endpoint public
+// /api/custom-grids filtre isPublic === false, donc l'admin ne les verrait pas).
+app.get('/api/admin/custom-grids', (req, res) => {
+  if (!isAdminRequest(req)) {
+    res.status(401).json({ error: 'Mot de passe invalide.' });
+    return;
+  }
+  const grids = Object.values(CUSTOM_GRIDS)
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+    .map(publicCustomGrid);
+  res.json({ grids });
+});
+
+// Masquer / réafficher une grille sans la supprimer.
+app.patch('/api/admin/custom-grids/:code', (req, res) => {
+  if (!isAdminRequest(req)) {
+    res.status(401).json({ error: 'Mot de passe invalide.' });
+    return;
+  }
+  const code = String(req.params.code || '').toUpperCase().trim();
+  const grid = CUSTOM_GRIDS[code];
+  if (!grid) {
+    res.status(404).json({ error: 'Grille introuvable.' });
+    return;
+  }
+  if (typeof req.body?.isPublic === 'boolean') {
+    grid.isPublic = req.body.isPublic;
+    grid.updatedAt = Date.now();
+    saveCustomGrids();
+  }
+  res.json({ ok: true, grid: publicCustomGrid(grid) });
+});
+
 app.delete('/api/admin/custom-grids/:code', (req, res) => {
   if (!isAdminRequest(req)) {
     res.status(401).json({ error: 'Mot de passe invalide.' });
