@@ -4,6 +4,7 @@ const CLIENT_ID_KEY = 'bingo-client-id';
 const SESSION_ROOM_KEY = 'bingo-room-code';
 const SESSION_NAME_KEY = 'bingo-player-name';
 const MY_GRIDS_KEY = 'bingo-my-grids';
+const VISITOR_PING_DAY_KEY = 'bingo-visitor-ping-day';
 const TIER_NAMES = {
   ordinaire: 'Ordinaire',
   semi: 'Semi-Ordinaire',
@@ -73,6 +74,34 @@ function setStoredSessionValue(key, value) {
     }
   } catch {}
 }
+
+function pingVisitor() {
+  if (typeof fetch !== 'function') return;
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    if (window.localStorage.getItem(VISITOR_PING_DAY_KEY) === today) return;
+  } catch {}
+
+  fetch('/api/visitor-ping', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      clientId,
+      userAgent: navigator.userAgent,
+      pathname: window.location.pathname,
+    }),
+    keepalive: true,
+  })
+    .then(response => {
+      if (!response.ok) return;
+      try {
+        window.localStorage.setItem(VISITOR_PING_DAY_KEY, today);
+      } catch {}
+    })
+    .catch(() => {});
+}
+
+pingVisitor();
 
 // Grilles publiées depuis cette machine : { CODE: { token, name, subject } }.
 // Permet de ré-éditer ses grilles sans le lien secret tant que le cache n'est pas effacé.
@@ -836,20 +865,21 @@ function collectCustomGridPayload() {
 
 function showEditorResult(grid) {
   const editUrl = `${window.location.origin}${window.location.pathname}?editGrid=${encodeURIComponent(grid.code)}&token=${encodeURIComponent(grid.editToken)}`;
+  const playName = grid.name || grid.code;
   editorResult.hidden = false;
   editorResult.innerHTML = `
     <strong>Grille publiée</strong>
-    <span>Code jeu : ${grid.code}</span>
+    <span>Tape « ${escapeHtml(playName)} » dans CODE pour jouer</span>
     <span>Lien secret d’édition :</span>
     <button class="btn-mini" type="button" data-copy="${editUrl}">Copier le lien</button>
-    <button class="btn-mini" type="button" data-play="${grid.code}">Jouer avec</button>
+    <button class="btn-mini" type="button" data-play="${escapeHtml(playName)}">Jouer avec</button>
   `;
   editorResult.querySelector('[data-copy]').addEventListener('click', async () => {
     await navigator.clipboard?.writeText(editUrl);
     showToast('Lien d’édition copié');
   });
   editorResult.querySelector('[data-play]').addEventListener('click', () => {
-    openCustomGridPlayTab(grid.code, grid.name);
+    openCustomGridPlayTab(playName, grid.name);
   });
 }
 
@@ -873,9 +903,9 @@ function closeGridSavedNotice() {
 function showGridSavedNotice(grid, onClose) {
   const name = (grid?.name || gridNameInput.value || '').trim();
   gridSavedTitle.textContent = name ? `Grille « ${name} » sauvegardée` : 'Grille sauvegardée';
-  gridSavedHint.textContent = grid?.code
-    ? `Rentre-la dans CODE (ou le code ${grid.code}) pour jouer dedans`
-    : 'Rentre-la dans CODE pour jouer dedans';
+  gridSavedHint.textContent = name
+    ? `Tape « ${name} » dans CODE pour jouer dedans`
+    : 'Tape son nom dans CODE pour jouer dedans';
   gridSavedOnClose = typeof onClose === 'function' ? onClose : null;
 
   gridSavedOverlay.classList.remove('closing');
@@ -993,7 +1023,7 @@ async function copyEditLinkReminder() {
 }
 
 function openCustomGridStart(code, gridName = '') {
-  pendingCustomGridCode = String(code || '').trim().toUpperCase();
+  pendingCustomGridCode = String(code || '').trim();
   if (!pendingCustomGridCode) return;
   closeCustomGridPanel();
   closeEditLinkReminder();
@@ -1007,7 +1037,7 @@ function openCustomGridStart(code, gridName = '') {
 }
 
 function openCustomGridPlayTab(code, gridName = '') {
-  const customGridCode = String(code || '').trim().toUpperCase();
+  const customGridCode = String(code || '').trim();
   if (!customGridCode) return;
   const params = new URLSearchParams();
   params.set('playGrid', customGridCode);
@@ -1022,7 +1052,7 @@ function openCustomGridPlayTab(code, gridName = '') {
 }
 
 function launchCustomGridGame(code, name) {
-  const customGridCode = String(code || '').trim().toUpperCase();
+  const customGridCode = String(code || '').trim();
   const normalizedName = String(name || '').trim();
   if (!customGridCode || !normalizedName) return false;
   playerName = normalizedName;
@@ -1116,7 +1146,7 @@ function renderMyGridsSection(mine) {
     card.innerHTML = `
       <div>
         <strong>${escapeHtml(entry.name || code)}</strong>
-        <span>${entry.subject ? `${escapeHtml(entry.subject)} · ` : ''}${escapeHtml(code)}</span>
+        <span>À taper dans CODE</span>
       </div>
       <div class="custom-grid-card-actions">
         <button class="btn-mini" type="button" data-edit>Éditer</button>
@@ -1125,7 +1155,7 @@ function renderMyGridsSection(mine) {
       </div>
     `;
     card.querySelector('[data-edit]').addEventListener('click', () => editMyGrid(code, entry.token));
-    card.querySelector('[data-play]').addEventListener('click', () => openCustomGridPlayTab(code, entry.name || code));
+    card.querySelector('[data-play]').addEventListener('click', () => openCustomGridPlayTab(entry.name || code, entry.name || code));
     card.querySelector('[data-delete]').addEventListener('click', () => deleteMyGrid(code, entry.token, entry.name || code));
     section.appendChild(card);
   });
@@ -1168,11 +1198,11 @@ async function loadCustomGrids() {
       card.innerHTML = `
         <div>
           <strong>${escapeHtml(grid.name)}</strong>
-          <span>${grid.subject ? `${escapeHtml(grid.subject)} · ` : ''}${escapeHtml(grid.code)}</span>
+          <span>À taper dans CODE</span>
         </div>
         <button class="btn-mini" type="button">Jouer</button>
       `;
-      card.querySelector('button').addEventListener('click', () => openCustomGridPlayTab(grid.code, grid.name));
+      card.querySelector('button').addEventListener('click', () => openCustomGridPlayTab(grid.name, grid.name));
       publicWrap.appendChild(card);
     });
   } catch {

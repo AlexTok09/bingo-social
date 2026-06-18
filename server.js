@@ -45,6 +45,8 @@ const CUSTOM_GRID_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const MAX_CUSTOM_GRIDS = 500;
 const MAX_GRIDS_PER_OWNER = 50;
 const MAX_QR_EVENTS = 5000;
+const VISITOR_PING_RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const VISITOR_PING_RATE_LIMIT_MAX = 30;
 const CUSTOM_LABEL_MAX = 38;
 const CUSTOM_NAME_MAX = 48;
 const CUSTOM_SUBJECT_MAX = 60;
@@ -408,6 +410,7 @@ const httpGridRateLimits = new Map();
 const QR_SCAN_RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const QR_SCAN_RATE_LIMIT_MAX = 30;
 const qrScanRateLimits = new Map();
+const visitorPingRateLimits = new Map();
 
 function checkRateLimit(socket) {
   const now = Date.now();
@@ -461,6 +464,22 @@ function checkQrScanRateLimit(req, res) {
   return true;
 }
 
+function checkVisitorPingRateLimit(req, res) {
+  const now = Date.now();
+  const key = httpRateLimitKey(req);
+  const current = visitorPingRateLimits.get(key);
+  if (!current || now - current.windowStart > VISITOR_PING_RATE_LIMIT_WINDOW_MS) {
+    visitorPingRateLimits.set(key, { windowStart: now, count: 1 });
+    return true;
+  }
+  current.count += 1;
+  if (current.count > VISITOR_PING_RATE_LIMIT_MAX) {
+    res.status(429).json({ error: 'Trop de requêtes, ralentis.' });
+    return false;
+  }
+  return true;
+}
+
 setInterval(() => {
   const now = Date.now();
   for (const [key, entry] of httpGridRateLimits) {
@@ -478,6 +497,15 @@ setInterval(() => {
     }
   }
 }, QR_SCAN_RATE_LIMIT_WINDOW_MS).unref();
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of visitorPingRateLimits) {
+    if (now - entry.windowStart > VISITOR_PING_RATE_LIMIT_WINDOW_MS * 2) {
+      visitorPingRateLimits.delete(key);
+    }
+  }
+}, VISITOR_PING_RATE_LIMIT_WINDOW_MS).unref();
 
 function loadCategories() {
   const defaults = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
@@ -573,6 +601,30 @@ function saveCustomGrids() {
   fs.writeFileSync(CUSTOM_GRIDS_FILE, JSON.stringify(CUSTOM_GRIDS, null, 2), 'utf-8');
 }
 
+function normalizeVisitorStats(rawVisitors = {}) {
+  const visitors = rawVisitors && typeof rawVisitors === 'object' ? rawVisitors : {};
+  const rawById = visitors.byId && typeof visitors.byId === 'object' ? visitors.byId : {};
+  const byId = {};
+
+  Object.entries(rawById).forEach(([id, entry]) => {
+    if (!id || !entry || typeof entry !== 'object') return;
+    const firstSeen = Number(entry.firstSeen || entry.lastSeen) || Date.now();
+    const lastSeen = Number(entry.lastSeen || entry.firstSeen) || firstSeen;
+    byId[id] = {
+      firstSeen,
+      lastSeen,
+      visits: Number(entry.visits || 0),
+      userAgent: String(entry.userAgent || '').slice(0, 180),
+      pathname: String(entry.pathname || '').slice(0, 120),
+    };
+  });
+
+  return {
+    total: Math.max(Number(visitors.total || 0), Object.keys(byId).length),
+    byId,
+  };
+}
+
 // Compteur privé : nombre total de parties lancées (création de salon + rejeu).
 function normalizeStats(raw = {}) {
   const qrScans = raw.qrScans && typeof raw.qrScans === 'object' ? raw.qrScans : {};
@@ -583,6 +635,7 @@ function normalizeStats(raw = {}) {
       total: Number(qrScans.total || 0),
       events: Array.isArray(qrScans.events) ? qrScans.events.filter(Boolean).slice(-MAX_QR_EVENTS) : [],
     },
+    visitors: normalizeVisitorStats(raw.visitors),
   };
 }
 
@@ -609,6 +662,56 @@ function saveStats() {
 function bumpGamesPlayed() {
   STATS.gamesPlayed += 1;
   saveStats();
+}
+
+function visitorHash(clientId) {
+  const raw = String(clientId || '').trim().slice(0, 120);
+  if (!raw) return '';
+  return crypto.createHash('sha256').update(raw).digest('hex').slice(0, 32);
+}
+
+function recordVisitor(payload = {}, req) {
+  const id = visitorHash(payload.clientId);
+  if (!id) return visitorStats();
+
+  const now = Date.now();
+  const current = STATS.visitors?.byId?.[id] || null;
+  const userAgent = String(payload.userAgent || req.get('user-agent') || '').slice(0, 180);
+  const pathname = String(payload.pathname || req.path || '/').slice(0, 120);
+
+  STATS.visitors ||= { total: 0, byId: {} };
+  STATS.visitors.byId ||= {};
+  if (!current) {
+    STATS.visitors.total = Number(STATS.visitors.total || 0) + 1;
+  }
+  STATS.visitors.byId[id] = {
+    firstSeen: Number(current?.firstSeen) || now,
+    lastSeen: now,
+    visits: Number(current?.visits || 0) + 1,
+    userAgent,
+    pathname,
+  };
+  saveStats();
+  return visitorStats();
+}
+
+function visitorStats() {
+  const entries = Object.values(STATS.visitors?.byId || {});
+  const now = Date.now();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dayMs = 24 * 60 * 60 * 1000;
+  const seenAfter = timestamp => entries.filter(entry => Number(entry.lastSeen || 0) >= timestamp).length;
+
+  return {
+    total: Number(STATS.visitors?.total || entries.length || 0),
+    known: entries.length,
+    today: seenAfter(today.getTime()),
+    newToday: entries.filter(entry => Number(entry.firstSeen || 0) >= today.getTime()).length,
+    last7Days: seenAfter(now - 7 * dayMs),
+    last30Days: seenAfter(now - 30 * dayMs),
+    returning: entries.filter(entry => Number(entry.visits || 0) > 1).length,
+  };
 }
 
 function classifyUserAgent(userAgent = '') {
@@ -715,12 +818,11 @@ function resolveCustomGrid(lookup = '', clientId = null) {
   return matches[0] || null;
 }
 
-function findPublicGridByName(name = '', excludeCode = null) {
+function findCustomGridByName(name = '', excludeCode = null) {
   const slug = slugifyLabel(name);
   if (!slug) return null;
   return Object.values(CUSTOM_GRIDS).find(grid =>
     grid.code !== excludeCode &&
-    grid.isPublic !== false &&
     slugifyLabel(grid.name) === slug
   ) || null;
 }
@@ -925,6 +1027,12 @@ app.post('/api/qr-scan', (req, res) => {
   res.status(201).json({ ok: true, event: 'qr_scan', timestamp: event.timestamp });
 });
 
+app.post('/api/visitor-ping', (req, res) => {
+  if (!checkVisitorPingRateLimit(req, res)) return;
+  const visitors = recordVisitor(req.body || {}, req);
+  res.status(201).json({ ok: true, visitors });
+});
+
 app.delete('/api/admin/custom-grids/:code', (req, res) => {
   if (!isAdminRequest(req)) {
     res.status(401).json({ error: 'Mot de passe invalide.' });
@@ -952,6 +1060,7 @@ app.get('/api/admin/stats', (req, res) => {
     activeRooms: rooms.size,
     customGrids: grids.length,
     customGridPlays: grids.reduce((sum, grid) => sum + (grid.plays || 0), 0),
+    visitors: visitorStats(),
     qr: qrScanStats(),
   });
 });
@@ -1024,7 +1133,7 @@ app.post('/api/custom-grids', (req, res) => {
     return;
   }
 
-  if (req.body.isPublic !== false && findPublicGridByName(req.body.name)) {
+  if (findCustomGridByName(req.body.name)) {
     res.status(409).json({ error: 'Ce nom de grille est déjà pris. Choisis-en un autre.' });
     return;
   }
@@ -1080,7 +1189,7 @@ app.put('/api/custom-grids/:code/edit/:token', (req, res) => {
     return;
   }
 
-  if (req.body.isPublic !== false && findPublicGridByName(req.body.name, code)) {
+  if (findCustomGridByName(req.body.name, code)) {
     res.status(409).json({ error: 'Ce nom de grille est déjà pris. Choisis-en un autre.' });
     return;
   }

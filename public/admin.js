@@ -79,10 +79,19 @@ async function loadStats() {
   try {
     const s = await adminFetch('/api/admin/stats');
     const since = s.firstAt ? new Date(s.firstAt).toLocaleDateString('fr-FR') : '—';
+    const visitors = s.visitors || {};
+    const count = value => Number(value || 0).toLocaleString('fr-FR');
     statsEl.innerHTML = `
       <strong>🎲 ${s.gamesPlayed}</strong> parties jouées depuis le ${since}
       · ${s.activeRooms} salon(s) actif(s)
       · ${s.customGrids} grille(s) custom (${s.customGridPlays} parties)
+      <br>
+      <strong>👤 ${count(visitors.total)}</strong> visiteurs uniques
+      · ${count(visitors.today)} aujourd’hui
+      · ${count(visitors.newToday)} nouveaux aujourd’hui
+      · ${count(visitors.last7Days)} sur 7 jours
+      · ${count(visitors.last30Days)} sur 30 jours
+      · ${count(visitors.returning)} revenus
     `;
     statsEl.hidden = false;
     renderQrStats(s.qr);
@@ -166,7 +175,7 @@ async function loadAdminGrids() {
       const name = document.createElement('strong');
       name.textContent = grid.name; // textContent: noms fournis par les joueurs
       const meta = document.createElement('span');
-      meta.textContent = `${grid.subject} · ${grid.code} · ${grid.plays || 0} parties`;
+      meta.textContent = `${grid.plays || 0} parties`;
       info.append(name, meta);
       const del = document.createElement('button');
       del.className = 'btn btn-secondary';
@@ -181,10 +190,10 @@ async function loadAdminGrids() {
 }
 
 async function deleteGrid(grid) {
-  if (!confirm(`Supprimer la grille « ${grid.name} » (${grid.code}) ?`)) return;
+  if (!confirm(`Supprimer la grille « ${grid.name} » ?`)) return;
   try {
     await adminFetch(`/api/admin/custom-grids/${encodeURIComponent(grid.code)}`, { method: 'DELETE' });
-    setStatus(`Grille ${grid.code} supprimée.`);
+    setStatus(`Grille « ${grid.name} » supprimée.`);
     loadAdminGrids();
   } catch (error) {
     setStatus(error.message);
