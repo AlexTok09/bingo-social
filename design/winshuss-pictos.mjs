@@ -92,7 +92,7 @@ export const CATEGORIES = [
   ["trebuche", "a person tripping over their own feet, mid-fall, arms flailing"],
   ["deguise", "a person in a full dinosaur costume waving"],
   ["batons-marche-nordique", "a senior power-walking with two nordic walking poles"],
-  ["controle-policier-raciste", "two police officers checking the ID papers of an annoyed young man"],
+  ["controle-policier", "two police officers checking ID papers"],
   ["gros-faf", "an angry red-faced man with a crew cut, polo shirt and clenched fists"],
   ["col-roule", "an intellectual person wearing a turtleneck sweater, chin resting on hand"],
   ["embrouille-de-couple", "a couple arguing face to face with angry scribbles between them"],

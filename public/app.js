@@ -1584,10 +1584,10 @@ if (socket) {
     showToast(`${name} parti`);
   });
 
-  socket.on('game-won', ({ name, category }) => {
+  socket.on('game-won', (winner) => {
     // Son de victoire déclenché en tout premier, avant le rendu de l'overlay.
-    playWinCasinoSound(category);
-    showWinnerState({ name, category }, { playEffects: true, playSound: false });
+    playWinCasinoSound(winner.category);
+    showWinnerState(winner, { playEffects: true, playSound: false });
   });
 
   socket.on('new-game-started', ({ grid, tiersToWin: t }) => {
@@ -1671,6 +1671,7 @@ const EMOJI_BY_ID = {
   'femme-enceinte': '🤰', 'antifa': '🏴', 'deprime': '😔', 'attache-lunette': '👓🪢',
   'se-gratte-les-bourses': '🥜', 'se-decrotte-le-nez': '👃', 'se-tiennent-la-main': '👫',
   'moustache-de-mousquetaire': '⚔️🥸', 'noeud-papillon': '🎀🤵', 'crocs': '🐊👟',
+  'gilet-fluo': '🦺🟢', 'gilet-jaune': '🦺',
 };
 
 const EMOJI_SUGGESTION_RULES = [
