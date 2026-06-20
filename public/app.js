@@ -20,6 +20,7 @@ let myBonuses = emptyBonuses();
 let roomCode = null;
 let playerName = null;
 let myId = null;
+let myGridsMemoryCache = {};
 const clientId = getOrCreateClientId();
 
 const $ = (sel) => document.querySelector(sel);
@@ -46,15 +47,50 @@ function emptyBonuses() {
   }, { joker: 0 });
 }
 
+function getCookieValue(name) {
+  const prefix = `${encodeURIComponent(name)}=`;
+  return document.cookie
+    .split(';')
+    .map(part => part.trim())
+    .find(part => part.startsWith(prefix))
+    ?.slice(prefix.length) || '';
+}
+
+function setCookieValue(name, value) {
+  document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; Max-Age=31536000; Path=/; SameSite=Lax`;
+}
+
 function getOrCreateClientId() {
+  const fromCookie = () => {
+    try {
+      const cookieValue = decodeURIComponent(getCookieValue(CLIENT_ID_KEY));
+      return cookieValue || '';
+    } catch {
+      return '';
+    }
+  };
+
   try {
     const existing = window.localStorage.getItem(CLIENT_ID_KEY);
-    if (existing) return existing;
+    if (existing) {
+      setCookieValue(CLIENT_ID_KEY, existing);
+      return existing;
+    }
+    const cookieExisting = fromCookie();
+    if (cookieExisting) {
+      window.localStorage.setItem(CLIENT_ID_KEY, cookieExisting);
+      return cookieExisting;
+    }
     const generated = window.crypto?.randomUUID?.() || `cid_${Math.random().toString(36).slice(2)}${Date.now()}`;
     window.localStorage.setItem(CLIENT_ID_KEY, generated);
+    setCookieValue(CLIENT_ID_KEY, generated);
     return generated;
   } catch {
-    return window.crypto?.randomUUID?.() || `cid_${Math.random().toString(36).slice(2)}${Date.now()}`;
+    const cookieExisting = fromCookie();
+    if (cookieExisting) return cookieExisting;
+    const generated = window.crypto?.randomUUID?.() || `cid_${Math.random().toString(36).slice(2)}${Date.now()}`;
+    try { setCookieValue(CLIENT_ID_KEY, generated); } catch {}
+    return generated;
   }
 }
 
@@ -104,32 +140,37 @@ function pingVisitor() {
 
 pingVisitor();
 
-// Grilles publiées depuis cette machine : { CODE: { token, name, subject } }.
-// Permet de ré-éditer ses grilles sans le lien secret tant que le cache n'est pas effacé.
+// Grilles publiées par ce navigateur : { CODE: { token, name, subject } }.
+// Le serveur peut recharger cette liste quand le clientId local est conservé.
 function getMyGrids() {
   try {
     const parsed = JSON.parse(window.localStorage.getItem(MY_GRIDS_KEY) || '{}');
-    return parsed && typeof parsed === 'object' ? parsed : {};
+    if (parsed && typeof parsed === 'object') {
+      myGridsMemoryCache = { ...myGridsMemoryCache, ...parsed };
+      return myGridsMemoryCache;
+    }
   } catch {
-    return {};
+    return myGridsMemoryCache;
   }
+  return myGridsMemoryCache;
 }
 
 function rememberMyGrid(grid) {
   if (!grid?.code || !grid?.editToken) return;
+  myGridsMemoryCache[grid.code] = {
+    token: grid.editToken,
+    name: grid.name || '',
+    subject: grid.subject || '',
+    updatedAt: Date.now(),
+  };
   try {
-    const all = getMyGrids();
-    all[grid.code] = {
-      token: grid.editToken,
-      name: grid.name || '',
-      subject: grid.subject || '',
-      updatedAt: Date.now(),
-    };
+    const all = { ...getMyGrids(), ...myGridsMemoryCache };
     window.localStorage.setItem(MY_GRIDS_KEY, JSON.stringify(all));
   } catch {}
 }
 
 function forgetMyGrid(code) {
+  delete myGridsMemoryCache[code];
   try {
     const all = getMyGrids();
     if (all[code]) {
@@ -137,6 +178,16 @@ function forgetMyGrid(code) {
       window.localStorage.setItem(MY_GRIDS_KEY, JSON.stringify(all));
     }
   } catch {}
+}
+
+async function syncMyGridsFromServer() {
+  try {
+    const response = await fetch(`/api/custom-grids/mine?clientId=${encodeURIComponent(clientId)}`);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return getMyGrids();
+    (data.grids || []).forEach(rememberMyGrid);
+  } catch {}
+  return getMyGrids();
 }
 
 const screenHome = $('#screen-home');
@@ -1193,7 +1244,7 @@ function renderMyGridsSection(mine) {
   section.className = 'my-grids-section';
   const heading = document.createElement('p');
   heading.className = 'custom-grids-subtitle';
-  heading.textContent = 'Mes grilles (cette machine)';
+  heading.textContent = 'Mes grilles';
   section.appendChild(heading);
   codes.forEach(code => {
     const entry = mine[code];
@@ -1220,7 +1271,12 @@ function renderMyGridsSection(mine) {
 
 async function loadCustomGrids() {
   if (!customGridsList) return;
-  const mine = getMyGrids();
+  customGridsList.innerHTML = '';
+  const loading = document.createElement('p');
+  loading.className = 'muted';
+  loading.textContent = 'Chargement...';
+  customGridsList.appendChild(loading);
+  const mine = await syncMyGridsFromServer();
   customGridsList.innerHTML = '';
   renderMyGridsSection(mine);
 

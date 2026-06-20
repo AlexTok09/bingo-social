@@ -607,7 +607,9 @@ function loadCustomGrids() {
 
 function saveCustomGrids() {
   fs.mkdirSync(path.dirname(CUSTOM_GRIDS_FILE), { recursive: true });
-  fs.writeFileSync(CUSTOM_GRIDS_FILE, JSON.stringify(CUSTOM_GRIDS, null, 2), 'utf-8');
+  const tmpFile = `${CUSTOM_GRIDS_FILE}.${process.pid}.tmp`;
+  fs.writeFileSync(tmpFile, JSON.stringify(CUSTOM_GRIDS, null, 2), 'utf-8');
+  fs.renameSync(tmpFile, CUSTOM_GRIDS_FILE);
 }
 
 function normalizeVisitorStats(rawVisitors = {}) {
@@ -863,6 +865,10 @@ function publicCustomGrid(grid) {
   };
 }
 
+function privateCustomGrid(grid) {
+  return { ...publicCustomGrid(grid), editToken: grid.editToken };
+}
+
 function resolveCustomGrid(lookup = '', clientId = null) {
   const raw = String(lookup || '').trim();
   if (!raw) return null;
@@ -1012,7 +1018,6 @@ function rerollOneCell(player, tier, index, sourceCategories = CATEGORIES) {
 
   const current = player.grid[tier][index];
   const usedIds = new Set(player.grid[tier].map(item => item.id));
-  usedIds.delete(current.id);
   const hasUltraElsewhere = player.grid[tier].some((item, itemIndex) => itemIndex !== index && ultraKey(item));
   const replacement = shuffleArray(sourceCategories[tier]).find(candidate => {
     const isUltra = Boolean(ultraKey(candidate));
@@ -1200,6 +1205,19 @@ app.get('/api/custom-grids', (req, res) => {
     .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
     .slice(0, 100)
     .map(publicCustomGrid);
+  res.json({ grids });
+});
+
+app.get('/api/custom-grids/mine', (req, res) => {
+  const clientId = typeof req.query.clientId === 'string' ? req.query.clientId.slice(0, 100) : '';
+  if (!clientId) {
+    res.json({ grids: [] });
+    return;
+  }
+  const grids = Object.values(CUSTOM_GRIDS)
+    .filter(grid => grid.ownerClientId === clientId)
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+    .map(privateCustomGrid);
   res.json({ grids });
 });
 
