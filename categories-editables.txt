@@ -27,7 +27,6 @@ Deux amis
 Calvitie
 Hipster
 Velib (ultra)
-Drague de rue
 Créneau
 Rasta
 Trotinette Eclectrique (ultra)
@@ -101,12 +100,19 @@ Goéland solo
 Démarche bizarre
 Double mami
 Double papi
+Porte une baguette
+Leggins
+Boisson à emporter
+Homme poussette
+Chaussure bateau
+Petite bourge
+Petit bourgeois
+Motif jungle
 
 
 Semi-ordinaire:
 Pigeon qui mange un truc
 Habit de groupe musique
-Baguette
 Porte un maillot d'une équipe de sport
 chariot de course
 Punk à chien
@@ -188,6 +194,28 @@ Déprimé
 Attache lunette
 Se gratte les bourses
 Se décrotte le nez
+Sandale chaussette
+Belles chaussettes
+Casquette à l'envers
+Style pas ouf
+Mafiaso style
+Lunette accrochée au col du t-shirt
+Working girl
+Collier badge
+Fat bike
+Monsieur lent
+Madame lente
+Sac sur épaule
+Démarche rigolote
+T-shirt rigolo
+Pansement
+Lunette d'opticien
+Couleur de ouf
+Favoris
+Style cartoon
+Roule du cul
+Espadrille
+Une seule boucle d'oreille
 
 
 
@@ -238,6 +266,14 @@ Double chien
 Noeud papillon
 Pull sans t-shirt
 Chirurgie esthétique
+Éventail
+Sourire en coin
+Se ronge les ongles
+Monsieur perdu
+Chaussures non chaussées
+Gros perv
+Chignon samouraï
+Canotier
 
 Légendaire:
 Accident de la circulation
@@ -256,7 +292,7 @@ Clown
 Sosie
 Malaise ou dead
 Cercueil
-Ouvre les portes
+Effraction
 Se prend une portière
 Bataille de chiens
 Chien de traîneau

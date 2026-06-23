@@ -1709,7 +1709,7 @@ function showGestureHintOnce() {
 const EMOJI_BY_ID = {
   'papi-et-mami': '👵👴', 'doudoune-sans-manche': '🥶🎽', 'femme-et-chien': '🧍‍♀️🐩',
   'vieille-bourgeoise': '👵💎', 'jean-charles-mariniere': '⚓👕', 'poussette': '👶🛒',
-  'velo-cargo': '🚲📦', 'caillra': '😈💸', 'deux-amis': '👭', 'drague-de-rue': '😏👀',
+  'velo-cargo': '🚲📦', 'caillra': '😈💸', 'deux-amis': '👭',
   'rasta': '🇯🇲', 'shopper': '🛍️', 'bonnet': '🎅', 'sac-banane': '👝🍌',
   'velo-a-main': '🚶‍♂️🚲', 'porte-un-bebe': '👩‍🍼', 'velo-pliant': '🚲🪗', 'fume-une-cigarette': '🚬',
   'habit-de-groupe-musique': '👕🎸', 'porte-un-maillot-d-une-equipe-de-sport': '👕⚽',
@@ -1728,6 +1728,19 @@ const EMOJI_BY_ID = {
   'se-gratte-les-bourses': '🥜', 'se-decrotte-le-nez': '👃', 'se-tiennent-la-main': '👫',
   'moustache-de-mousquetaire': '⚔️🥸', 'noeud-papillon': '🎀🤵', 'crocs': '🐊👟',
   'gilet-fluo': '🦺🟢', 'gilet-jaune': '🦺', 'mulet': '💇',
+  'porte-une-baguette': '🥖', 'leggins': '🩰', 'boisson-a-emporter': '🥤',
+  'homme-poussette': '👨‍🍼', 'chaussure-bateau': '⛵👞', 'petite-bourge': '👧💎',
+  'petit-bourgeois': '🤵', 'motif-jungle': '🌴', 'sandale-chaussette': '🧦🩴',
+  'belles-chaussettes': '🧦✨', 'casquette-a-l-envers': '🧢↩️', 'style-pas-ouf': '😬',
+  'mafiaso-style': '🕴️', 'lunette-accrochee-au-col-du-t-shirt': '👓👕',
+  'working-girl': '👩‍💼', 'collier-badge': '🏷️', 'fat-bike': '🚲🛞',
+  'monsieur-lent': '🐌', 'madame-lente': '🐌', 'sac-sur-epaule': '👜',
+  'demarche-rigolote': '🚶🤣', 't-shirt-rigolo': '👕🤣', 'pansement': '🩹',
+  'lunette-d-opticien': '🤓', 'couleur-de-ouf': '🌈', 'favoris': '🧔',
+  'style-cartoon': '🎨', 'roule-du-cul': '🍑', 'espadrille': '🥿',
+  'une-seule-boucle-d-oreille': '👂💍', 'eventail': '🪭', 'sourire-en-coin': '😏',
+  'se-ronge-les-ongles': '💅', 'monsieur-perdu': '🧭', 'chaussures-non-chaussees': '👟🚫',
+  'gros-perv': '😈', 'chignon-samourai': '🥷', 'canotier': '👒', 'effraction': '🚪',
 };
 
 const EMOJI_SUGGESTION_RULES = [
@@ -1867,7 +1880,7 @@ const EMOJI_SUGGESTION_RULES = [
   { emoji: '🏖️', any: ['plage', 'sable', 'serviette'] },
   { emoji: '🚉', any: ['gare', 'train', 'quai'] },
   { emoji: '🏙️', any: ['ville', 'quartier'] },
-  { emoji: '🚪', any: ['ouvre les portes', 'porte'] },
+  { emoji: '🚪', any: ['effraction', 'ouvre les portes', 'porte'] },
   { emoji: '🫨', any: ['portiere', 'portière'] },
   { emoji: '⚰️', any: ['cercueil'] },
   { emoji: '🚑', any: ['malaise', 'dead', 'malade'] },
@@ -2484,7 +2497,7 @@ function categoryEmoji(item) {
   if (key.includes('beauf')) return '🛻';
   if (key.includes('tient la main')) return '👫';
   if (key.includes('meuf')) return '💑';
-  if (key.includes('ouvre les portes')) return '🚪';
+  if (key.includes('effraction') || key.includes('ouvre les portes')) return '🚪';
   if (key.includes('pere et fils')) return '👨‍👦';
   if (key.includes('mere et fille')) return '👩‍👧';
   if (key.includes('crocs')) return '🐊';

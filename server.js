@@ -547,14 +547,70 @@ function migrateCategories(categories) {
   const replacements = {
     'controle-policier-raciste': { id: 'controle-policier', label: 'Contrôle policier' },
     'auto-selfie': { id: 'selfie', label: 'Selfie' },
+    'ouvre-les-portes': { id: 'effraction', label: 'Effraction', emojis: ['🚪'] },
+  };
+  const removeIds = new Set(['drague-de-rue', 'baguette']);
+  const additions = {
+    ordinaire: [
+      { id: 'porte-une-baguette', label: 'Porte une baguette', emojis: ['🥖'] },
+      { id: 'leggins', label: 'Leggins', emojis: ['🩰'] },
+      { id: 'boisson-a-emporter', label: 'Boisson à emporter', emojis: ['🥤'] },
+      { id: 'homme-poussette', label: 'Homme poussette', emojis: ['👨‍🍼'] },
+      { id: 'chaussure-bateau', label: 'Chaussure bateau', emojis: ['⛵👞'] },
+      { id: 'petite-bourge', label: 'Petite bourge', emojis: ['👧💎'] },
+      { id: 'petit-bourgeois', label: 'Petit bourgeois', emojis: ['🤵'] },
+      { id: 'motif-jungle', label: 'Motif jungle', emojis: ['🌴'] },
+    ],
+    semi: [
+      { id: 'sandale-chaussette', label: 'Sandale chaussette', emojis: ['🧦🩴'] },
+      { id: 'belles-chaussettes', label: 'Belles chaussettes', emojis: ['🧦✨'] },
+      { id: 'casquette-a-l-envers', label: 'Casquette à l’envers', emojis: ['🧢↩️'] },
+      { id: 'style-pas-ouf', label: 'Style pas ouf', emojis: ['😬'] },
+      { id: 'mafiaso-style', label: 'Mafiaso style', emojis: ['🕴️'] },
+      { id: 'lunette-accrochee-au-col-du-t-shirt', label: 'Lunette accrochée au col du t-shirt', emojis: ['👓👕'] },
+      { id: 'working-girl', label: 'Working girl', emojis: ['👩‍💼'] },
+      { id: 'collier-badge', label: 'Collier badge', emojis: ['🏷️'] },
+      { id: 'fat-bike', label: 'Fat bike', emojis: ['🚲🛞'] },
+      { id: 'monsieur-lent', label: 'Monsieur lent', emojis: ['🐌'] },
+      { id: 'madame-lente', label: 'Madame lente', emojis: ['🐌'] },
+      { id: 'sac-sur-epaule', label: 'Sac sur épaule', emojis: ['👜'] },
+      { id: 'demarche-rigolote', label: 'Démarche rigolote', emojis: ['🚶🤣'] },
+      { id: 't-shirt-rigolo', label: 'T-shirt rigolo', emojis: ['👕🤣'] },
+      { id: 'pansement', label: 'Pansement', emojis: ['🩹'] },
+      { id: 'lunette-d-opticien', label: 'Lunette d’opticien', emojis: ['🤓'] },
+      { id: 'couleur-de-ouf', label: 'Couleur de ouf', emojis: ['🌈'] },
+      { id: 'favoris', label: 'Favoris', emojis: ['🧔'] },
+      { id: 'style-cartoon', label: 'Style cartoon', emojis: ['🎨'] },
+      { id: 'roule-du-cul', label: 'Roule du cul', emojis: ['🍑'] },
+      { id: 'espadrille', label: 'Espadrille', emojis: ['🥿'] },
+      { id: 'une-seule-boucle-d-oreille', label: 'Une seule boucle d’oreille', emojis: ['👂💍'] },
+    ],
+    rare: [
+      { id: 'eventail', label: 'Éventail', emojis: ['🪭'] },
+      { id: 'sourire-en-coin', label: 'Sourire en coin', emojis: ['😏'] },
+      { id: 'se-ronge-les-ongles', label: 'Se ronge les ongles', emojis: ['💅'] },
+      { id: 'monsieur-perdu', label: 'Monsieur perdu', emojis: ['🧭'] },
+      { id: 'chaussures-non-chaussees', label: 'Chaussures non chaussées', emojis: ['👟🚫'] },
+      { id: 'gros-perv', label: 'Gros perv', emojis: ['😈'] },
+      { id: 'chignon-samourai', label: 'Chignon samouraï', emojis: ['🥷'] },
+      { id: 'canotier', label: 'Canotier', emojis: ['👒'] },
+    ],
   };
 
   return Object.fromEntries(Object.entries(categories).map(([tier, items]) => [
     tier,
-    (items || []).map(item => {
-      const replacement = replacements[item.id];
-      return replacement ? { ...item, ...replacement } : item;
-    }),
+    [
+      ...(items || [])
+        .filter(item => !removeIds.has(item.id))
+        .map(item => {
+          const replacement = replacements[item.id];
+          return replacement ? { ...item, ...replacement } : item;
+        }),
+      ...(additions[tier] || []).filter(item => !(items || []).some(existing => {
+        const existingId = replacements[existing.id]?.id || existing.id;
+        return existingId === item.id;
+      })),
+    ],
   ]));
 }
 
