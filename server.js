@@ -512,13 +512,14 @@ function loadCategories() {
   try {
     if (fs.existsSync(CATEGORIES_FILE)) {
       const data = fs.readFileSync(CATEGORIES_FILE, 'utf-8');
-      const loaded = normalizeCategories({ ...defaults, ...JSON.parse(data) });
+      const loaded = migrateCategories(normalizeCategories({ ...defaults, ...JSON.parse(data) }));
       if (!validateCategoriesConfig(loaded)) {
+        saveCategories(loaded);
         return loaded;
       }
     }
   } catch (e) {}
-  return normalizeCategories(defaults);
+  return migrateCategories(normalizeCategories(defaults));
 }
 
 function saveCategories(categories) {
@@ -538,6 +539,21 @@ function normalizeCategories(categories) {
         .slice(0, 2);
       if (normalizedEmojis.length) normalized.emojis = normalizedEmojis;
       return normalized;
+    }),
+  ]));
+}
+
+function migrateCategories(categories) {
+  const replacements = {
+    'controle-policier-raciste': { id: 'controle-policier', label: 'Contrôle policier' },
+    'auto-selfie': { id: 'selfie', label: 'Selfie' },
+  };
+
+  return Object.fromEntries(Object.entries(categories).map(([tier, items]) => [
+    tier,
+    (items || []).map(item => {
+      const replacement = replacements[item.id];
+      return replacement ? { ...item, ...replacement } : item;
     }),
   ]));
 }

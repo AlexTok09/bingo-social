@@ -1727,7 +1727,7 @@ const EMOJI_BY_ID = {
   'femme-enceinte': '🤰', 'antifa': '🏴', 'deprime': '😔', 'attache-lunette': '👓🪢',
   'se-gratte-les-bourses': '🥜', 'se-decrotte-le-nez': '👃', 'se-tiennent-la-main': '👫',
   'moustache-de-mousquetaire': '⚔️🥸', 'noeud-papillon': '🎀🤵', 'crocs': '🐊👟',
-  'gilet-fluo': '🦺🟢', 'gilet-jaune': '🦺',
+  'gilet-fluo': '🦺🟢', 'gilet-jaune': '🦺', 'mulet': '💇',
 };
 
 const EMOJI_SUGGESTION_RULES = [

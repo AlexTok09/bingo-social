@@ -81,7 +81,7 @@ export const CATEGORIES = [
   ["ivre", "a tipsy person wobbling with swirly eyes, bubbles floating around"],
   ["rasta-blanc", "a white guy with blond dreadlocks and baggy clothes, peace sign"],
   ["couple-decathlon", "a couple in matching hiking outfits with zip-off pants and backpacks"],
-  ["auto-selfie", "a person taking a selfie with duck face and peace sign"],
+  ["selfie", "a person taking a selfie with duck face and peace sign"],
   ["danse", "a person dancing joyfully in the street, musical notes around"],
   ["fouille-horodateur", "a person poking fingers into the coin slot of a parking meter"],
   ["lit-un-livre", "a person reading a book while walking, absorbed"],
