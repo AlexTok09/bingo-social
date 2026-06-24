@@ -549,7 +549,7 @@ function migrateCategories(categories) {
     'auto-selfie': { id: 'selfie', label: 'Selfie' },
     'ouvre-les-portes': { id: 'effraction', label: 'Effraction', emojis: ['🚪'] },
   };
-  const removeIds = new Set(['drague-de-rue', 'baguette']);
+  const removeIds = new Set(['drague-de-rue', 'baguette', 'controle-policier']);
   const additions = {
     ordinaire: [
       { id: 'porte-une-baguette', label: 'Porte une baguette', emojis: ['🥖'] },
