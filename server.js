@@ -50,6 +50,7 @@ const VISITOR_PING_RATE_LIMIT_MAX = 30;
 const CUSTOM_LABEL_MAX = 38;
 const CUSTOM_NAME_MAX = 48;
 const CUSTOM_SUBJECT_MAX = 60;
+const CUSTOM_ITEMS_PER_TIER_MAX = 160;
 
 const CATEGORIES_SOURCE_FILE = path.join(__dirname, 'categories-editables.txt');
 const TIER_HEADINGS = {
@@ -639,7 +640,7 @@ function normalizeCustomCategories(categories) {
         } : null;
       })
       .filter(Boolean)
-      .slice(0, 80);
+      .slice(0, CUSTOM_ITEMS_PER_TIER_MAX);
   }
   return normalized;
 }
