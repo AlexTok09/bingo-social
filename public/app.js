@@ -2451,7 +2451,7 @@ function categoryEmoji(item) {
   if (key.includes('integrale')) return '👖';
   if (key.includes('thune')) return '🤲';
   if (key.includes('gaz')) return '⛽';
-  if (key.includes('barbe') && key.includes('chauve')) return '🧔';
+  if (key.includes('barbe') && key.includes('chauve')) return '🧔🥚';
   if (key.includes('chauve')) return '🥚';
   if (key.includes('vitre')) return '🪞';
   if (key.includes('arrogant') || key.includes('prince')) return '🤴';

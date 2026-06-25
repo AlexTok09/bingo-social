@@ -1795,14 +1795,11 @@ io.on('connection', (socket) => {
     const indexNumber = Number(index);
     const gridItems = player.grid[categoryKey];
     if (!isValidTier(categoryKey) || !Array.isArray(gridItems) || !Number.isInteger(indexNumber) || indexNumber < 0 || indexNumber >= gridItems.length) return;
-    const pickKey = `${categoryKey}:${indexNumber}`;
-    if (player.pendingBonus.picked.includes(pickKey)) return;
-
     player.occurrences ||= emptyOccurrences();
     player.bonuses ||= emptyBonuses();
 
     if (!rerollOneCell(player, categoryKey, indexNumber, room.categories || CATEGORIES)) return;
-    player.pendingBonus.picked.push(pickKey);
+    player.pendingBonus.picked.push(`${categoryKey}:${indexNumber}`);
     player.pendingBonus.remaining -= 1;
     const remaining = player.pendingBonus.remaining;
     if (remaining <= 0) {
