@@ -1500,6 +1500,32 @@ input[type="text"]::placeholder {
   }
 }
 
+@media (max-width: 480px) {
+  .btn-joker {
+    min-width: 46px;
+    min-height: 42px;
+    padding: 3px 8px;
+    font-size: 2.25rem;
+  }
+
+  .btn-joker.has-bonus {
+    background: #fff3a6;
+    border: 3px solid var(--ink);
+    border-radius: 8px;
+    box-shadow: 3px 3px 0 var(--shadow);
+    filter: none;
+  }
+
+  .btn-joker #joker-count {
+    top: -7px;
+    right: -7px;
+    min-width: 22px;
+    min-height: 22px;
+    font-size: 0.72rem;
+    background: var(--pink);
+  }
+}
+
 @media (max-width: 370px) {
   .ascii-title {
     font-size: clamp(2.4rem, 14vw, 3.6rem);
