@@ -715,10 +715,16 @@ function normalizeVisitorStats(rawVisitors = {}) {
 
   // byId n'est jamais purgé : il fait foi pour les totaux cumulés.
   return {
-    total: Math.max(Number(visitors.total || 0), humans),
-    bots: Math.max(Number(visitors.bots || 0), bots),
+    total: humans,
+    bots,
     byId,
   };
+}
+
+function syncVisitorCounters() {
+  const entries = Object.values(STATS.visitors?.byId || {});
+  STATS.visitors.total = entries.filter(entry => !entry.isBot).length;
+  STATS.visitors.bots = entries.filter(entry => entry.isBot).length;
 }
 
 // Compteur privé : nombre total de parties lancées (création de salon + rejeu).
@@ -826,6 +832,7 @@ function recordVisitor(payload = {}, req) {
     pathname,
     isBot,
   };
+  syncVisitorCounters();
   saveStats();
   return visitorStats();
 }
@@ -840,8 +847,8 @@ function visitorStats() {
   const seenAfter = timestamp => entries.filter(entry => Number(entry.lastSeen || 0) >= timestamp).length;
 
   return {
-    total: Number(STATS.visitors?.total || entries.length || 0),
-    bots: Number(STATS.visitors?.bots || (all.length - entries.length) || 0),
+    total: entries.length,
+    bots: all.length - entries.length,
     known: entries.length,
     today: seenAfter(today.getTime()),
     newToday: entries.filter(entry => Number(entry.firstSeen || 0) >= today.getTime()).length,
@@ -852,9 +859,21 @@ function visitorStats() {
 }
 
 function classifyUserAgent(userAgent = '') {
-  const ua = String(userAgent || '');
-  const likelyBot = /\b(bot|crawler|spider|ahrefs|semrush|googlebot|bingbot)\b/i.test(ua);
-  const likelyHuman = !likelyBot && /(iphone|android|mobile safari|crios|chrome mobile)/i.test(ua);
+  const ua = String(userAgent || '').trim();
+  const lowerUa = ua.toLowerCase();
+  const botPattern = [
+    'bot', 'crawler', 'spider', 'scraper', 'robot', 'archiver',
+    'ahrefs', 'semrush', 'mj12bot', 'dotbot', 'petalbot', 'bytespider',
+    'googlebot', 'bingbot', 'yandex', 'duckduckbot', 'baiduspider',
+    'facebookexternalhit', 'twitterbot', 'slackbot', 'discordbot',
+    'linkedinbot', 'telegrambot', 'whatsapp', 'preview',
+    'curl', 'wget', 'python-requests', 'axios', 'node-fetch', 'undici',
+    'headlesschrome', 'puppeteer', 'playwright', 'phantomjs',
+    'lighthouse', 'pagespeed', 'gtmetrix',
+  ].some(token => lowerUa.includes(token));
+  const browserPattern = /(iphone|ipad|android|mobile safari|crios|fxios|chrome|chromium|safari|firefox|edg|opera|samsungbrowser)/i.test(ua);
+  const likelyBot = !ua || botPattern;
+  const likelyHuman = !likelyBot && browserPattern;
   return { likelyHuman, likelyBot };
 }
 

@@ -1,7 +1,7 @@
 {
   "name": "Sociolo-Bingo",
   "short_name": "SocioloBingo",
-  "description": "Le jeu d'observation et de jugement social en terrasse.",
+  "description": "Observer la rue, cocher, rigoler.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
