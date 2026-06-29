@@ -550,7 +550,7 @@ function migrateCategories(categories) {
     'auto-selfie': { id: 'selfie', label: 'Selfie' },
     'ouvre-les-portes': { id: 'effraction', label: 'Effraction', emojis: ['🚪'] },
   };
-  const removeIds = new Set(['drague-de-rue', 'baguette', 'controle-policier']);
+  const removeIds = new Set(['drague-de-rue', 'baguette', 'controle-policier', 'petite-bourge', 'aveugle']);
   const additions = {
     ordinaire: [
       { id: 'porte-une-baguette', label: 'Porte une baguette', emojis: ['🥖'] },
@@ -558,7 +558,6 @@ function migrateCategories(categories) {
       { id: 'boisson-a-emporter', label: 'Boisson à emporter', emojis: ['🥤'] },
       { id: 'homme-poussette', label: 'Homme poussette', emojis: ['👨‍🍼'] },
       { id: 'chaussure-bateau', label: 'Chaussure bateau', emojis: ['⛵👞'] },
-      { id: 'petite-bourge', label: 'Petite bourge', emojis: ['👧💎'] },
       { id: 'petit-bourgeois', label: 'Petit bourgeois', emojis: ['🤵'] },
       { id: 'motif-jungle', label: 'Motif jungle', emojis: ['🌴'] },
     ],

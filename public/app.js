@@ -1729,7 +1729,7 @@ const EMOJI_BY_ID = {
   'moustache-de-mousquetaire': '⚔️🥸', 'noeud-papillon': '🎀🤵', 'crocs': '🐊👟',
   'gilet-fluo': '🦺🟢', 'gilet-jaune': '🦺', 'mulet': '💇',
   'porte-une-baguette': '🥖', 'leggins': '🩰', 'boisson-a-emporter': '🥤',
-  'homme-poussette': '👨‍🍼', 'chaussure-bateau': '⛵👞', 'petite-bourge': '👧💎',
+  'homme-poussette': '👨‍🍼', 'chaussure-bateau': '⛵👞',
   'petit-bourgeois': '🤵', 'motif-jungle': '🌴', 'sandale-chaussette': '🧦🩴',
   'belles-chaussettes': '🧦✨', 'casquette-a-l-envers': '🧢↩️', 'style-pas-ouf': '😬',
   'mafiaso-style': '🕴️', 'lunette-accrochee-au-col-du-t-shirt': '👓👕',
@@ -1831,7 +1831,6 @@ const EMOJI_SUGGESTION_RULES = [
   { emoji: '💼', any: ['mallette', 'attaché case', 'attaché-case'] },
   { emoji: '🗑️', any: ['poubelle', 'poubelles'] },
   { emoji: '🦯', any: ['canne'] },
-  { emoji: '🦮', any: ['aveugle'] },
   { emoji: '🩼', any: ['platre', 'béquille', 'bequille'] },
 
   { emoji: '🍺', any: ['ivre', 'biere', 'bourre', 'alcool'] },
@@ -2521,7 +2520,6 @@ function categoryEmoji(item) {
   if (key.includes('mains dans les poches')) return '🦘';
   if (key.includes('lacet')) return '👟';
   if (key.includes('pecheur')) return '🎣';
-  if (key.includes('aveugle')) return '🦮';
   if (key.includes('chat des rues')) return '🐈';
   if (key.startsWith('rat ')) return '🐀';
   if (key.includes('groupe') && key.includes('pote')) return '👥';

@@ -103,7 +103,6 @@ Ordinaire:
 🥤 Boisson à emporter
 👨‍🍼 Homme poussette
 ⛵👞 Chaussure bateau
-👧💎 Petite bourge
 🤵 Petit bourgeois
 🌴 Motif jungle
 
@@ -256,7 +255,6 @@ Rare:
 🤮 Vomito
 👟 Fait ses lacets
 🎣 Pêcheur
-🦮 Aveugle
 🐈 Chat des rues
 🐀 Rat
 🐶 Double chien
