@@ -382,10 +382,28 @@ async function loadPersistedRooms() {
 async function initRealtimeStore() {
   if (!REDIS_URL) return;
   try {
-    const redisOptions = { lazyConnect: true, maxRetriesPerRequest: null };
+    // Limite les tentatives : si le Redis n'existe plus (URL périmée), on
+    // abandonne vite au lieu de reconnecter à l'infini.
+    const redisOptions = {
+      lazyConnect: true,
+      maxRetriesPerRequest: null,
+      retryStrategy: (times) => (times > 5 ? null : Math.min(times * 200, 2000)),
+    };
     const pubClient = new Redis(REDIS_URL, redisOptions);
     const subClient = pubClient.duplicate();
     const dataClient = pubClient.duplicate();
+
+    // Handlers 'error' obligatoires : sans eux, ioredis émet des
+    // "Unhandled error event" qui inondent les logs quand le Redis est mort.
+    let redisErrorLogged = false;
+    [pubClient, subClient, dataClient].forEach((client) => {
+      client.on('error', (err) => {
+        if (!redisErrorLogged) {
+          console.error(`Redis/Valkey error, falling back to in-memory rooms: ${err.message}`);
+          redisErrorLogged = true;
+        }
+      });
+    });
 
     await Promise.all([
       pubClient.connect(),
@@ -666,6 +684,7 @@ function loadCustomGrids() {
       name: String(grid.name || '').slice(0, CUSTOM_NAME_MAX),
       subject: String(grid.subject || '').slice(0, CUSTOM_SUBJECT_MAX),
       isPublic: grid.isPublic !== false,
+      adminHidden: grid.adminHidden === true,
       categories: normalizeCustomCategories(grid.categories),
       createdAt: grid.createdAt || Date.now(),
       updatedAt: grid.updatedAt || Date.now(),
@@ -1199,13 +1218,16 @@ app.get('/api/admin/custom-grids', (req, res) => {
     res.status(401).json({ error: 'Mot de passe invalide.' });
     return;
   }
+  // adminHidden n'est PAS exposé par publicCustomGrid (sinon le créateur
+  // pourrait repérer le shadow ban) : on l'ajoute uniquement ici, côté admin.
   const grids = Object.values(CUSTOM_GRIDS)
     .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
-    .map(publicCustomGrid);
+    .map(grid => ({ ...publicCustomGrid(grid), adminHidden: grid.adminHidden === true }));
   res.json({ grids });
 });
 
-// Masquer / réafficher une grille sans la supprimer.
+// Shadow ban : masquer / réafficher une grille de la découverte publique,
+// sans la supprimer ni gêner son créateur.
 app.patch('/api/admin/custom-grids/:code', (req, res) => {
   if (!isAdminRequest(req)) {
     res.status(401).json({ error: 'Mot de passe invalide.' });
@@ -1217,12 +1239,12 @@ app.patch('/api/admin/custom-grids/:code', (req, res) => {
     res.status(404).json({ error: 'Grille introuvable.' });
     return;
   }
-  if (typeof req.body?.isPublic === 'boolean') {
-    grid.isPublic = req.body.isPublic;
+  if (typeof req.body?.adminHidden === 'boolean') {
+    grid.adminHidden = req.body.adminHidden;
     grid.updatedAt = Date.now();
     saveCustomGrids();
   }
-  res.json({ ok: true, grid: publicCustomGrid(grid) });
+  res.json({ ok: true, grid: { ...publicCustomGrid(grid), adminHidden: grid.adminHidden === true } });
 });
 
 app.delete('/api/admin/custom-grids/:code', (req, res) => {
@@ -1291,8 +1313,10 @@ app.post('/api/admin/reset-categories', async (req, res) => {
 });
 
 app.get('/api/custom-grids', (req, res) => {
+  // adminHidden = shadow ban : retiré de la découverte publique. Le créateur
+  // continue de voir/jouer/éditer sa grille (via « Mes grilles » + code/nom).
   const grids = Object.values(CUSTOM_GRIDS)
-    .filter(grid => grid.isPublic !== false)
+    .filter(grid => grid.isPublic !== false && !grid.adminHidden)
     .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
     .slice(0, 100)
     .map(publicCustomGrid);
@@ -1370,6 +1394,7 @@ app.post('/api/custom-grids', (req, res) => {
     name: req.body.name.trim().slice(0, CUSTOM_NAME_MAX),
     subject: String(req.body.subject || '').trim().slice(0, CUSTOM_SUBJECT_MAX),
     isPublic: req.body.isPublic !== false,
+    adminHidden: false,
     categories: normalizeCustomCategories(req.body.categories),
     createdAt: now,
     updatedAt: now,
