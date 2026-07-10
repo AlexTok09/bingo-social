@@ -219,6 +219,11 @@ const customStartTitle = $('#custom-start-title');
 const customStartNameInput = $('#custom-start-name');
 const btnCustomStartBack = $('#btn-custom-start-back');
 const btnCustomStartPlay = $('#btn-custom-start-play');
+const screenJoin = $('#screen-join');
+const joinStartTitle = $('#join-start-title');
+const joinStartNameInput = $('#join-start-name');
+const btnJoinStartBack = $('#btn-join-start-back');
+const btnJoinStartPlay = $('#btn-join-start-play');
 const editLinkReminder = $('#edit-link-reminder');
 const editLinkUrlInput = $('#edit-link-url');
 const gridSavedOverlay = $('#grid-saved-overlay');
@@ -269,6 +274,7 @@ let tiersToWin = 1;
 let pendingLegendaryConfirm = null;
 let pendingLegendaryConfirmTimeout = null;
 let pendingCustomGridCode = null;
+let pendingJoinCode = null;
 let editingGridCode = null;
 let editingGridToken = null;
 let pendingJoinFallback = null;
@@ -528,7 +534,7 @@ function startBgMusic() {
   if (bgMusic) return;
   bgMusic = new Audio(INTRO_SOUND);
   bgMusic.loop = false;
-  bgMusic.volume = 0.8;
+  bgMusic.volume = 0.5; // musique de fond : reste sous les effets sonores
   bgMusic.play().catch(() => {});
 }
 
@@ -541,7 +547,24 @@ function playSocioloIntro() {
   bgMusic.play().catch(() => {});
 }
 
-const SFX_VOLUME = 0.8;
+// Les fichiers sources ont des loudness très inégales (mesurées à ffmpeg :
+// de -15 à -31 dB, certains saturant à 0 dB). On recale chaque son vers un
+// niveau homogène et confortable sur mobile plutôt qu'un volume unique : le
+// tap (joué à chaque case) reste discret, les effets forts sont atténués pour
+// ne plus saturer, et les victoires restent la récompense la plus sonore.
+const SFX_VOLUME = 0.7; // défaut pour un son non listé
+const SFX_VOLUMES = {
+  '/semi-ordinaire.mp3': 0.55, // tap : très fréquent, doit rester discret
+  '/bonus.mp3': 0.35,          // reroll/free-check : fichier fort qui saturait
+  '/bonusSound.mp3': 0.9,      // choix bonus : fichier faible, on le remonte
+  '/jokersound.mp3': 0.65,
+  '/multipick.mp3': 0.8,
+  [WIN_SOUND]: 0.75,           // victoire : point culminant, rare
+  [LEGENDARY_WIN_SOUND]: 0.6,
+};
+function sfxVolume(src) {
+  return SFX_VOLUMES[src] != null ? SFX_VOLUMES[src] : SFX_VOLUME;
+}
 const sfxCache = {};
 const SFX_FILES = [
   '/ordinaire.mp3', '/semi-ordinaire.mp3', '/rare.mp3', '/legendaire.mp3',
@@ -553,7 +576,7 @@ function preloadSounds() {
   SFX_FILES.forEach(src => {
     const a = new Audio(src);
     a.preload = 'auto';
-    a.volume = SFX_VOLUME;
+    a.volume = sfxVolume(src);
     sfxCache[src] = a;
   });
 }
@@ -563,12 +586,12 @@ function playSfx(src) {
   const cached = sfxCache[src];
   if (cached) {
     const clone = cached.cloneNode();
-    clone.volume = SFX_VOLUME;
+    clone.volume = sfxVolume(src);
     clone.play().catch(() => {});
     return;
   }
   const sfx = new Audio(src);
-  sfx.volume = SFX_VOLUME;
+  sfx.volume = sfxVolume(src);
   sfx.play().catch(() => {});
 }
 
@@ -1223,6 +1246,39 @@ function submitCustomGridStart() {
   launchCustomGridGame(pendingCustomGridCode, name);
 }
 
+// Écran d'arrivée quand un ami scanne le QR d'invitation (/?code=XXXX) : il ne
+// voit pas l'accueil complet, juste « ton prénom + Entrer » pour rejoindre.
+function openJoinStart(code) {
+  pendingJoinCode = String(code || '').trim().toUpperCase();
+  if (!pendingJoinCode) return;
+  closeCustomGridPanel();
+  closeEditLinkReminder();
+  joinStartTitle.textContent = `Partie ${pendingJoinCode}`;
+  joinStartNameInput.value = playerName || getStoredSessionValue(SESSION_NAME_KEY) || '';
+  showScreen(screenJoin);
+  window.setTimeout(() => {
+    joinStartNameInput.focus();
+    joinStartNameInput.select();
+  }, 0);
+}
+
+function submitJoinStart() {
+  const name = joinStartNameInput.value.trim();
+  if (!name) {
+    showToast('Entre ton prénom !');
+    joinStartNameInput.focus();
+    return;
+  }
+  if (!pendingJoinCode) return;
+  playerName = name;
+  inputName.value = name;
+  setStoredSessionValue(SESSION_NAME_KEY, playerName);
+  pendingJoinFallback = null; // c'est un vrai code de salon, pas une grille
+  startBgMusic();
+  beginConnecting();
+  emitSocket('join-room', { code: pendingJoinCode, playerName: name, clientId });
+}
+
 async function deleteMyGrid(code, token, name) {
   if (!window.confirm(`Supprimer définitivement la grille « ${name} » ? Cette action est irréversible.`)) return false;
   try {
@@ -1389,14 +1445,13 @@ function openCustomGridStartFromQuery() {
   return true;
 }
 
-// Un ami qui scanne le QR d'invitation arrive sur /?code=XXXX : on pré-remplit
-// le champ code et on met le focus sur le prénom, il n'a plus qu'à valider.
-function prefillCodeFromQuery() {
+// Un ami qui scanne le QR d'invitation arrive sur /?code=XXXX : on l'envoie
+// directement sur l'écran « prénom + Entrer » plutôt que sur l'accueil complet.
+function openJoinFromQuery() {
   const params = new URLSearchParams(window.location.search);
   const code = params.get('code');
   if (!code) return false;
-  if (inputCode) inputCode.value = code.toUpperCase().slice(0, 48);
-  if (inputName) { try { inputName.focus(); } catch {} }
+  openJoinStart(code);
   return true;
 }
 
@@ -1449,6 +1504,14 @@ btnCustomStartBack.addEventListener('click', () => {
 btnCustomStartPlay.addEventListener('click', submitCustomGridStart);
 customStartNameInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') submitCustomGridStart();
+});
+btnJoinStartPlay.addEventListener('click', submitJoinStart);
+joinStartNameInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') submitJoinStart();
+});
+btnJoinStartBack.addEventListener('click', () => {
+  pendingJoinCode = null;
+  showScreen(screenHome);
 });
 btnCopyEditLink.addEventListener('click', () => copyEditLinkReminder());
 btnCloseEditLink.addEventListener('click', closeEditLinkReminder);
@@ -1539,6 +1602,13 @@ if (socket) {
     }
     endConnecting();
     pendingJoinFallback = null;
+    // Sur l'écran d'arrivée par QR, la div d'erreur de l'accueil est masquée :
+    // on montre un toast (global) et on garde l'ami sur l'écran pour réessayer.
+    if (screenJoin.classList.contains('active')) {
+      showToast(msg);
+      joinStartNameInput.focus();
+      return;
+    }
     showError(msg);
   });
 
@@ -2977,5 +3047,4 @@ btnBonusReroll.addEventListener('click', () => {
 });
 
 loadCustomGrids();
-prefillCodeFromQuery();
-if (!openCustomGridStartFromQuery()) openEditorFromQuery();
+if (!openJoinFromQuery() && !openCustomGridStartFromQuery()) openEditorFromQuery();
