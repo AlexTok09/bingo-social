@@ -231,6 +231,11 @@ const displayCode = $('#display-code');
 const playerCount = $('#player-count');
 const btnPlayers = $('#btn-players');
 const btnShare = $('#btn-share');
+const inviteBackdrop = $('#invite-backdrop');
+const inviteSticker = $('#invite-sticker');
+const inviteQr = $('#invite-qr');
+const inviteCode = $('#invite-code');
+const btnCloseInvite = $('#btn-close-invite');
 const btnJoker = $('#btn-joker');
 const btnBackHome = $('#btn-back-home');
 const playersPanel = $('#players-panel');
@@ -292,6 +297,43 @@ function showToast(msg) {
 function showError(msg) {
   errorMsg.textContent = msg;
   setTimeout(() => { if (errorMsg.textContent === msg) errorMsg.textContent = ''; }, 4000);
+}
+
+// --- STICKER D'INVITATION (QR code) ---
+// Affiché à la création d'une partie : QR + code pour que le créateur invite
+// ses amis. Le QR encode l'URL du jeu avec ?code=XXXX, pré-rempli au scan.
+function showInviteSticker(code) {
+  if (!inviteSticker || !code) return;
+  inviteCode.textContent = code;
+  const url = `${window.location.origin}/?code=${encodeURIComponent(code)}`;
+  inviteQr.innerHTML = '';
+  if (typeof qrcode !== 'undefined') {
+    try {
+      const qr = qrcode(0, 'M');
+      qr.addData(url);
+      qr.make();
+      inviteQr.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+      inviteQr.hidden = false;
+    } catch { inviteQr.hidden = true; }
+  } else {
+    inviteQr.hidden = true;
+  }
+  inviteBackdrop.hidden = false;
+  inviteSticker.hidden = false;
+  requestAnimationFrame(() => {
+    inviteBackdrop.classList.add('show');
+    inviteSticker.classList.add('show');
+  });
+}
+
+function hideInviteSticker() {
+  if (!inviteSticker) return;
+  inviteSticker.classList.remove('show');
+  inviteBackdrop.classList.remove('show');
+  setTimeout(() => {
+    inviteSticker.hidden = true;
+    inviteBackdrop.hidden = true;
+  }, 200);
 }
 
 // --- Feedback de connexion (cold-start Render) ---
@@ -1347,6 +1389,17 @@ function openCustomGridStartFromQuery() {
   return true;
 }
 
+// Un ami qui scanne le QR d'invitation arrive sur /?code=XXXX : on pré-remplit
+// le champ code et on met le focus sur le prénom, il n'a plus qu'à valider.
+function prefillCodeFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  if (!code) return false;
+  if (inputCode) inputCode.value = code.toUpperCase().slice(0, 48);
+  if (inputName) { try { inputName.focus(); } catch {} }
+  return true;
+}
+
 // --- HOME ACTIONS ---
 
 btnCreate.addEventListener('click', () => {
@@ -1382,6 +1435,9 @@ btnJoin.addEventListener('click', () => {
 btnInfo.addEventListener('click', () => {
   window.location.href = '/info.html';
 });
+
+if (btnCloseInvite) btnCloseInvite.addEventListener('click', hideInviteSticker);
+if (inviteBackdrop) inviteBackdrop.addEventListener('click', hideInviteSticker);
 
 btnOpenGridEditor.addEventListener('click', () => openGridEditor());
 btnLoadOriginalCategories.addEventListener('click', () => openGridEditorFromOriginalCategories());
@@ -1448,6 +1504,7 @@ if (socket) {
     updateModeBanner();
     playSocioloIntro();
     enterGame();
+    showInviteSticker(code);
   });
 
   socket.on('room-joined', ({ code, grid, tiersToWin: t }) => {
@@ -2920,4 +2977,5 @@ btnBonusReroll.addEventListener('click', () => {
 });
 
 loadCustomGrids();
+prefillCodeFromQuery();
 if (!openCustomGridStartFromQuery()) openEditorFromQuery();

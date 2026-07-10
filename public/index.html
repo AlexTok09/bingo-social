@@ -220,6 +220,16 @@
     <button id="gesture-hint-close" class="gesture-hint-close" type="button" aria-label="Compris">OK</button>
   </div>
 
+  <!-- INVITE STICKER (QR code pour inviter des amis) -->
+  <div id="invite-backdrop" class="invite-backdrop" hidden></div>
+  <div id="invite-sticker" class="invite-sticker" role="dialog" aria-modal="true" aria-labelledby="invite-title" hidden>
+    <button id="btn-close-invite" class="invite-close" type="button" aria-label="Fermer">&times;</button>
+    <h2 id="invite-title" class="invite-title">Invite tes amis</h2>
+    <div id="invite-qr" class="invite-qr" aria-hidden="true"></div>
+    <p class="invite-text">Scanne le QR code<br>ou entre le code :</p>
+    <div id="invite-code" class="invite-code"></div>
+  </div>
+
   <!-- TOAST -->
   <div id="bonus-flash" class="bonus-flash"></div>
   <div id="activity-notice" class="activity-notice" aria-live="polite" aria-atomic="true"></div>
@@ -229,6 +239,7 @@
   <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"8b3d778dc56d468a83ea9822b1442662"}'></script>
   <!-- End Cloudflare Web Analytics -->
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/qrcode.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
