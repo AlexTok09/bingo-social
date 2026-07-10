@@ -548,6 +548,18 @@ input[type="text"]::placeholder {
   gap: 7px;
 }
 
+/* Retour de l'écran d'arrivée par QR : petit carré aligné à gauche, plutôt
+   que le bouton pleine largeur qu'imposait la grille du conteneur. */
+.btn-join-back {
+  justify-self: start;
+  width: 44px;
+  min-width: 44px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: 1.25rem;
+}
+
 .error {
   min-height: 1.35em;
   color: #fff;
