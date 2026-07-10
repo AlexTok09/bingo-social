@@ -1868,6 +1868,7 @@ const EMOJI_BY_ID = {
   'une-seule-boucle-d-oreille': '👂💍', 'eventail': '🪭', 'sourire-en-coin': '😏',
   'se-ronge-les-ongles': '💅', 'monsieur-perdu': '🧭', 'chaussures-non-chaussees': '👟🚫',
   'gros-perv': '😈', 'chignon-samourai': '🥷', 'canotier': '👒', 'effraction': '🚪',
+  'etirement': '🧘',
 };
 
 const EMOJI_SUGGESTION_RULES = [
