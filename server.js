@@ -11,6 +11,9 @@ const Redis = require('ioredis');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+// Render place un proxy devant l'app : sans ça, req.ip vaut l'IP du proxy et
+// les limites de débit seraient partagées entre tous les visiteurs.
+app.set('trust proxy', 1);
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (process.env.NODE_ENV === 'production' ? '' : 'binglou-admin');
 const REDIS_URL = process.env.REDIS_URL || process.env.VALKEY_URL || process.env.KEY_VALUE_URL || '';
@@ -41,6 +44,13 @@ const PERSISTENT_DATA_DIR = fs.existsSync('/var/data') ? '/var/data' : __dirname
 const CATEGORIES_FILE = process.env.CATEGORIES_FILE || path.join(PERSISTENT_DATA_DIR, 'categories.json');
 const CUSTOM_GRIDS_FILE = process.env.CUSTOM_GRIDS_FILE || path.join(PERSISTENT_DATA_DIR, 'custom-grids.json');
 const STATS_FILE = process.env.STATS_FILE || path.join(PERSISTENT_DATA_DIR, 'stats.json');
+const STICKER_ORDERS_FILE = process.env.STICKER_ORDERS_FILE || path.join(PERSISTENT_DATA_DIR, 'sticker-orders.json');
+const MAX_STICKER_ORDERS = 2000;
+const STICKER_ORDER_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+const STICKER_ORDER_RATE_LIMIT_MAX = 10;
+const STICKER_SIZES = ['7x7', '10x10'];
+const STICKER_QUANTITIES = [5, 10, 20];
+const STICKER_ORDER_STATUSES = ['nouvelle', 'envoyée', 'annulée'];
 const CUSTOM_GRID_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const MAX_CUSTOM_GRIDS = 500;
 const MAX_GRIDS_PER_OWNER = 50;
@@ -430,6 +440,30 @@ const QR_SCAN_RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const QR_SCAN_RATE_LIMIT_MAX = 30;
 const qrScanRateLimits = new Map();
 const visitorPingRateLimits = new Map();
+const stickerOrderRateLimits = new Map();
+
+function checkStickerOrderRateLimit(req, res) {
+  const now = Date.now();
+  const key = req.ip || req.socket.remoteAddress || 'unknown';
+  const current = stickerOrderRateLimits.get(key);
+  if (!current || now - current.windowStart > STICKER_ORDER_RATE_LIMIT_WINDOW_MS) {
+    stickerOrderRateLimits.set(key, { windowStart: now, count: 1 });
+    return true;
+  }
+  current.count += 1;
+  if (current.count > STICKER_ORDER_RATE_LIMIT_MAX) {
+    res.status(429).json({ error: 'Trop de commandes depuis cette connexion. Réessayez plus tard.' });
+    return false;
+  }
+  return true;
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of stickerOrderRateLimits) {
+    if (now - entry.windowStart > STICKER_ORDER_RATE_LIMIT_WINDOW_MS) stickerOrderRateLimits.delete(key);
+  }
+}, 10 * 60 * 1000).unref();
 
 function checkRateLimit(socket) {
   const now = Date.now();
@@ -635,6 +669,61 @@ function migrateCategories(categories) {
 let CATEGORIES = loadCategories();
 let CUSTOM_GRIDS = loadCustomGrids();
 let STATS = loadStats();
+let STICKER_ORDERS = loadStickerOrders();
+
+// ---------------------------------------------------------------------------
+// Commandes de stickers (page marketing /stickers envoyée aux bars par SMS)
+// ---------------------------------------------------------------------------
+function loadStickerOrders() {
+  try {
+    if (!fs.existsSync(STICKER_ORDERS_FILE)) return [];
+    const parsed = JSON.parse(fs.readFileSync(STICKER_ORDERS_FILE, 'utf-8'));
+    return Array.isArray(parsed) ? parsed.filter(order => order && order.id) : [];
+  } catch (error) {
+    console.error('Sticker orders load failed:', error.message);
+    return [];
+  }
+}
+
+function saveStickerOrders() {
+  fs.mkdirSync(path.dirname(STICKER_ORDERS_FILE), { recursive: true });
+  const tmpFile = `${STICKER_ORDERS_FILE}.${process.pid}.tmp`;
+  fs.writeFileSync(tmpFile, JSON.stringify(STICKER_ORDERS, null, 2), 'utf-8');
+  fs.renameSync(tmpFile, STICKER_ORDERS_FILE);
+}
+
+function cleanText(value, max) {
+  return String(value ?? '').replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
+function validateStickerOrder(body = {}) {
+  const order = {
+    barName: cleanText(body.barName, 80),
+    contactName: cleanText(body.contactName, 60),
+    phone: cleanText(body.phone, 30),
+    email: cleanText(body.email, 120),
+    address: cleanText(body.address, 160),
+    addressExtra: cleanText(body.addressExtra, 120),
+    postalCode: cleanText(body.postalCode, 10),
+    city: cleanText(body.city, 60),
+    size: STICKER_SIZES.includes(body.size) ? body.size : '',
+    quantity: STICKER_QUANTITIES.includes(Number(body.quantity)) ? Number(body.quantity) : 0,
+    message: cleanText(body.message, 500),
+    ref: cleanText(body.ref, 60),
+  };
+
+  if (!order.barName) return { error: 'Indiquez le nom du bar.' };
+  if (!order.contactName) return { error: 'Indiquez votre prénom ou nom.' };
+  if (!order.phone && !order.email) return { error: 'Laissez un téléphone ou un email pour qu’on puisse vous joindre.' };
+  if (order.phone && !/^[+0-9 ().-]{6,30}$/.test(order.phone)) return { error: 'Numéro de téléphone invalide.' };
+  if (order.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(order.email)) return { error: 'Email invalide.' };
+  if (!order.address) return { error: 'Indiquez l’adresse postale du bar.' };
+  if (!/^[0-9A-Za-z -]{4,10}$/.test(order.postalCode)) return { error: 'Code postal invalide.' };
+  if (!order.city) return { error: 'Indiquez la ville.' };
+  if (!order.size) return { error: 'Choisissez une taille de sticker.' };
+  if (!order.quantity) return { error: 'Choisissez une quantité.' };
+  return { order };
+}
 
 function normalizeCustomEmoji(value) {
   const text = typeof value === 'string' ? value.trim() : '';
@@ -1455,6 +1544,74 @@ app.delete('/api/custom-grids/:code/edit/:token', (req, res) => {
   delete CUSTOM_GRIDS[code];
   saveCustomGrids();
   res.json({ ok: true });
+});
+
+app.post('/api/sticker-orders', (req, res) => {
+  // Champ piège invisible : les bots le remplissent, les humains non.
+  if (req.body?.website) {
+    res.status(201).json({ ok: true });
+    return;
+  }
+  if (!checkStickerOrderRateLimit(req, res)) return;
+  const { order, error } = validateStickerOrder(req.body || {});
+  if (error) {
+    res.status(400).json({ error });
+    return;
+  }
+  if (STICKER_ORDERS.length >= MAX_STICKER_ORDERS) {
+    res.status(503).json({ error: 'Les commandes sont momentanément fermées.' });
+    return;
+  }
+  const saved = {
+    id: crypto.randomBytes(6).toString('hex'),
+    createdAt: Date.now(),
+    status: 'nouvelle',
+    ...order,
+  };
+  STICKER_ORDERS.push(saved);
+  try {
+    saveStickerOrders();
+  } catch (saveError) {
+    STICKER_ORDERS.pop();
+    console.error('Sticker order save failed:', saveError.message);
+    res.status(500).json({ error: 'Impossible d’enregistrer la commande. Réessayez dans un instant.' });
+    return;
+  }
+  console.log(`Sticker order ${saved.id}: ${saved.quantity}x ${saved.size} for ${saved.barName} (${saved.city})`);
+  res.status(201).json({ ok: true, id: saved.id });
+});
+
+app.get('/api/admin/sticker-orders', (req, res) => {
+  if (!isAdminRequest(req)) {
+    res.status(401).json({ error: 'Mot de passe invalide.' });
+    return;
+  }
+  res.json({ orders: [...STICKER_ORDERS].sort((a, b) => b.createdAt - a.createdAt) });
+});
+
+app.patch('/api/admin/sticker-orders/:id', (req, res) => {
+  if (!isAdminRequest(req)) {
+    res.status(401).json({ error: 'Mot de passe invalide.' });
+    return;
+  }
+  const order = STICKER_ORDERS.find(item => item.id === req.params.id);
+  if (!order) {
+    res.status(404).json({ error: 'Commande introuvable.' });
+    return;
+  }
+  const status = req.body?.status;
+  if (!STICKER_ORDER_STATUSES.includes(status)) {
+    res.status(400).json({ error: 'Statut invalide.' });
+    return;
+  }
+  order.status = status;
+  order.updatedAt = Date.now();
+  saveStickerOrders();
+  res.json({ ok: true, order });
+});
+
+app.get(['/stickers', '/sticker', '/bars'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'stickers.html'));
 });
 
 app.get('/healthz', (req, res) => {

@@ -20,6 +20,8 @@ services:
         value: /var/data/custom-grids.json
       - key: STATS_FILE
         value: /var/data/stats.json
+      - key: STICKER_ORDERS_FILE
+        value: /var/data/sticker-orders.json
       - key: QR_REDIRECT_TARGET
         value: /
       - key: ADMIN_PASSWORD

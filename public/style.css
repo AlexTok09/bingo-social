@@ -2267,3 +2267,41 @@ input[type="text"]::placeholder {
     transform: translate(-50%, 0);
   }
 }
+
+/* Commandes de stickers (admin) */
+.admin-orders-link {
+  margin-left: 8px;
+  font: 800 0.72rem var(--body-font);
+  text-transform: none;
+  color: var(--ink);
+}
+
+.admin-order-card {
+  align-items: flex-start;
+}
+
+.admin-order-card span {
+  font-size: 0.78rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.admin-order-address {
+  white-space: pre-line;
+  padding: 4px 0;
+}
+
+.admin-order-status {
+  min-height: 44px;
+  padding: 0 8px;
+  border: 3px solid var(--ink);
+  border-radius: 7px;
+  background: #fff9dd;
+  font: 900 0.85rem var(--body-font);
+}
+
+@media (max-width: 560px) {
+  .admin-order-card {
+    flex-direction: column;
+  }
+}

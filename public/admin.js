@@ -15,6 +15,7 @@ const statusEl = document.querySelector('#admin-status');
 const statsEl = document.querySelector('#admin-stats');
 const qrStatsEl = document.querySelector('#admin-qr-stats');
 const gridsListEl = document.querySelector('#admin-grids-list');
+const ordersListEl = document.querySelector('#admin-orders-list');
 const applyActiveInput = document.querySelector('#apply-active');
 const btnLogin = document.querySelector('#btn-login');
 const btnAddRow = document.querySelector('#btn-add-row');
@@ -68,6 +69,7 @@ async function loadCategories() {
     renderRows();
     setStatus('Connecté.');
     loadStats();
+    loadStickerOrders();
     loadAdminGrids();
   } catch (error) {
     loginError.textContent = error.message;
@@ -214,6 +216,98 @@ function renderQrStats(qr = {}) {
   appendRanking(qrStatsEl, 'Mobiles fréquents', qr.topMobileUserAgents || []);
   appendRanking(qrStatsEl, 'Referrers', qr.referrers || []);
   qrStatsEl.hidden = false;
+}
+
+const ORDER_STATUSES = ['nouvelle', 'envoyée', 'annulée'];
+
+async function loadStickerOrders() {
+  if (!ordersListEl) return;
+  ordersListEl.innerHTML = '<p class="muted">Chargement...</p>';
+  try {
+    const { orders = [] } = await adminFetch('/api/admin/sticker-orders');
+    if (!orders.length) {
+      ordersListEl.innerHTML = '<p class="muted">Aucune commande pour l’instant.</p>';
+      return;
+    }
+    ordersListEl.innerHTML = '';
+    const pending = orders.filter(order => order.status === 'nouvelle').length;
+    const summary = document.createElement('p');
+    summary.className = 'muted';
+    summary.textContent = `${orders.length} commande(s) · ${pending} à envoyer`;
+    ordersListEl.appendChild(summary);
+
+    orders.forEach(order => {
+      const card = document.createElement('div');
+      card.className = 'admin-grid-card admin-order-card';
+      if (order.status !== 'nouvelle') card.classList.add('is-hidden-grid');
+
+      // textContent partout : tout ce bloc vient d'un formulaire public.
+      const info = document.createElement('div');
+      const name = document.createElement('strong');
+      name.textContent = `${order.barName} · ${order.quantity} × ${order.size} cm`;
+      const contact = document.createElement('span');
+      contact.textContent = [order.contactName, order.phone, order.email].filter(Boolean).join(' · ');
+      const address = document.createElement('span');
+      address.className = 'admin-order-address';
+      address.textContent = [order.contactName ? `${order.barName} (${order.contactName})` : order.barName, order.address, order.addressExtra, `${order.postalCode} ${order.city}`]
+        .filter(Boolean).join('\n');
+      const meta = document.createElement('span');
+      meta.textContent = [
+        new Date(order.createdAt).toLocaleString('fr-FR'),
+        order.ref ? `ref : ${order.ref}` : '',
+        order.status,
+      ].filter(Boolean).join(' · ');
+      info.append(name, contact, address, meta);
+      if (order.message) {
+        const message = document.createElement('span');
+        message.textContent = `« ${order.message} »`;
+        info.appendChild(message);
+      }
+
+      const actions = document.createElement('div');
+      actions.className = 'admin-grid-actions';
+      const copy = document.createElement('button');
+      copy.className = 'btn btn-secondary';
+      copy.textContent = 'Copier adresse';
+      copy.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(address.textContent);
+          setStatus('Adresse copiée.');
+        } catch {
+          setStatus('Copie impossible.');
+        }
+      });
+      const select = document.createElement('select');
+      select.className = 'admin-order-status';
+      ORDER_STATUSES.forEach(status => {
+        const option = document.createElement('option');
+        option.value = status;
+        option.textContent = status;
+        option.selected = status === order.status;
+        select.appendChild(option);
+      });
+      select.addEventListener('change', () => updateOrderStatus(order, select.value));
+      actions.append(copy, select);
+
+      card.append(info, actions);
+      ordersListEl.appendChild(card);
+    });
+  } catch {
+    ordersListEl.innerHTML = '<p class="muted">Impossible de charger les commandes.</p>';
+  }
+}
+
+async function updateOrderStatus(order, status) {
+  try {
+    await adminFetch(`/api/admin/sticker-orders/${encodeURIComponent(order.id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+    setStatus(`Commande ${order.barName} : ${status}.`);
+    loadStickerOrders();
+  } catch (error) {
+    setStatus(error.message);
+  }
 }
 
 async function loadAdminGrids() {

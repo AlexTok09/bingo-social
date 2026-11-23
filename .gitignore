@@ -3,3 +3,4 @@ categories.json
 .DS_Store
 .env
 scripts/build-tmp/
+sticker-orders.json
