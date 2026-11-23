@@ -41,8 +41,20 @@
       white-space: nowrap;
     }
 
+    .st-tag {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 6px 12px;
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      background: #fff;
+      font-size: 0.95rem;
+      font-weight: 900;
+      box-shadow: 3px 3px 0 var(--shadow);
+    }
+
     .st-h1 {
-      margin: 18px 0 12px;
+      margin: 14px 0 12px;
       font: clamp(2.1rem, 9vw, 3.6rem)/1.15 var(--font);
       color: var(--ink);
     }
@@ -104,27 +116,94 @@
       align-items: center;
     }
 
-    .st-phone {
+    /* Démo : une case du jeu qui se fait cocher */
+    .st-demo {
+      position: relative;
       justify-self: center;
-      width: min(80vw, 300px);
+      width: min(78vw, 300px);
+      height: min(78vw, 300px);
       margin: 0 auto;
-      padding: 10px;
+    }
+
+    .st-cell {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 20px;
+      border: 4px solid var(--ink);
+      border-radius: 14px;
+      background: linear-gradient(160deg, #fff 0%, var(--tint, var(--ordinaire-soft)) 100%);
+      box-shadow: 9px 9px 0 var(--shadow);
+      text-align: center;
+      transform: rotate(-2deg);
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.15s ease, opacity 0.3s ease;
+    }
+
+    .st-cell-emoji { font-size: clamp(4.5rem, 24vw, 6.5rem); line-height: 1; }
+
+    .st-cell-label {
+      font: 900 clamp(1.25rem, 5.6vw, 1.6rem)/1.1 var(--body-font);
+      text-transform: uppercase;
+    }
+
+    .st-cell-tier {
+      position: absolute;
+      left: 12px;
+      top: 12px;
+      padding: 3px 9px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: #fff;
+      font: 900 0.72rem var(--body-font);
+      text-transform: uppercase;
+    }
+
+    .st-cell-bim {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 4px 10px;
       border: 3px solid var(--ink);
-      border-radius: 30px;
-      background: var(--ink);
-      box-shadow: 8px 8px 0 var(--pink);
+      border-radius: 999px;
+      background: var(--pink);
+      color: #fff;
+      font: 1.3rem var(--font);
+      transform: rotate(10deg) scale(0);
+      transition: transform 0.2s cubic-bezier(0.3, 1.8, 0.5, 1);
     }
 
-    .st-phone-screen {
-      overflow: hidden;
-      border-radius: 20px;
-      background: var(--paper);
+    .st-cell.is-pressed {
+      transform: translate(6px, 6px) rotate(0deg);
+      box-shadow: 2px 2px 0 var(--shadow);
     }
 
-    .st-phone img {
-      display: block;
-      width: 100%;
-      height: auto;
+    .st-cell.is-checked { background: var(--checked); }
+    .st-cell.is-checked .st-cell-bim { transform: rotate(10deg) scale(1); }
+    .st-cell.is-out { opacity: 0; transform: translateX(-40px) rotate(-6deg); }
+    .st-cell.is-in { opacity: 0; transform: translateX(40px) rotate(4deg); transition: none; }
+
+    .st-finger {
+      position: absolute;
+      right: -6px;
+      bottom: -24px;
+      font-size: 4rem;
+      line-height: 1;
+      filter: drop-shadow(3px 3px 0 var(--ink));
+      opacity: 0;
+      transform: translate(30px, 40px);
+      transition: transform 0.35s ease, opacity 0.25s ease;
+      pointer-events: none;
+    }
+
+    .st-finger.is-ready { opacity: 1; transform: translate(-60px, -70px); }
+    .st-finger.is-tap { opacity: 1; transform: translate(-66px, -80px) scale(0.88); transition-duration: 0.1s; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .st-cell, .st-finger, .st-cell-bim { transition: none; }
     }
 
     .st-caption {
@@ -361,8 +440,9 @@
     <section class="st-hero">
       <div>
         <div class="st-logo">Sociolo-Bingo 👀</div>
+        <div class="st-tag">☀️ Pour les bars avec terrasse ou vitrine sur la rue</div>
         <h1 class="st-h1">Le bingo qui se joue <mark>en regardant la rue</mark></h1>
-        <p>Vos clients scannent un sticker sur la table, reçoivent une grille et cochent ce qui passe devant la terrasse. Le premier qui complète une catégorie gagne.</p>
+        <p>Installés en terrasse ou à côté de la fenêtre, vos clients scannent un sticker sur la table, reçoivent une grille et cochent ce qui passe dans la rue. Le premier qui complète une catégorie gagne.</p>
         <div class="st-actions">
           <a class="st-btn st-btn-play" href="/" target="_blank" rel="noopener">Essayer le jeu</a>
           <a class="st-btn st-btn-order" href="#commande">Commander des stickers</a>
@@ -370,12 +450,16 @@
         <p class="st-note">Gratuit · sans appli · stickers envoyés par la poste</p>
       </div>
       <div>
-        <div class="st-phone">
-          <div class="st-phone-screen">
-            <img src="/stickers/interface.jpg" width="643" height="1000" alt="Une grille du jeu : petit bourgeois, trottinette électrique, doudoune sans manche, porte une baguette, crête de punk, double chien…">
+        <div class="st-demo" aria-hidden="true">
+          <div class="st-cell" id="demo-cell">
+            <span class="st-cell-tier" id="demo-tier">Ordinaire</span>
+            <span class="st-cell-bim">BIM</span>
+            <span class="st-cell-emoji" id="demo-emoji">👶</span>
+            <span class="st-cell-label" id="demo-label">Femme avec poussette</span>
           </div>
+          <span class="st-finger" id="demo-finger">👆</span>
         </div>
-        <p class="st-caption">Une vraie grille du jeu</p>
+        <p class="st-caption">Ça passe dans la rue ? On appuie sur la case.</p>
       </div>
     </section>
 
@@ -391,7 +475,7 @@
         <li>
           <div>
             <strong>On observe</strong>
-            <p>Chaque joueur a sa grille de profils et de scènes de rue, du plus banal au légendaire.</p>
+            <p>Depuis la terrasse ou la fenêtre, chaque joueur guette les profils et scènes de rue de sa grille, du plus banal au légendaire.</p>
           </div>
         </li>
         <li>
@@ -502,6 +586,61 @@
   </main>
 
   <script>
+    (() => {
+      const items = [
+        ['👶', 'Femme avec poussette', 'Ordinaire', 'var(--ordinaire-soft)'],
+        ['🥖', 'Porte une baguette', 'Ordinaire', 'var(--ordinaire-soft)'],
+        ['🛵', 'Livreur Deliveroo', 'Ordinaire', 'var(--ordinaire-soft)'],
+        ['🛴', 'Trottinette électrique', 'Semi-ordinaire', 'var(--semi-soft)'],
+        ['🥶🎽', 'Doudoune sans manche', 'Semi-ordinaire', 'var(--semi-soft)'],
+        ['🐕🐕', 'Double chien', 'Rare', 'var(--rare-soft)'],
+        ['⚓👕', 'Marinière', 'Rare', 'var(--rare-soft)'],
+        ['🦔', 'Crête de punk', 'Légendaire', 'var(--legendaire-soft)'],
+      ];
+      const cell = document.getElementById('demo-cell');
+      const finger = document.getElementById('demo-finger');
+      const emoji = document.getElementById('demo-emoji');
+      const label = document.getElementById('demo-label');
+      const tier = document.getElementById('demo-tier');
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const frame = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      let i = 0;
+
+      function show(item) {
+        emoji.textContent = item[0];
+        label.textContent = item[1];
+        tier.textContent = item[2];
+        cell.style.setProperty('--tint', item[3]);
+      }
+
+      async function loop() {
+        for (;;) {
+          await wait(900);
+          finger.className = 'st-finger is-ready';
+          await wait(450);
+          finger.className = 'st-finger is-tap';
+          cell.classList.add('is-pressed');
+          await wait(140);
+          cell.classList.remove('is-pressed');
+          cell.classList.add('is-checked');
+          finger.className = 'st-finger is-ready';
+          await wait(250);
+          finger.className = 'st-finger';
+          await wait(900);
+          cell.classList.add('is-out');
+          await wait(300);
+          i = (i + 1) % items.length;
+          show(items[i]);
+          cell.className = 'st-cell is-in';
+          await frame();
+          cell.className = 'st-cell';
+        }
+      }
+
+      show(items[0]);
+      loop();
+    })();
+
     (() => {
       const form = document.getElementById('order-form');
       const errorEl = document.getElementById('order-error');
