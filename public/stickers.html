@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Stickers pour bars - Sociolo-Bingo</title>
-  <meta name="description" content="Sociolo-Bingo, le jeu d'observation de la rue à jouer en terrasse. Commandez gratuitement vos stickers QR code pour votre bar.">
+  <meta name="description" content="Sociolo-Bingo, le bingo qui se joue en regardant la rue. Commandez gratuitement des stickers QR code pour votre terrasse.">
   <meta property="og:title" content="Sociolo-Bingo débarque dans votre bar 👀">
-  <meta property="og:description" content="Le jeu qui transforme votre terrasse en terrain d'observation. Stickers gratuits, livrés par la poste.">
+  <meta property="og:description" content="Le bingo qui se joue en regardant la rue. Stickers gratuits pour votre terrasse.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://sociolobingo.com/stickers">
   <meta property="og:image" content="https://sociolobingo.com/stickers/sticker.jpg">
@@ -21,129 +21,117 @@
     [hidden] { display: none !important; }
 
     .st-page {
-      width: min(100%, 980px);
+      width: min(100%, 1000px);
       margin: 0 auto;
-      padding: 28px 16px 48px;
+      padding: 20px 16px 40px;
       display: grid;
-      gap: 44px;
-    }
-
-    .st-card {
-      padding: 20px;
-      border: 3px solid var(--ink);
-      border-radius: 10px;
-      background: #fff9dd;
-      box-shadow: 6px 6px 0 var(--shadow);
-    }
-
-    .st-label {
-      display: inline-block;
-      padding: 6px 10px;
-      border: 3px solid var(--ink);
-      background: var(--blue);
-      color: var(--ink);
-      font: 1rem var(--font);
-      text-transform: uppercase;
-      box-shadow: 4px 4px 0 var(--shadow);
-      transform: rotate(-1.5deg);
-    }
-
-    .st-h2 {
-      margin: 14px 0 16px;
-      font: clamp(1.7rem, 6vw, 2.5rem)/1 var(--font);
-      color: var(--ink);
+      gap: 56px;
     }
 
     .st-page p {
-      font-size: 1.02rem;
+      font-size: 1.05rem;
       font-weight: 700;
       line-height: 1.45;
     }
 
-    /* Hero */
-    .st-hero {
-      display: grid;
-      gap: 26px;
-      align-items: center;
+    .st-logo {
+      font: clamp(1.7rem, 7vw, 2.1rem) var(--font);
+      color: var(--acid);
+      text-shadow: 2px 2px 0 var(--pink), 4px 4px 0 var(--ink);
+      white-space: nowrap;
     }
 
-    .st-hero .ascii-title {
-      font-size: clamp(2.6rem, 13vw, 5.2rem);
+    .st-h1 {
+      margin: 18px 0 12px;
+      font: clamp(2.1rem, 9vw, 3.6rem)/1.15 var(--font);
+      color: var(--ink);
+    }
+
+    .st-h1 mark {
+      padding: 0 6px;
+      line-height: 1;
+      background: var(--acid);
+      color: inherit;
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+    }
+
+    .st-h2 {
       margin-bottom: 18px;
+      font: clamp(1.7rem, 6.5vw, 2.4rem)/1 var(--font);
     }
 
-    .st-kicker {
-      display: inline-block;
-      margin-bottom: 14px;
-      padding: 5px 10px;
-      border: 3px solid var(--ink);
-      border-radius: 999px;
-      background: var(--pink);
-      color: #fff;
-      font: 0.95rem var(--font);
-      text-transform: uppercase;
-      box-shadow: 3px 3px 0 var(--shadow);
+    /* Boutons */
+    .st-actions {
+      display: grid;
+      gap: 12px;
+      margin-top: 22px;
     }
 
-    .st-lead {
-      max-width: 34ch;
-      font-size: 1.18rem !important;
-      font-weight: 800 !important;
-    }
-
-    .st-cta {
-      display: inline-grid;
+    .st-btn {
+      display: grid;
       place-items: center;
-      margin-top: 20px;
-      padding: 14px 20px;
-      min-height: 52px;
-      width: 100%;
-      max-width: 360px;
+      min-height: 56px;
+      padding: 12px 18px;
       border: 3px solid var(--ink);
       border-radius: 8px;
-      background: var(--acid);
       color: var(--ink);
-      font: 1.15rem var(--font);
+      font: 1.2rem var(--font);
       text-transform: uppercase;
       text-decoration: none;
+      text-align: center;
+      cursor: pointer;
       box-shadow: 5px 5px 0 var(--shadow);
       transition: transform 0.12s ease, box-shadow 0.12s ease;
     }
 
-    .st-cta:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 var(--shadow); }
-    .st-cta:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+    .st-btn:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 var(--shadow); }
+    .st-btn:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+    .st-btn-play { background: var(--acid); }
+    .st-btn-order { background: #fff; }
+    .st-btn:disabled { opacity: 0.6; cursor: progress; }
 
-    .st-sub {
+    .st-note {
       margin-top: 10px;
       font-size: 0.9rem !important;
       opacity: 0.75;
     }
 
-    .st-sticker {
-      position: relative;
-      justify-self: center;
-      width: min(78vw, 360px);
+    /* Hero */
+    .st-hero {
+      display: grid;
+      gap: 32px;
+      align-items: center;
     }
 
-    .st-sticker img {
+    .st-phone {
+      justify-self: center;
+      width: min(80vw, 300px);
+      margin: 0 auto;
+      padding: 10px;
+      border: 3px solid var(--ink);
+      border-radius: 30px;
+      background: var(--ink);
+      box-shadow: 8px 8px 0 var(--pink);
+    }
+
+    .st-phone-screen {
+      overflow: hidden;
+      border-radius: 20px;
+      background: var(--paper);
+    }
+
+    .st-phone img {
       display: block;
       width: 100%;
       height: auto;
-      transform: rotate(4deg);
-      filter: drop-shadow(8px 10px 0 rgba(22, 18, 15, 0.9));
     }
 
-    .st-sticker-tag {
-      position: absolute;
-      left: -8px;
-      top: -2%;
-      padding: 6px 10px;
-      border: 3px solid var(--ink);
-      background: var(--acid);
-      font: 0.9rem var(--font);
-      text-transform: uppercase;
-      box-shadow: 3px 3px 0 var(--shadow);
-      transform: rotate(-6deg);
+    .st-caption {
+      margin-top: 14px;
+      text-align: center;
+      font-size: 0.9rem !important;
+      opacity: 0.75;
     }
 
     /* Étapes */
@@ -151,29 +139,33 @@
       display: grid;
       gap: 14px;
       list-style: none;
+      counter-reset: step;
     }
 
     .st-steps li {
       display: grid;
-      grid-template-columns: 52px 1fr;
+      grid-template-columns: 48px 1fr;
       gap: 14px;
       align-items: start;
+      padding: 16px;
+      border: 3px solid var(--ink);
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 5px 5px 0 var(--shadow);
     }
 
-    .st-steps .st-num {
+    .st-steps li::before {
+      counter-increment: step;
+      content: counter(step);
       display: grid;
       place-items: center;
-      width: 52px;
-      height: 52px;
+      width: 48px;
+      height: 48px;
       border: 3px solid var(--ink);
       border-radius: 8px;
-      font: 1.6rem var(--font);
-      box-shadow: 4px 4px 0 var(--shadow);
+      background: var(--acid);
+      font: 1.5rem var(--font);
     }
-
-    .st-steps li:nth-child(1) .st-num { background: var(--ordinaire-soft); }
-    .st-steps li:nth-child(2) .st-num { background: var(--semi-soft); }
-    .st-steps li:nth-child(3) .st-num { background: var(--rare-soft); }
 
     .st-steps strong {
       display: block;
@@ -182,111 +174,63 @@
       text-transform: uppercase;
     }
 
-    .st-game {
+    .st-steps p { font-size: 0.98rem !important; }
+
+    /* Commande */
+    .st-order {
+      padding: 20px;
+      border: 3px solid var(--ink);
+      border-radius: 12px;
+      background: #fff9dd;
+      box-shadow: 6px 6px 0 var(--shadow);
+    }
+
+    .st-order-head {
       display: grid;
-      gap: 26px;
+      grid-template-columns: 96px 1fr;
+      gap: 16px;
       align-items: center;
+      margin-bottom: 22px;
     }
 
-    .st-phone {
-      justify-self: center;
-      width: min(72vw, 290px);
-      padding: 10px;
-      border: 3px solid var(--ink);
-      border-radius: 28px;
-      background: var(--ink);
-      box-shadow: 8px 8px 0 var(--pink);
-      transform: rotate(-2deg);
-    }
-
-    .st-phone-screen {
-      height: 440px;
-      overflow: hidden;
-      border-radius: 19px;
-      background: var(--paper);
-    }
-
-    .st-phone img {
+    .st-order-head img {
       display: block;
-      width: 100%;
+      width: 96px;
       height: auto;
-      animation: st-scroll 14s ease-in-out infinite alternate;
+      filter: drop-shadow(3px 3px 0 var(--ink));
     }
 
-    @keyframes st-scroll {
-      0%, 12% { transform: translateY(0); }
-      88%, 100% { transform: translateY(calc(-100% + 440px)); }
-    }
+    .st-order-head .st-h2 { margin-bottom: 6px; }
 
-    @media (prefers-reduced-motion: reduce) {
-      .st-phone img { animation: none; }
-    }
-
-    /* Arguments bar */
-    .st-perks {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 14px;
-      list-style: none;
-    }
-
-    .st-perks li {
-      padding: 16px;
-      border: 3px solid var(--ink);
-      border-radius: 10px;
-      background: #fff;
-      box-shadow: 5px 5px 0 var(--shadow);
-    }
-
-    .st-perks li:nth-child(even) { transform: rotate(0.8deg); }
-    .st-perks li:nth-child(odd) { transform: rotate(-0.8deg); }
-
-    .st-perks .st-emoji {
-      display: block;
-      margin-bottom: 6px;
-      font-size: 2rem;
-      line-height: 1;
-    }
-
-    .st-perks strong {
-      display: block;
-      margin-bottom: 4px;
-      font: 1.15rem var(--font);
-      text-transform: uppercase;
-    }
-
-    .st-perks p { font-size: 0.95rem !important; }
-
-    /* Formulaire */
     .st-form {
       display: grid;
-      gap: 16px;
+      gap: 18px;
     }
 
-    .st-fieldset {
+    .st-group {
       display: grid;
-      gap: 12px;
+      gap: 10px;
       border: 0;
     }
 
-    .st-fieldset legend {
-      margin-bottom: 10px;
-      font: 1.15rem var(--font);
+    .st-group legend {
+      margin-bottom: 8px;
+      font: 1.05rem var(--font);
       text-transform: uppercase;
     }
 
     .st-row {
       display: grid;
-      gap: 12px;
+      gap: 10px;
     }
 
     .st-field {
       display: grid;
-      gap: 6px;
+      gap: 5px;
     }
 
     .st-field label {
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       font-weight: 900;
     }
 
@@ -306,24 +250,22 @@
       background: #fff;
       color: var(--ink);
       font: 800 1rem var(--body-font);
-      box-shadow: 4px 4px 0 var(--shadow);
+      box-shadow: 3px 3px 0 var(--shadow);
     }
 
-    .st-field textarea { min-height: 90px; resize: vertical; }
+    .st-field textarea { min-height: 80px; resize: vertical; }
 
     .st-field input:focus,
     .st-field textarea:focus {
       box-shadow: 2px 2px 0 var(--shadow), 0 0 0 4px var(--acid);
     }
 
-    .st-field input[aria-invalid="true"] {
-      background: #ffe3dc;
-    }
+    .st-field input[aria-invalid="true"] { background: #ffe3dc; }
 
     .st-choices {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
+      gap: 10px;
     }
 
     .st-choices.st-qty { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -339,34 +281,28 @@
 
     .st-choice span {
       display: grid;
-      gap: 6px;
+      gap: 2px;
       justify-items: center;
       height: 100%;
-      padding: 12px 8px;
+      padding: 10px 6px;
       border: 3px solid var(--ink);
-      border-radius: 9px;
+      border-radius: 8px;
       background: #fff;
-      box-shadow: 4px 4px 0 var(--shadow);
+      box-shadow: 3px 3px 0 var(--shadow);
       text-align: center;
+      font-size: 0.82rem;
       font-weight: 800;
-      font-size: 0.85rem;
-      transition: transform 0.1s ease, background 0.1s ease;
     }
 
     .st-choice b {
-      font: 1.3rem var(--font);
+      font: 1.2rem var(--font);
       text-transform: uppercase;
-    }
-
-    .st-choice img {
-      display: block;
-      height: auto;
     }
 
     .st-choice input:checked + span {
       background: var(--acid);
       transform: translate(2px, 2px);
-      box-shadow: 2px 2px 0 var(--shadow);
+      box-shadow: 1px 1px 0 var(--shadow);
     }
 
     .st-choice input:focus-visible + span {
@@ -383,55 +319,39 @@
     }
 
     .st-error:empty { display: none; }
-
-    .st-error {
-      color: var(--red);
-      font-weight: 900;
-    }
-
-    .st-submit {
-      max-width: none;
-      cursor: pointer;
-    }
-
-    .st-submit:disabled { opacity: 0.6; cursor: progress; }
+    .st-error { color: var(--red); font-weight: 900; }
 
     .st-success {
       display: grid;
       gap: 12px;
       justify-items: center;
+      padding: 12px 0;
       text-align: center;
-      padding: 18px 4px;
     }
 
-    .st-success .st-big {
-      font-size: 3.4rem;
-      line-height: 1;
-    }
-
-    .st-success h3 {
-      font: clamp(1.6rem, 6vw, 2.2rem) var(--font);
-    }
+    .st-success .st-big { font-size: 3.2rem; line-height: 1; }
+    .st-success h3 { font: clamp(1.6rem, 6vw, 2.2rem) var(--font); }
+    .st-success .st-btn { width: 100%; max-width: 360px; }
 
     .st-footer {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
+      gap: 14px;
       justify-content: center;
       font-weight: 900;
     }
 
-    .st-footer a {
-      color: var(--ink);
-    }
+    .st-footer a { color: var(--ink); }
 
     @media (min-width: 760px) {
-      .st-page { padding-top: 48px; gap: 64px; }
-      .st-hero { grid-template-columns: 1.15fr 0.85fr; }
-      .st-game { grid-template-columns: 1fr auto; }
+      .st-page { padding-top: 36px; gap: 72px; }
+      .st-hero { grid-template-columns: 1.2fr 0.8fr; }
+      .st-actions { grid-template-columns: 1fr 1fr; max-width: 520px; }
+      .st-steps { grid-template-columns: repeat(3, 1fr); }
+      .st-steps li { grid-template-columns: 1fr; }
+      .st-order { padding: 32px; }
       .st-row.st-2 { grid-template-columns: 1fr 1fr; }
       .st-row.st-cp { grid-template-columns: 0.4fr 1fr; }
-      .st-card { padding: 28px; }
     }
   </style>
 </head>
@@ -440,108 +360,68 @@
 
     <section class="st-hero">
       <div>
-        <span class="st-kicker">Pour les bars &amp; cafés</span>
-        <h1 class="ascii-title">Sociolo-Bing<span class="peek-o">o<span class="peeker" aria-hidden="true">👀</span></span></h1>
-        <p class="st-lead">Le jeu qui transforme votre terrasse en terrain d’observation. Vos clients scannent, observent la rue, cochent… et crient bingo.</p>
-        <a class="st-cta" href="#commande">Recevoir mes stickers</a>
-        <p class="st-sub">Gratuit · livré par la poste · aucune appli à installer</p>
-      </div>
-      <div class="st-sticker">
-        <img src="/stickers/sticker.png" width="600" height="600" alt="Sticker Sociolo-Bingo : « Observe la rue, coche, bingo ! » avec un QR code et l’adresse sociolobingo.com">
-        <span class="st-sticker-tag">À coller en terrasse</span>
-      </div>
-    </section>
-
-    <section class="st-game">
-      <div>
-        <span class="st-label">Le jeu</span>
-        <h2 class="st-h2">Un bingo, mais la rue fait le tirage</h2>
-        <ol class="st-steps">
-          <li>
-            <span class="st-num">1</span>
-            <div>
-              <strong>Scanner</strong>
-              <p>Le client scanne le sticker sur la table ou la vitrine. Le jeu s’ouvre direct dans le navigateur.</p>
-            </div>
-          </li>
-          <li>
-            <span class="st-num">2</span>
-            <div>
-              <strong>Observer</strong>
-              <p>Chacun reçoit une grille : petit bourgeois, trottinette électrique, doudoune sans manche, double chien…</p>
-            </div>
-          </li>
-          <li>
-            <span class="st-num">3</span>
-            <div>
-              <strong>Cocher &amp; gagner</strong>
-              <p>On coche ce qui passe devant la terrasse. Le premier qui complète une catégorie gagne. Entre amis ou d’une table à l’autre.</p>
-            </div>
-          </li>
-        </ol>
-      </div>
-      <div class="st-phone" aria-hidden="true">
-        <div class="st-phone-screen">
-          <img src="/stickers/interface.jpg" width="643" height="1000" alt="" loading="lazy">
+        <div class="st-logo">Sociolo-Bingo 👀</div>
+        <h1 class="st-h1">Le bingo qui se joue <mark>en regardant la rue</mark></h1>
+        <p>Vos clients scannent un sticker sur la table, reçoivent une grille et cochent ce qui passe devant la terrasse. Le premier qui complète une catégorie gagne.</p>
+        <div class="st-actions">
+          <a class="st-btn st-btn-play" href="/" target="_blank" rel="noopener">Essayer le jeu</a>
+          <a class="st-btn st-btn-order" href="#commande">Commander des stickers</a>
         </div>
+        <p class="st-note">Gratuit · sans appli · stickers envoyés par la poste</p>
+      </div>
+      <div>
+        <div class="st-phone">
+          <div class="st-phone-screen">
+            <img src="/stickers/interface.jpg" width="643" height="1000" alt="Une grille du jeu : petit bourgeois, trottinette électrique, doudoune sans manche, porte une baguette, crête de punk, double chien…">
+          </div>
+        </div>
+        <p class="st-caption">Une vraie grille du jeu</p>
       </div>
     </section>
 
     <section>
-      <span class="st-label">Pourquoi chez vous</span>
-      <h2 class="st-h2">Vos clients restent, rigolent, reviennent</h2>
-      <ul class="st-perks">
+      <h2 class="st-h2">Comment ça marche</h2>
+      <ol class="st-steps">
         <li>
-          <span class="st-emoji" aria-hidden="true">🍻</span>
-          <strong>Ça anime la terrasse</strong>
-          <p>Un vrai sujet de conversation entre amis… et entre tables voisines.</p>
+          <div>
+            <strong>On scanne</strong>
+            <p>Le sticker est collé sur la table ou la vitrine. Le jeu s’ouvre dans le navigateur, rien à installer.</p>
+          </div>
         </li>
         <li>
-          <span class="st-emoji" aria-hidden="true">📱</span>
-          <strong>Zéro installation</strong>
-          <p>Un QR code, un navigateur, c’est parti. Pas d’appli, pas de compte.</p>
+          <div>
+            <strong>On observe</strong>
+            <p>Chaque joueur a sa grille de profils et de scènes de rue, du plus banal au légendaire.</p>
+          </div>
         </li>
         <li>
-          <span class="st-emoji" aria-hidden="true">🎁</span>
-          <strong>100 % gratuit</strong>
-          <p>Stickers offerts et envoyés par la poste. Pas d’abonnement, pas de pub.</p>
+          <div>
+            <strong>On coche</strong>
+            <p>Entre amis ou d’une table à l’autre : le premier qui complète une catégorie gagne.</p>
+          </div>
         </li>
-        <li>
-          <span class="st-emoji" aria-hidden="true">🗺️</span>
-          <strong>Votre quartier, votre grille</strong>
-          <p>Le jeu permet de créer une grille sur mesure, à l’image de votre rue et de vos habitués.</p>
-        </li>
-      </ul>
+      </ol>
     </section>
 
-    <section id="commande" class="st-card">
-      <span class="st-label">Commande</span>
-      <h2 class="st-h2">Recevoir mes stickers</h2>
+    <section id="commande" class="st-order">
+      <div class="st-order-head">
+        <img src="/stickers/sticker.png" width="600" height="600" alt="Le sticker Sociolo-Bingo avec son QR code">
+        <div>
+          <h2 class="st-h2">Recevoir des stickers</h2>
+          <p>Gratuits, livrés par la poste.</p>
+        </div>
+      </div>
 
       <form id="order-form" class="st-form" novalidate>
-        <fieldset class="st-fieldset">
+        <fieldset class="st-group">
           <legend>Taille</legend>
           <div class="st-choices">
-            <label class="st-choice">
-              <input type="radio" name="size" value="7x7">
-              <span>
-                <img src="/stickers/sticker.png" width="70" height="70" alt="">
-                <b>7 × 7 cm</b>
-                Pour les tables
-              </span>
-            </label>
-            <label class="st-choice">
-              <input type="radio" name="size" value="10x10" checked>
-              <span>
-                <img src="/stickers/sticker.png" width="100" height="100" alt="">
-                <b>10 × 10 cm</b>
-                Pour la vitrine
-              </span>
-            </label>
+            <label class="st-choice"><input type="radio" name="size" value="7x7"><span><b>7 × 7 cm</b>pour les tables</span></label>
+            <label class="st-choice"><input type="radio" name="size" value="10x10" checked><span><b>10 × 10 cm</b>pour la vitrine</span></label>
           </div>
         </fieldset>
 
-        <fieldset class="st-fieldset">
+        <fieldset class="st-group">
           <legend>Quantité</legend>
           <div class="st-choices st-qty">
             <label class="st-choice"><input type="radio" name="quantity" value="5"><span><b>5</b>stickers</span></label>
@@ -550,7 +430,7 @@
           </div>
         </fieldset>
 
-        <fieldset class="st-fieldset">
+        <fieldset class="st-group">
           <legend>Le bar</legend>
           <div class="st-row st-2">
             <div class="st-field">
@@ -558,8 +438,8 @@
               <input id="barName" name="barName" type="text" maxlength="80" autocomplete="organization" required>
             </div>
             <div class="st-field">
-              <label for="contactName">Votre prénom / nom</label>
-              <input id="contactName" name="contactName" type="text" maxlength="60" autocomplete="name" required>
+              <label for="contactName">Votre prénom</label>
+              <input id="contactName" name="contactName" type="text" maxlength="60" autocomplete="given-name" required>
             </div>
           </div>
           <div class="st-row st-2">
@@ -568,21 +448,17 @@
               <input id="phone" name="phone" type="tel" maxlength="30" autocomplete="tel" inputmode="tel">
             </div>
             <div class="st-field">
-              <label for="email">Email <small>(ou téléphone, au choix)</small></label>
+              <label for="email">Email <small>(ou téléphone)</small></label>
               <input id="email" name="email" type="email" maxlength="120" autocomplete="email" inputmode="email">
             </div>
           </div>
         </fieldset>
 
-        <fieldset class="st-fieldset">
+        <fieldset class="st-group">
           <legend>Adresse de livraison</legend>
           <div class="st-field">
             <label for="address">Adresse</label>
-            <input id="address" name="address" type="text" maxlength="160" autocomplete="address-line1" placeholder="12 rue de la Soif" required>
-          </div>
-          <div class="st-field">
-            <label for="addressExtra">Complément <small>(facultatif)</small></label>
-            <input id="addressExtra" name="addressExtra" type="text" maxlength="120" autocomplete="address-line2">
+            <input id="address" name="address" type="text" maxlength="160" autocomplete="address-line1" required>
           </div>
           <div class="st-row st-cp">
             <div class="st-field">
@@ -595,7 +471,7 @@
             </div>
           </div>
           <div class="st-field">
-            <label for="message">Un mot pour nous ? <small>(facultatif)</small></label>
+            <label for="message">Un mot ? <small>(facultatif)</small></label>
             <textarea id="message" name="message" maxlength="500"></textarea>
           </div>
         </fieldset>
@@ -606,21 +482,21 @@
         </div>
 
         <p id="order-error" class="st-error" role="alert"></p>
-        <button id="order-submit" class="st-cta st-submit" type="submit">Envoyer ma commande</button>
-        <p class="st-sub">Vos coordonnées servent uniquement à l’envoi des stickers.</p>
+        <button id="order-submit" class="st-btn st-btn-play" type="submit">Envoyer ma commande</button>
+        <p class="st-note">Vos coordonnées servent uniquement à l’envoi des stickers.</p>
       </form>
 
       <div id="order-success" class="st-success" hidden>
         <span class="st-big" aria-hidden="true">🎉</span>
         <h3>Commande reçue !</h3>
         <p id="order-success-text">Vos stickers partent bientôt par la poste.</p>
-        <a class="st-cta" href="/">Tester le jeu maintenant</a>
+        <a class="st-btn st-btn-play" href="/" target="_blank" rel="noopener">Essayer le jeu en attendant</a>
       </div>
     </section>
 
     <footer class="st-footer">
-      <a href="/">Jouer</a>
-      <a href="/info.html">Les règles</a>
+      <a href="/" target="_blank" rel="noopener">Jouer</a>
+      <a href="/info.html" target="_blank" rel="noopener">Les règles</a>
       <span>sociolobingo.com</span>
     </footer>
   </main>
