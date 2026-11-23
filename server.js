@@ -1610,8 +1610,14 @@ app.patch('/api/admin/sticker-orders/:id', (req, res) => {
   res.json({ ok: true, order });
 });
 
-app.get(['/stickers', '/sticker', '/bars'], (req, res) => {
+app.get('/demo', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'stickers.html'));
+});
+
+// Anciennes adresses de la page : on garde la query (?ref=…) des liens déjà envoyés.
+app.get(['/stickers', '/sticker', '/bars'], (req, res) => {
+  const query = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
+  res.redirect(301, `/demo${query}`);
 });
 
 app.get('/healthz', (req, res) => {

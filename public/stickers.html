@@ -8,7 +8,7 @@
   <meta property="og:title" content="Sociolo-Bingo débarque dans votre bar 👀">
   <meta property="og:description" content="Le bingo qui se joue en regardant la rue. Stickers gratuits pour votre terrasse.">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://sociolobingo.com/stickers">
+  <meta property="og:url" content="https://sociolobingo.com/demo">
   <meta property="og:image" content="https://sociolobingo.com/stickers/sticker.jpg">
   <meta property="og:image:width" content="900">
   <meta property="og:image:height" content="900">
@@ -509,7 +509,7 @@
       const success = document.getElementById('order-success');
       const successText = document.getElementById('order-success-text');
 
-      // Suivi de campagne : https://sociolobingo.com/stickers?ref=nom-du-bar
+      // Suivi de campagne : https://sociolobingo.com/demo?ref=nom-du-bar
       const params = new URLSearchParams(window.location.search);
       const ref = (params.get('ref') || params.get('bar') || params.get('utm_campaign') || '').slice(0, 60);
 
